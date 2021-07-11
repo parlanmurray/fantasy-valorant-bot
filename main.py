@@ -2,8 +2,8 @@ import os
 
 from dotenv import load_dotenv
 
-from discordbot.bot import FantasyValBot
-from discordbot.interactions import Test
+from fantasyVCT.bot import FantasyValBot
+from fantasyVCT.interactions import Test
 
 def main():
 	load_dotenv()
