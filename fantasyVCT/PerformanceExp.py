@@ -2,7 +2,7 @@ import pandas as pd
 
 
 class Scraper:
-    # TODO: accept match code. Right now from outer scope
+    # TODO: accept match code. Right now warning: shadow name from outer scope
     def __init__(self, match_code):
         self.match_code = match_code
         self.url = 'string'
@@ -13,7 +13,8 @@ class Scraper:
         print('2')
         self.url = 'https://www.vrl.gg/' + match_code + '/?game=all&tab=' + self.game_type  # Get "link" for scraping
         print('2.5')
-        # ERROR IN LINE 17 "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
+        # ERROR IN LINE 17
+        # "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
         self.matches = pd.read_html(self.url)  # Compilation of all tables in static page
         print("3")
 
