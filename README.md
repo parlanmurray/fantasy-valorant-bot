@@ -7,9 +7,11 @@
 Install dependencies.
 
 ```sh
-pip install -U dotenv-python
-pip install -U discord
+pip install --upgrade setuptools
+pip install -e .
 ```
+
+May require sudo.
 
 ### Token
 
