@@ -16,6 +16,7 @@ class Scraper:
 	"""
 
 	def scrape_url(self, url: str):
+
 		"""Retrieve match information from a vlr.gg url as html.
 		
 		Args:
@@ -24,7 +25,7 @@ class Scraper:
 		Returns:
 			TYPE: Match information scraped from url
 		"""
-		pass
+		return pd.read_html(url)
 
 	def parse_team(self, html) -> Team:
 		"""Parse an html object for team information.
@@ -35,6 +36,8 @@ class Scraper:
 		Returns:
 		    Team: a Team containing information parsed from html
 		"""
+		self.df.rename(columns={'Unnamed: 0': 'Player'}, inplace=True)  # Name Player column
+		self.df[['Player', 'Team']] = df['Player'].str.split(n=1, expand=True)  # Split Player column into Player/Team
 		rv = Team("name")
 
 		# pseudocode for parsing html object
