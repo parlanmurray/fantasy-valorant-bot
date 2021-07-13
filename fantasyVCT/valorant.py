@@ -1,13 +1,33 @@
 
 # feel free to modify as needed
+stats_list = ['acs',
+'deaths',
+'assists',
+'kills',
+'2k',
+'3k',
+'4k',
+'5k',
+'1v2']
+
 
 class Player:
 	def __init__(self, name: str):
 		self.name = name
-		self.kills = 0
-		self.deaths = 0
-		self.assists = 0
-		# TODO and so on
+		self.stats = {
+		'acs': 0,
+		'deaths': 0,
+		'assists': 0,
+		'kills': 0,
+		'2k': 0,
+		'3k': 0,
+		'4k': 0,
+		'5k': 0,
+		'1v2': 0,
+		'1v3': 0,
+		'1v4': 0,
+		'1v5': 0
+		}
 
 class Team:
 	def __init__(self, name: str):
@@ -30,4 +50,3 @@ class Map:
 			self.team1 = team
 		elif not self.team2:
 			self.team2 = team
-

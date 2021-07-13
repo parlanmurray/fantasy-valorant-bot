@@ -1,9 +1,9 @@
 """Summary
 """
 import pandas as pd
-from valorant import Team, Player, Map
+from fantasyVCT.valorant import Team, Player, Map
 
-vlr_url = ""
+vlr_url = "https://vlr.gg/"
 
 # INSTRUCTIONS
 # This is how I imagine this working, feel free to add or edit as needed.
@@ -24,7 +24,10 @@ class Scraper:
 		Returns:
 			TYPE: Match information scraped from url
 		"""
-		pass
+		results =  pd.read_html(url)
+		print(results)
+		return results
+
 
 	def parse_team(self, html) -> Team:
 		"""Parse an html object for team information.
@@ -77,5 +80,7 @@ class Scraper:
 			game_id_int = int(game_id)
 		except:
 			raise ValueError("Game ID must be parseable as an int")
+
+		results = self.scrape_url(vlr_url + str(game_id) + "/")
 
 		return rv
