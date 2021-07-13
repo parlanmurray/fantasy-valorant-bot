@@ -12,7 +12,7 @@ class Scraper:
     def scrape_url(self):
         print('2')
         self.url = 'https://www.vrl.gg/' + match_code + '/?game=all&tab=' + self.game_type  # Get "link" for scraping
-        print('2.5')
+        print(self.url)
         # ERROR IN LINE 17
         # "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
         self.matches = pd.read_html(self.url)  # Compilation of all tables in static page
@@ -42,7 +42,7 @@ class Scraper:
 
 class PerformanceScraper(Scraper):
 
-    def __init__(self):
+    def __init__(self, match_code):
         super().__init__(match_code)
         self.game_type = 'performance'
         self.cols = ['2K', '3K', '4K', '5K', '1v1', '1v2', '1v3', '1v4', '1v5']  # Statistic titles
@@ -78,7 +78,7 @@ class ParseTable:
 
 
 match_code = '41573'
-b = Performance_Scraper()
-tables = b.final_tables(match_code)
+b = PerformanceScraper(match_code)
+tables = b.final_tables()
 print('termines')
 print(tables)
