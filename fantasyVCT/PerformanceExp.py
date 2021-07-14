@@ -11,7 +11,7 @@ class Scraper:
 
     def scrape_url(self):
         print('2')
-        self.url = 'https://www.vrl.gg/' + match_code + '/?game=all&tab=' + self.game_type  # Get "link" for scraping
+        self.url = 'https://www.vlr.gg/' + match_code + '/?game=all&tab=' + self.game_type  # Get "link" for scraping
         print(self.url)
         # ERROR IN LINE 17
         # "<urlopen error [WinError 10061] No connection could be made because the target machine actively refused it>"
@@ -21,8 +21,8 @@ class Scraper:
     def clean_data(self):
         print('9')
         self.df.fillna("0 0", inplace=True)  # Replace all NaN values with strings
-        self.df.rename(columns={'Unnamed: 0': 'Player'}, inplace=True)          # Name Player column
-        self.df[['Player', 'Team']] = df['Player'].str.split(n=1, expand=True)  # Split Player column into Player/Team
+        # self.df.rename(columns={'Unnamed: 0': 'Player'}, inplace=True)          # Name Player column
+        # self.df[['Player', 'Team']] = df['Player'].str.split(n=1, expand=True)  # Split Player column into Player/Team
         print('10')
         # Dump extraneous information
         for k in range(len(self.cols)):

@@ -7,6 +7,16 @@ class Player:
 		self.kills = 0
 		self.deaths = 0
 		self.assists = 0
+		self.acs = 0
+		self.2K = 0
+		self.3K = 0
+		self.4K = 0
+		self.5K = 0
+		self.1v1 = 0
+		self.1v2 = 0
+		self.1v3 = 0
+		self.1v4 = 0
+		self.1v5 = 0
 		# TODO and so on
 
 class Team:
