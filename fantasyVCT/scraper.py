@@ -26,7 +26,7 @@ class Scraper:
 			TYPE: Match information scraped from url
 		"""
 		url = 'https://www.vrl.gg/' + match_code + '/?game=all&tab=' + "overview"  # URL for overview
-		html = pd.read_html(url1)
+		html = pd.concat([pd.read_html(url)[2], pd.read_html(url)[3]])
 		url1 = 'https://www.vrl.gg/' + match_code + '/?game=all&tab=' + "performance"  # URL for performance
 		html1 = pd.read_html(url1)
 		games1 = int(len(html1) / 4 - 1)  # Total number of games
@@ -38,7 +38,8 @@ class Scraper:
 		# Make tables list hold table index for each map
 		for i in range(games1):
 			tables1[i] = 4 * (i + 1) + 3
-		html1 = html1[tables1] #Basically
+		for j in range(games1):
+			html1 = pd.concat() # TODO: Concatonating the tables from performance
 		html.rename(columns={'Unnamed: 0': 'Player'}, inplace=True)  	# Name Player column
 		html.set_index("Player").join(html1.set_index("Player"))		# Join overview/performance tables based on "player" key
 		html[['Player', 'Team']] = html['Player'].str.split(n=1, expand=True)  # Split Player column into Player/Team
@@ -62,11 +63,12 @@ class Scraper:
 			rv.add_player(self.parse_player(player_subsection))
 		return rv
 
-	def parse_player(self, html, name) -> Player: #name??
+	def parse_player(self, html) -> Player:
 		"""Parse an html object for player information.
 		
 		Args:
 		    html (TYPE): an object that contains html from a vlr.gg match page
+		    Pass in the row of a singular player and return as a player
 		
 		Returns:
 		    Player: a Player containing information parsed from html
