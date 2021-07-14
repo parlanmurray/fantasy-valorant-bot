@@ -7,8 +7,9 @@ vlr_url = ""
 
 # INSTRUCTIONS
 # This is how I imagine this working, feel free to add or edit as needed.
-# see valorant.py for additional TODO and useful classes
+# see Valorant.py for additional TODO and useful classes
 # Note that most code I wrote here is PSEUDOCODE and doesn't actually work
+
 
 class Scraper:
 
@@ -20,7 +21,7 @@ class Scraper:
 		"""Retrieve match information from a vlr.gg url as html.
 		
 		Args:
-		    url (str): vlr.gg url as a string
+			url (str): vlr.gg url as a string
 
 		Returns:
 			TYPE: Match information scraped from url
@@ -39,20 +40,25 @@ class Scraper:
 		for i in range(games1):
 			tables1[i] = 4 * (i + 1) + 3
 		for j in range(games1):
-			html1 = pd.concat() # TODO: Concatonating the tables from performance
+			html1 = pd.concat() 	# TODO: Concatenating the tables from performance
 		html.rename(columns={'Unnamed: 0': 'Player'}, inplace=True)  	# Name Player column
 		html.set_index("Player").join(html1.set_index("Player"))		# Join overview/performance tables based on "player" key
 		html[['Player', 'Team']] = html['Player'].str.split(n=1, expand=True)  # Split Player column into Player/Team
 		return html
 
 	def parse_team(self, html) -> Team:
+		# TODO: Does this go:
+		# 	1) URL (Choose data)
+		# 	2) Team? (Organize by team)
+		# 	3) Match? (Separate matches)
+		# 	4) Player (Pick player in match/team)
 		"""Parse an html object for team information.
 		
 		Args:
-		    html (TYPE): an object that contains html from a vlr.gg match page
+			html (TYPE): an object that contains html from a vlr.gg match page
 		
 		Returns:
-		    Team: a Team containing information parsed from html
+			Team: a Team containing information parsed from html
 		"""
 
 		rv = Team("name")
@@ -67,33 +73,48 @@ class Scraper:
 		"""Parse an html object for player information.
 		
 		Args:
-		    html (TYPE): an object that contains html from a vlr.gg match page
-		    Pass in the row of a singular player and return as a player
+			html (TYPE): an object that contains html from a vlr.gg match page
+			Pass in the row of a singular player and return as a Player class
 		
 		Returns:
-		    Player: a Player containing information parsed from html
+			Player: a Player containing information parsed from html
 		"""
 		# example
 		rv = Player("zywoo")
 		rv.kills = 100
 
-		cols = ["Player", "K", "D", "A", "ACS", "2K", "3K", "4K", "5K", "1v1", "1v2", "1v3", "1v4", "1v5"]
-		html.fillna("0 0", inplace=True)  # Replace all NaN values with strings
-		for i in range(len(self.cols)):
-			html[[self.cols[i], 'd' + str(i)]] = html[self.cols[i]].str.split(n=1, expand=True)
-		return rv
+		player = Player(html[["Player"]])
+		player.kills = html[["k"]]
+		player.deaths = html[["d"]]
+		player.assists = html[["a"]]
+		player.acs = html[["acs"]]
+		player.twoK = html[["2K"]]
+		player.threeK = html[["3K"]]
+		player.fourK = html[["4K"]]
+		player.fiveK = html[["5K"]]
+		player.v1 = html[["1v"]]
+		player.v2 = html[["1v"]]
+		player.v3 = html[["1v"]]
+		player.v4 = html[["1v"]]
+		player.v5 = html[["1v"]]
+
+		# cols = ["Player", "K", "D", "A", "ACS", "2K", "3K", "4K", "5K", "1v1", "1v2", "1v3", "1v4", "1v5"]
+		# html.fillna("0 0", inplace=True)  # Replace all NaN values with strings
+		# for i in range(len(self.cols)):
+		# 	html[[self.cols[i], 'd' + str(i)]] = html[self.cols[i]].str.split(n=1, expand=True)
+		return player
 
 	def parse_match(self, game_id: str) -> list:
 		"""Parse a vlr.gg match.
 		
 		Args:
-		    game_id (str): id of the vlr.gg match to parse
+			game_id (str): id of the vlr.gg match to parse
 		
 		Returns:
-		    list: list of Maps
+			list: list of Maps
 		
 		Raises:
-		    ValueError: game_id is not parseable as an int
+			ValueError: game_id is not parseable as an int
 		"""
 		rv = list()
 
