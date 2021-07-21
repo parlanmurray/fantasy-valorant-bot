@@ -51,12 +51,14 @@ class Player:
 		return format_str
 
 	def _combine(self, other):
-		"""Summary
-
+		"""Combine two Players, mutating self with other's information.
 		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
 		
 		Args:
-		    other (Player): Description
+		    other (Player): the Player to integrate information from
+		
+		Raises:
+		    ValueError: if other is not the same player as self
 		"""
 		# ensure that player names are the same
 		if self.name != other.name:
@@ -101,8 +103,14 @@ class Team:
 		return format_str
 
 	def _combine(self, other):
-		"""
+		"""Combine two Teams, mutating self with other's information.
 		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
+		
+		Args:
+		    other (Team): the Team to integrate information from
+		
+		Raises:
+		    ValueError: if a corresponding player is not found in other
 		"""
 		# ASSUME THAT TEAMS ARE THE SAME
 
@@ -143,12 +151,18 @@ class Map:
 		)
 
 	def _combine(self, other):
-		"""
+		"""Combine two Maps, mutating self with other's information.
 		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
+		
+		Args:
+		    other (Map): the Map to integrate information from
+		
+		Raises:
+		    ValueError: if map ids do not match, or if teams do not match
 		"""
 		# ensure that game_id is the same
 		if self.game_id != other.game_id:
-			raise ValueError("Cannot combine maps. {} {}".format(self.game_id, other.game_id))
+			raise ValueError("Cannot combine different maps. {} {}".format(self.game_id, other.game_id))
 
 		# combine teams
 		try:
@@ -178,6 +192,18 @@ class Match:
 		return rv
 
 	def combine(self, other):
+		"""Combine two Matches into a new Match object.
+		
+		Args:
+		    other (Match): a Match to combine information from
+		
+		Returns:
+		    Match: a new Match with information from both self and other
+		
+		Raises:
+		    ValueError: if match IDs are different, or if self/other are not 
+		    	correct Tabs
+		"""
 		# ensure that match_id values are the same
 		if self.match_id != other.match_id:
 			raise ValueError("Cannot combine different matches. {} {}".format(self.match_id, self.match_id))

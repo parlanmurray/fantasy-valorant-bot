@@ -46,10 +46,10 @@ class Scraper:
 		return soup
 
 	def parse_player_summary(self, html) -> Player:
-		"""Parse an html object for player information.
+		"""Parse an html object for player information, assuming summary tab.
 		
 		Args:
-		    html (BeautifulSoup): an object that contains html from a vlr.gg match page
+		    html (BeautifulSoup): html object containing player information
 		
 		Returns:
 		    Player: a Player containing information parsed from html
@@ -69,6 +69,14 @@ class Scraper:
 		return player
 
 	def parse_player_performance(self, html) -> Player:
+		"""Parse an html object for player information, assuming performance tab.
+		
+		Args:
+		    html (BeautifulSoup): html object containing player information
+		
+		Returns:
+		    Player: a Player containing information parsed from html
+		"""
 		# parse player info
 		items = html.find_all('td')
 		name = items[0].get_text().split()[0]
@@ -108,7 +116,8 @@ class Scraper:
 		raise NotImplementedError
 
 	def parse_map_summary(self, html) -> Map:
-		"""Parse an html object for summary information about a map.
+		"""Parse an html object for summary information about a map, assuming
+		summary tab.
 		
 		Args:
 		    html (BeautifulSoup): a div containing information about a single map
@@ -144,6 +153,12 @@ class Scraper:
 
 	def parse_map_performance(self, html) -> Map:
 		"""Parse an html object for performance information about a map.
+		
+		Args:
+		    html (BeautifulSoup): a div containing informaiton about a single map
+		
+		Returns:
+		    Map: a Map containing information parsed from html
 		"""
 		# build Map
 		game_id = int(html['data-game-id'])
