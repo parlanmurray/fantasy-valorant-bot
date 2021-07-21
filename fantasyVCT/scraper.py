@@ -1,5 +1,5 @@
 
-from fantasyVCT.valorant import Team, Player, Map
+from fantasyVCT.valorant import Tab, Player, Team, Map, Match
 
 import pandas
 from bs4 import BeautifulSoup
@@ -8,6 +8,7 @@ import requests
 vlr_performance = "https://vlr.gg/{}/?game=all&tab=performance"
 vlr_summary = "https://vlr.gg/{}/?game=all"
 
+# TODO verify 200 response from request
 # TODO create a scrape test to autonomously verify that the UI hasn't changed
 # TODO scrape performance tab
 
@@ -44,7 +45,7 @@ class Scraper:
 
 		return soup
 
-	def parse_player(self, html) -> Player:
+	def parse_player_summary(self, html) -> Player:
 		"""Parse an html object for player information.
 		
 		Args:
@@ -54,20 +55,34 @@ class Scraper:
 		    Player: a Player containing information parsed from html
 		"""
 		# parse player info
-		name = html.find('td', class_="mod-player").a.div.getText().strip()
+		name = html.find('td', class_="mod-player").a.div.get_text(strip=True)
 		agent = html.find('td', class_="mod-agents").img['alt']
 		player = Player(name, agent)
 
 		player_stats = html.find_all('td', class_="mod-stat")
 
-		player.set_stat_int("acs", player_stats[0].getText().strip())
-		player.set_stat_int("kills", player_stats[1].getText().strip())
-		player.set_stat_int("deaths", player_stats[2].getText().strip().strip('/'))
-		player.set_stat_int("assists", player_stats[3].getText().strip())
+		player.set_stat_int("acs", player_stats[0].get_text(strip=True))
+		player.set_stat_int("kills", player_stats[1].get_text(strip=True))
+		player.set_stat_int("deaths", player_stats[2].get_text(strip=True).strip('/'))
+		player.set_stat_int("assists", player_stats[3].get_text(strip=True))
 
 		return player
 
-	def parse_team(self, html_score, html_players) -> Team:
+	def parse_player_performance(self, html) -> Player:
+		# parse player info
+		items = html.find_all('td')
+		name = items[0].get_text().split()[0]
+		player = Player(name)
+
+		stat_list = {2 : "2k", 3 : "3k", 4 : "4k", 5 : "5k", 7 : "1v2", 8 : "1v3", 9 : "1v4", 10 : "1v5"}
+		for k, v in stat_list.items():
+			contents = items[k].get_text().split()
+			if contents:
+				player.set_stat_int(v, contents[0])
+
+		return player
+
+	def parse_team_summary(self, html_score, html_players) -> Team:
 		"""Parse an html object for team information.
 		
 		Args:
@@ -78,19 +93,22 @@ class Scraper:
 		    Team: a Team containing information parsed from html
 		"""
 		# parse score info
-		team_name = html_score.find('div', class_="team-name").getText().strip()
+		team_name = html_score.find('div', class_="team-name").get_text(strip=True)
 		won = 'mod-win' in html_score.find('div', class_="score")['class']
-		score = int(html_score.find('div', class_="score").getText().strip())
+		score = int(html_score.find('div', class_="score").get_text(strip=True))
 		team = Team(team_name, won, score)
 
 		# loop through players
 		for row in html_players.table.tbody.find_all('tr'):
-			team.add_player(self.parse_player(row))
+			team.add_player(self.parse_player_summary(row))
 		
 		return team
 
-	def parse_map(self, html):
-		"""Parse an html object for information about a map.
+	def parse_team_performance(self, html) -> Player:
+		raise NotImplementedError
+
+	def parse_map_summary(self, html) -> Map:
+		"""Parse an html object for summary information about a map.
 		
 		Args:
 		    html (BeautifulSoup): a div containing information about a single map
@@ -101,9 +119,9 @@ class Scraper:
 		header = html.div.find_all('div', recursive=False)
 
 		# build Map
-		map_name = header[1].getText().split()[0]
+		map_name = header[1].get_text().split()[0]
 		game_id = int(html['data-game-id'])
-		map_ = Map(map_name, game_id)
+		map_ = Map(game_id, name=map_name)
 
 		# build teams
 		score1 = header[0]
@@ -113,8 +131,8 @@ class Scraper:
 		players1 = getNthDiv(players, 0)
 		players2 = getNthDiv(players, 1)
 
-		team1 = self.parse_team(score1, players1)
-		team2 = self.parse_team(score2, players2)
+		team1 = self.parse_team_summary(score1, players1)
+		team2 = self.parse_team_summary(score2, players2)
 
 		# TODO set map pick
 
@@ -124,31 +142,97 @@ class Scraper:
 
 		return map_
 
-	def parse_match(self, game_id: str) -> list:
+	def parse_map_performance(self, html) -> Map:
+		"""Parse an html object for performance information about a map.
+		"""
+		# build Map
+		game_id = int(html['data-game-id'])
+		map_ = Map(game_id)
+
+		# build teams
+		table = getNthDiv(html, 1).table
+
+		team1 = Team("performance1")
+		team2 = Team("performance2")
+
+		# parse players
+		i = 0
+		for row in table.find_all('tr'):
+			if i == 0:
+				pass
+			elif i < 6:
+				team1.add_player(self.parse_player_performance(row))
+			else:
+				team2.add_player(self.parse_player_performance(row))
+			i += 1
+
+		map_.set_team(team1)
+		map_.set_team(team2)
+
+		return map_
+
+	def parse_match_summary(self, game_id: int) -> Match:
+		"""Parse a vlr.gg match page's summary tab.
+		
+		Args:
+		    game_id (int): id of the vlr.gg match to parse
+		
+		Returns:
+		    Match: summary tab match data parsed
+		"""
+		soup = self.scrape_url(vlr_summary.format(game_id))
+		maps = soup.find_all("div", {"class": "vm-stats-game"})
+		match_summary = Match(game_id, Tab.SUMMARY)
+
+		for map_div in maps:
+			if map_div['data-game-id'] == 'all':
+				continue
+			elif "not available" in map_div.get_text():
+				continue
+			match_summary.add_map(self.parse_map_summary(map_div))
+
+		return match_summary
+
+	def parse_match_performance(self, game_id: int) -> Match:
+		"""Parse a vlr.gg match page's performance tab.
+		
+		Args:
+		    game_id (int): id of the vlr.gg match to parse
+		
+		Returns:
+		    Match: performance tab match data parsed
+		"""
+		soup = self.scrape_url(vlr_performance.format(game_id))
+		maps = soup.find_all('div', {'class': 'vm-stats-game'})
+		match_performance = Match(game_id, Tab.PERFORMANCE)
+
+		for map_div in maps:
+			if map_div['data-game-id'] == 'all':
+				continue
+			elif "not available" in map_div.get_text():
+				continue
+			match_performance.add_map(self.parse_map_performance(map_div))
+
+		return match_performance
+		
+	def parse_match(self, game_id: str) -> Match:
 		"""Parse a vlr.gg match.
 		
 		Args:
 		    game_id (str): id of the vlr.gg match to parse
 		
 		Returns:
-		    list: list of Maps
+		    Match: all match data parsed
 		
 		Raises:
 		    ValueError: game_id is not parseable as an int
 		"""
-		rv = list()
-
 		# sanitize input
 		try:
 			game_id_int = int(game_id)
 		except:
 			raise ValueError("Game ID must be parseable as an int")
 
-		soup = self.scrape_url(vlr_summary.format(game_id))
-		maps = soup.find_all("div", {"class": "vm-stats-game"})
-		for map_div in maps:
-			if map_div['data-game-id'] == 'all':
-				continue
-			rv.append(self.parse_map(map_div))
-
-		return rv
+		match_summary = self.parse_match_summary(game_id_int)
+		match_performance = self.parse_match_performance(game_id_int)
+		return match_summary.combine(match_performance)

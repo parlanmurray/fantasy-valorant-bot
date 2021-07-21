@@ -1,8 +1,15 @@
+from enum import Enum
+from copy import deepcopy
 
-# TODO pretty print
+
+class Tab(Enum):
+	SUMMARY = 1
+	PERFORMANCE = 2
+	COMBINED = 3
+
 
 class Player:
-	def __init__(self, name: str, agent: str):
+	def __init__(self, name: str, agent: str=""):
 		self.name = name
 		self.agent = agent
 		self.stats = {
@@ -43,12 +50,30 @@ class Player:
 			self.stats['1v5'])
 		return format_str
 
-	def set_stat_int(self, key, value):
-		self.stats[key] = int(value)
+	def _combine(self, other):
+		"""Summary
+
+		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
+		
+		Args:
+		    other (Player): Description
+		"""
+		# ensure that player names are the same
+		if self.name != other.name:
+			raise ValueError("Cannot combine different players. {} {}".format(self.name, other.name))
+
+		# retrieve missing stats from other
+		for k, v in self.stats.items():
+			if v == 0:
+				self.stats[k] = other.stats[k]
+
+	def set_stat_int(self, key: str, value):
+		if key in self.stats.keys():
+			self.stats[key] = int(value)
 
 
 class Team:
-	def __init__(self, name: str, won: bool, score: int):
+	def __init__(self, name: str, won: bool = False, score: int = 0):
 		self.name = name
 		self.players = list()
 		self.won = won
@@ -75,6 +100,25 @@ class Team:
 		)
 		return format_str
 
+	def _combine(self, other):
+		"""
+		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
+		"""
+		# ASSUME THAT TEAMS ARE THE SAME
+
+		# combine players
+		for self_player in self.players:
+			found = False
+			for other_player in other.players:
+				try:
+					self_player._combine(other_player)
+					found = True
+					break
+				except ValueError:
+					continue
+
+			if not found:
+				raise ValueError("Corresponding player not found for {} in \n{}.".format(self_player.name, str(other)))
 
 	def add_player(self, player: Player):
 		self.players.append(player)
@@ -84,8 +128,8 @@ class Team:
 
 
 class Map:
-	def __init__(self, map_name: str, game_id: int):
-		self.name = map_name
+	def __init__(self, game_id: int, name: str = None):
+		self.name = name
 		self.game_id = game_id
 		self.team1 = None
 		self.team2 = None
@@ -98,6 +142,21 @@ class Map:
 			self.team2
 		)
 
+	def _combine(self, other):
+		"""
+		ASSUME THAT SELF IS SUMMARY TAB INFORMATION, AND CAN BE MODIFIED.
+		"""
+		# ensure that game_id is the same
+		if self.game_id != other.game_id:
+			raise ValueError("Cannot combine maps. {} {}".format(self.game_id, other.game_id))
+
+		# combine teams
+		try:
+			self.team1._combine(other.team1)
+			self.team2._combine(other.team2)
+		except ValueError as ve:
+			raise ValueError("Teams do not match. " + str(ve))
+
 	def set_team(self, team: Team):
 		if not self.team1:
 			self.team1 = team
@@ -106,4 +165,49 @@ class Map:
 
 
 class Match:
-	pass
+	def __init__(self, match_id: int, tab: Tab):
+		self.maps = list()
+		self.match_id = match_id
+		self.tab = tab
+
+	def __str__(self):
+		rv = "Match ID: {}\n".format(match_id)
+		for map_ in self.maps:
+			rv += "----------\n\n" + str(map_)
+
+		return rv
+
+	def combine(self, other):
+		# ensure that match_id values are the same
+		if self.match_id != other.match_id:
+			raise ValueError("Cannot combine different matches. {} {}".format(self.match_id, self.match_id))
+
+		# ensure that self is a SUMMARY and other is PERFORMANCE
+		if self.tab != Tab.SUMMARY and other.tab == Tab.SUMMARY:
+			return other.combine(self)
+		elif self.tab == other.tab:
+			raise ValueError("Each match must contain different tab information.")
+		elif self.tab == Tab.COMBINED or other.tab == Tab.COMBINED:
+			raise ValueError("Match cannot be of type COMBINED.")
+
+		match_copy = deepcopy(self)
+		match_copy.tab = Tab.COMBINED
+
+		# combine maps
+		for copy_map in match_copy.maps:
+			found = False
+			for other_map in other.maps:
+				try:
+					copy_map._combine(other_map)
+					found = True
+					break
+				except ValueError:
+					continue
+
+			if not found:
+				raise ValueError("Corresponding map not found for map {}.".format(copy_map.game_id))
+
+		return match_copy
+
+	def add_map(self, map):
+		self.maps.append(map)
