@@ -143,7 +143,11 @@ class Scraper:
 		team1 = self.parse_team_summary(score1, players1)
 		team2 = self.parse_team_summary(score2, players2)
 
-		# TODO set map pick
+		# set map pick
+		if 'mod-1' in header[1].find('span', class_="picked")['class']:
+			team1.set_map_pick()
+		elif 'mod-2' in header[1].find('span', class_="picked")['class']:
+			team2.set_map_pick()
 
 		# add teams to map
 		map_.set_team(team1)

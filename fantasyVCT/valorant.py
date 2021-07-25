@@ -131,7 +131,7 @@ class Team:
 	def add_player(self, player: Player):
 		self.players.append(player)
 
-	def map_pick(self):
+	def set_map_pick(self):
 		self.map_pick = True
 
 
@@ -185,7 +185,7 @@ class Match:
 		self.tab = tab
 
 	def __str__(self):
-		rv = "Match ID: {}\n".format(match_id)
+		rv = "Match ID: {}\n".format(self.match_id)
 		for map_ in self.maps:
 			rv += "----------\n\n" + str(map_)
 
