@@ -47,6 +47,44 @@ CREATE TABLE events
 	PRIMARY KEY (id)
 );
 
+CREATE TABLE results
+{
+	id INT NOT NULL AUTO_INCREMENT,
+	map VARCHAR(10) NOT NULL,
+	game_id INT NOT NULL,
+	team_id INT NOT NULL,
+	event_id INT,
+	player_id INT NOT NULL,
+	player_acs FLOAT,
+	player_kills INT,
+	player_deaths INT,
+	player_assists INT,
+	player_2k INT,
+	player_3k INT,
+	player_4k INT,
+	player_5k INT,
+	player_clutch_v2 INT,
+	player_clutch_v3 INT,
+	player_clutch_v4 INT,
+	player_clutch_v5 INT,
+	INDEX event_ind (event_id),
+	INDEX team_ind (team1_id),
+	INDEX player_ind (player1_id),
+	CONSTRAINT fk_event
+		FOREIGN KEY event_id,
+		REFERENCES events(id)
+		ON DELETE SET NULL,
+	CONSTRAINT fk_team
+		FOREIGN KEY team1_id
+		REFERENCES teams(id)
+		ON DELETE SET NULL,
+	CONSTRAINT fk_player
+		FOREIGN KEY player1_id
+		REFERENCES players(id)
+		ON DELETE SET NULL,
+};
+
+
 CREATE TABLE maps
 (
 	id INT NOT NULL AUTO_INCREMENT,
