@@ -131,7 +131,7 @@ class Team:
 	def add_player(self, player: Player):
 		self.players.append(player)
 
-	def map_pick(self):
+	def set_map_pick(self):
 		self.map_pick = True
 
 
