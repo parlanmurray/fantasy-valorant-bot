@@ -31,7 +31,8 @@ class Scraper:
 	"""Scrapes and parses a vlr.gg match page.
 	"""
 
-	def scrape_url(self, url: str):
+	@staticmethod
+	def scrape_url(url: str):
 		"""Retrieve match information from a vlr.gg url as html.
 		
 		Args:
@@ -45,7 +46,8 @@ class Scraper:
 
 		return soup
 
-	def parse_player_summary(self, html) -> Player:
+	@staticmethod
+	def _parse_player_summary(html) -> Player:
 		"""Parse an html object for player information, assuming summary tab.
 		
 		Args:
@@ -68,7 +70,8 @@ class Scraper:
 
 		return player
 
-	def parse_player_performance(self, html) -> Player:
+	@staticmethod
+	def _parse_player_performance(html) -> Player:
 		"""Parse an html object for player information, assuming performance tab.
 		
 		Args:
@@ -90,7 +93,8 @@ class Scraper:
 
 		return player
 
-	def parse_team_summary(self, html_score, html_players) -> Team:
+	@staticmethod
+	def _parse_team_summary(html_score, html_players) -> Team:
 		"""Parse an html object for team information.
 		
 		Args:
@@ -108,14 +112,16 @@ class Scraper:
 
 		# loop through players
 		for row in html_players.table.tbody.find_all('tr'):
-			team.add_player(self.parse_player_summary(row))
+			team.add_player(Scraper._parse_player_summary(row))
 		
 		return team
 
-	def parse_team_performance(self, html) -> Player:
+	@staticmethod
+	def __parse_team_performance(html) -> Player:
 		raise NotImplementedError
 
-	def parse_map_summary(self, html) -> Map:
+	@staticmethod
+	def _parse_map_summary(html) -> Map:
 		"""Parse an html object for summary information about a map, assuming
 		summary tab.
 		
@@ -140,8 +146,8 @@ class Scraper:
 		players1 = getNthDiv(players, 0)
 		players2 = getNthDiv(players, 1)
 
-		team1 = self.parse_team_summary(score1, players1)
-		team2 = self.parse_team_summary(score2, players2)
+		team1 = Scraper._parse_team_summary(score1, players1)
+		team2 = Scraper._parse_team_summary(score2, players2)
 
 		# TODO set map pick
 
@@ -151,7 +157,8 @@ class Scraper:
 
 		return map_
 
-	def parse_map_performance(self, html) -> Map:
+	@staticmethod
+	def _parse_map_performance(html) -> Map:
 		"""Parse an html object for performance information about a map.
 		
 		Args:
@@ -176,9 +183,9 @@ class Scraper:
 			if i == 0:
 				pass
 			elif i < 6:
-				team1.add_player(self.parse_player_performance(row))
+				team1.add_player(Scraper._parse_player_performance(row))
 			else:
-				team2.add_player(self.parse_player_performance(row))
+				team2.add_player(Scraper._parse_player_performance(row))
 			i += 1
 
 		map_.set_team(team1)
@@ -186,7 +193,8 @@ class Scraper:
 
 		return map_
 
-	def parse_match_summary(self, game_id: int) -> Match:
+	@staticmethod
+	def _parse_match_summary(game_id: int) -> Match:
 		"""Parse a vlr.gg match page's summary tab.
 		
 		Args:
@@ -195,7 +203,7 @@ class Scraper:
 		Returns:
 		    Match: summary tab match data parsed
 		"""
-		soup = self.scrape_url(vlr_summary.format(game_id))
+		soup = Scraper.scrape_url(vlr_summary.format(game_id))
 		maps = soup.find_all("div", {"class": "vm-stats-game"})
 		match_summary = Match(game_id, Tab.SUMMARY)
 
@@ -204,11 +212,12 @@ class Scraper:
 				continue
 			elif "not available" in map_div.get_text():
 				continue
-			match_summary.add_map(self.parse_map_summary(map_div))
+			match_summary.add_map(Scraper._parse_map_summary(map_div))
 
 		return match_summary
 
-	def parse_match_performance(self, game_id: int) -> Match:
+	@staticmethod
+	def _parse_match_performance(game_id: int) -> Match:
 		"""Parse a vlr.gg match page's performance tab.
 		
 		Args:
@@ -217,7 +226,7 @@ class Scraper:
 		Returns:
 		    Match: performance tab match data parsed
 		"""
-		soup = self.scrape_url(vlr_performance.format(game_id))
+		soup = Scraper.scrape_url(vlr_performance.format(game_id))
 		maps = soup.find_all('div', {'class': 'vm-stats-game'})
 		match_performance = Match(game_id, Tab.PERFORMANCE)
 
@@ -226,11 +235,12 @@ class Scraper:
 				continue
 			elif "not available" in map_div.get_text():
 				continue
-			match_performance.add_map(self.parse_map_performance(map_div))
+			match_performance.add_map(Scraper._parse_map_performance(map_div))
 
 		return match_performance
 		
-	def parse_match(self, game_id: str) -> Match:
+	@staticmethod
+	def parse_match(game_id: str) -> Match:
 		"""Parse a vlr.gg match.
 		
 		Args:
@@ -248,6 +258,6 @@ class Scraper:
 		except:
 			raise ValueError("Game ID must be parseable as an int")
 
-		match_summary = self.parse_match_summary(game_id_int)
-		match_performance = self.parse_match_performance(game_id_int)
+		match_summary = Scraper._parse_match_summary(game_id_int)
+		match_performance = Scraper._parse_match_performance(game_id_int)
 		return match_summary.combine(match_performance)
