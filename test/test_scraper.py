@@ -3,8 +3,7 @@ from fantasyVCT.scraper import Scraper
 # unit testing
 # Run with pytest
 
-scraper = Scraper()
-full = scraper.parse_match(25206)
+full = Scraper.parse_match(25206)
 
 def test_map_names():
 	assert len(full.maps) == 2
