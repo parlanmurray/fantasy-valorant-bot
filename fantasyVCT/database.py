@@ -45,7 +45,7 @@ class DatabaseManager:
 	def query_team_id_from_name(self, team_name):
 		cursor = self._conn.cursor()
 
-		query = """SELECT team.id FROM teams WHERE teams.name = %s"""
+		query = """SELECT team.id FROM teams WHERE teams.name = `%s`"""
 		data = (team_name)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
@@ -58,7 +58,7 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 
 		query = """SELECT players.id, players.name FROM players 
-				   INNER JOIN teams ON players.team_id = teams.id AND teams.id = %s"""
+				   INNER JOIN teams ON players.team_id = teams.id AND teams.id = `%s`"""
 		data = (team_id)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
@@ -71,7 +71,7 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 
 		query = """SELECT players.id, players.name FROM players 
-				   INNER JOIN teams ON players.team_id = teams.id AND teams.name = %s"""
+				   INNER JOIN teams ON players.team_id = teams.id AND teams.name = `%s`"""
 		data = (team_name)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
