@@ -72,7 +72,7 @@ class DatabaseManager:
 
 		query = """SELECT players.id, players.name FROM players 
 				   INNER JOIN teams ON players.team_id = teams.id AND teams.name = %s"""
-		data = (teamn_name)
+		data = (team_name)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
 		cursor.close()
