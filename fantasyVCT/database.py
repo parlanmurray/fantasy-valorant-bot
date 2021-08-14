@@ -51,7 +51,7 @@ class DatabaseManager:
 		results = cursor.fetchall()
 		cursor.close()
 
-		print(results)
+		return results
 
 	@query_precheck
 	def query_team_players_from_id(self, team_id):
@@ -63,13 +63,16 @@ class DatabaseManager:
 		results = cursor.fetchall()
 		cursor.close()
 
-		print(results)
+		return results
 
 	@query_precheck
 	def query_team_players_from_name(self, team_name):
 		cursor = self._conn.cursor()
 
-		query = ("SELECT players.id, players.name FROM players INNER JOIN teams ON players.team_id = teams.id WHERE teams.name = %s")
+		query = """SELECT players.name FROM players 
+		INNER JOIN teams ON players.team_id = teams.id 
+		WHERE teams.id in 
+		(SELECT team.id FROM teams WHERE teams.name = %s OR teams.abbrev = %s)"""
 		data = (team_name, )
 		cursor.execute(query, data)
 		results = cursor.fetchall()
