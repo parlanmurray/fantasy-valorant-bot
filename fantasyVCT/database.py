@@ -7,6 +7,7 @@ def query_precheck(func):
 			return func(*args)
 		else:
 			raise RuntimeError("Database connection is not open.")
+	return wrapper
 
 
 class DatabaseManager:
