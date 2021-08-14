@@ -58,7 +58,7 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 
 		query = ("SELECT players.id, players.name FROM players INNER JOIN teams ON players.team_id = teams.id WHERE teams.id = %s")
-		data = (team_id)
+		data = (team_id, )
 		cursor.execute(query, data)
 		results = cursor.fetchall()
 		cursor.close()
@@ -70,7 +70,7 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 
 		query = ("SELECT players.id, players.name FROM players INNER JOIN teams ON players.team_id = teams.id WHERE teams.name = %s")
-		data = (team_name)
+		data = (team_name, )
 		cursor.execute(query, data)
 		results = cursor.fetchall()
 		cursor.close()
