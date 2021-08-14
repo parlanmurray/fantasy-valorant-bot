@@ -4,9 +4,9 @@ from discord.ext import commands
 
 
 class FantasyValBot(commands.Bot):
-	def __init__(self, command_prefix, database_user, database_password):
+	def __init__(self, command_prefix, db_user, db_password, db_name):
 		super().__init__(command_prefix)
-		self.db_manager = DatabaseManager(database_user, database_password)
+		self.db_manager = DatabaseManager(db_user, db_password, db_name)
 
 	async def on_ready(self):
 		"""Summary
