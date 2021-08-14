@@ -1,6 +1,14 @@
 import mysql.connector
 
 
+def query_precheck(func):
+	def wrapper(*args):
+		if args[0].is_open():
+			return func(args)
+		else:
+			raise RuntimeError("Database connection is not open.")
+
+
 class DatabaseManager:
 	def __init__(self, user, password, database, host = "127.0.0.1"):
 		self.user = user
@@ -14,7 +22,9 @@ class DatabaseManager:
 		if self._conn:
 			self.close()
 
-	def connect(self):
+	def open(self):
+		if self.is_open():
+			return
 		self._conn = mysql.connector.connect(user=self.user, password=self.password,
 											 host=self.host, database=self.database)
 
@@ -22,6 +32,7 @@ class DatabaseManager:
 		if self._conn:
 			self._conn.close()
 			self._conn = None
+		print("closed db connection")
 
 	def is_open(self):
 		return True if self._conn else False
@@ -30,6 +41,7 @@ class DatabaseManager:
 ## Queries
 ######################################3
 
+	@query_precheck
 	def query_team_id_from_name(self, team_name):
 		cursor = self._conn.cursor()
 
@@ -41,6 +53,7 @@ class DatabaseManager:
 
 		print(results)
 
+	@query_precheck
 	def query_team_players_from_id(self, team_id):
 		cursor = self._conn.cursor()
 
@@ -53,6 +66,7 @@ class DatabaseManager:
 
 		print(results)
 
+	@query_precheck
 	def query_team_players_from_name(self, team_name):
 		cursor = self._conn.cursor()
 
