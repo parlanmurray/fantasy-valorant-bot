@@ -42,20 +42,28 @@ class DatabaseManager:
 ######################################3
 
 	@query_precheck
-	def query_team_id_from_name(self, team_name):
+	def query_team_all_from_name(self, team_name):
+		"""
+		Returns:
+		(team_id, team_name, team_abbrev, team_region)
+		"""
 		cursor = self._conn.cursor()
 
-		query = """SELECT teams.id FROM teams WHERE teams.name = %s OR teams.abbrev = %s"""
+		query = """SELECT * FROM teams WHERE teams.name = %s OR teams.abbrev = %s"""
 		data = (team_name, team_name)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
 		cursor.close()
 
 		print(results)
-		return results
+		return results[0]
 
 	@query_precheck
 	def query_team_players_from_id(self, team_id):
+		"""
+		Returns:
+		[(player_name, ), ...]
+		"""
 		cursor = self._conn.cursor()
 
 		query = """SELECT players.name FROM players 
@@ -69,6 +77,10 @@ class DatabaseManager:
 
 	@query_precheck
 	def query_team_players_from_name(self, team_name):
+		"""
+		Returns:
+		[(player_name, ), ...]
+		"""
 		cursor = self._conn.cursor()
 
 		query = """SELECT players.name FROM players 
@@ -80,5 +92,4 @@ class DatabaseManager:
 		results = cursor.fetchall()
 		cursor.close()
 
-		print(results)
 		return results

@@ -40,6 +40,12 @@ class DatabaseCog(commands.Cog):
 		# https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#error-handling
 		
 		if cat_type is Category.TEAM:
-			self.bot.db_manager.query_team_players_from_name(member)
+			team_name = self.bot.db_manager.query_team_all_from_name(member)[1]
+			rv = self.bot.db_manager.query_team_players_from_name(member)
+			buf = "```%s:".format(team_name)
+			for row in rv:
+				buf += "\n\t" row[0]
+			buf += "```"
+			await ctx.send(buf)
 		elif cat_type is Category.PLAYER:
 			pass
