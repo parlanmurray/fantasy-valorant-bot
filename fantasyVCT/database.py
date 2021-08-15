@@ -55,7 +55,6 @@ class DatabaseManager:
 		results = cursor.fetchall()
 		cursor.close()
 
-		print(results)
 		return results[0]
 
 	@query_precheck

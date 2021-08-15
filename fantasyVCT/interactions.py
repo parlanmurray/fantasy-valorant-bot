@@ -42,7 +42,7 @@ class DatabaseCog(commands.Cog):
 		if cat_type is Category.TEAM:
 			team_name = self.bot.db_manager.query_team_all_from_name(member)[1]
 			rv = self.bot.db_manager.query_team_players_from_name(member)
-			buf = "```%s:".format(team_name)
+			buf = "```{}:".format(team_name)
 			for row in rv:
 				buf += "\n\t" + row[0]
 			buf += "```"
