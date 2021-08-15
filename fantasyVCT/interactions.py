@@ -44,7 +44,7 @@ class DatabaseCog(commands.Cog):
 			rv = self.bot.db_manager.query_team_players_from_name(member)
 			buf = "```%s:".format(team_name)
 			for row in rv:
-				buf += "\n\t" row[0]
+				buf += "\n\t" + row[0]
 			buf += "```"
 			await ctx.send(buf)
 		elif cat_type is Category.PLAYER:
