@@ -92,3 +92,56 @@ class DatabaseManager:
 		cursor.close()
 
 		return results
+
+	@query_precheck
+	def insert_user_to_users(self, discord_id):
+		"""
+		Register a user into the users table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO users (discord_id) VALUES (%s)"""
+		data = (discord_id, )
+		cursor.execute(query, data)
+		self._conn.commit()
+		cursor.close()
+
+	@query_precheck
+	def insert_team_to_fantasy_teams(self, team_name, team_abbrev):
+		"""
+		Create a fantasy team.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO fantasy_teams (name, abbrev) VALUES (%s, %s)"""
+		data = (team_name, team_abbrev)
+		cursor.execute(query, data)
+		self._conn.commit()
+		cursor.close()
+
+	@query_precheck
+	def update_users_fantasy_team(self, discord_id, fantasy_team_id):
+		"""
+		Register a fantasy team with a user in users.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """UPDATE users SET fantasy_team_id = %s WHERE discord_id = %s"""
+		data = (fantasy_team_id, discord_id)
+		cursor.execute(query, data)
+		self._conn.commit()
+		cursor.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
