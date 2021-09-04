@@ -12,12 +12,11 @@
 
 CREATE TABLE users
 {
-	id INT NOT NULL AUTO_INCREMENT,
-	discord_id VARCHAR(20) NOT NULL UNIQUE,
+	discord_id VARCHAR(18) NOT NULL,
 	fantasy_team_id INT UNIQUE,
 	INDEX fantasy_team_id_ind (fantasy_team_id),
 	CONSTRAINT fk_team_id FOREIGN KEY (fantasy_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
-	PRIMARY KEY (id)
+	PRIMARY KEY (discord_id)
 };
 
 CREATE TABLE fantasy_teams
