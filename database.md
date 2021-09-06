@@ -22,8 +22,8 @@ CREATE TABLE users
 CREATE TABLE fantasy_teams
 {
 	id INT NOT NULL AUTO_INCREMENT,
-	name VARCHAR(50) NOT NULL,
-	abbrev VARCHAR(10) NOT NULL,
+	name VARCHAR(50) NOT NULL UNIQUE,
+	abbrev VARCHAR(10) NOT NULL UNIQUE,
 	player1 INT,
 	player2 INT,
 	player3 INT,

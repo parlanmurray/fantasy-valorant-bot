@@ -26,7 +26,39 @@ class Test(commands.Cog):
 		await ctx.send("Hello {0.name}".format(ctx.author))
 
 
-class DatabaseCog(commands.Cog):
+class FantasyCog(commands.Cog):
+	def __init__(self, bot):
+		self.bot = bot
+
+	@commands.command()
+	async def register(self, ctx, team_abbrev: str, team_name: str):
+		# get author's unique id
+		author_id = ctx.message.author.id
+
+		# check that user is not already registered
+		if self.bot.db_manager.query_users_all_from_discord_id(author_id):
+			return
+
+		# check that team_abbrev or team_name are not taken
+		if self.bot.db_manager.query_fantasy_teams_all_from_name(team_name):
+			return await self.bot.say("{} is taken, please choose another name.".format(team_name))
+		elif self.bot.db_manager.query_fantasy_teams_all_from_abbrev(team_abbrev):
+			return await self.bot.say("{} is taken, please choose another abbreviation.".format(team_abbrev))
+
+		# register user
+		self.bot.db_manager.insert_user_to_users(author_id)
+
+		# register team
+		self.bot.db_manager.insert_team_to_fantasy_teams(team_name, team_abbrev)
+
+		# commit transaction
+		self.bot.db_manager.commit()
+
+		# reply
+		await self.bot.say("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
+
+
+class StatsCog(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
