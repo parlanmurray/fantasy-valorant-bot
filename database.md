@@ -11,16 +11,16 @@
 ### Fantasy teams tables
 
 CREATE TABLE users
-{
+(
 	discord_id VARCHAR(18) NOT NULL,
 	fantasy_team_id INT UNIQUE,
 	INDEX fantasy_team_id_ind (fantasy_team_id),
 	CONSTRAINT fk_team_id FOREIGN KEY (fantasy_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
 	PRIMARY KEY (discord_id)
-};
+);
 
 CREATE TABLE fantasy_teams
-{
+(
 	id INT NOT NULL AUTO_INCREMENT,
 	name VARCHAR(50) NOT NULL UNIQUE,
 	abbrev VARCHAR(10) NOT NULL UNIQUE,
@@ -55,7 +55,7 @@ CREATE TABLE fantasy_teams
 	INDEX sub4 (sub4),
 	CONSTRAINT fk_sub4 FOREIGN KEY (sub4) REFERENCES players(id) ON DELETE SET NULL ON UPDATE CASCADE,
 	PRIMARY KEY (id)
-};
+);
 
 ### Stats tables
 
