@@ -57,7 +57,7 @@ class FantasyCog(commands.Cog):
 		self.bot.db_manager.insert_team_to_fantasy_teams(team_name, team_abbrev)
 
 		# commit transaction
-		se.fbot.db_manager.commit()
+		self.fbot.db_manager.commit()
 
 		# register team to user
 		fantasy_team_id = self.bot.db_manager.query_fantasy_teams_all_from_name(team_name)[0]
