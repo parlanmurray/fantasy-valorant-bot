@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from fantasyVCT.bot import FantasyValBot
-from fantasyVCT.interactions import Test, DatabaseCog
+from fantasyVCT.interactions import Test, StatsCog, FantasyCog
 
 USE_DEV = True
 
@@ -20,7 +20,8 @@ def main():
 
 	bot = FantasyValBot("!", DB_USER, DB_PASSWORD, DB_NAME)
 	bot.add_cog(Test(bot))
-	bot.add_cog(DatabaseCog(bot))
+	bot.add_cog(StatsCog(bot))
+	bot.add_cog(FantasyCog(bot))
 	bot.run(TOKEN)
 
 if __name__ == "__main__":
