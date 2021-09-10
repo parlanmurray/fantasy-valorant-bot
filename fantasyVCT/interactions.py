@@ -34,10 +34,14 @@ class FantasyCog(commands.Cog):
 	async def register(self, ctx, team_abbrev: str, team_name: str):
 		# get author's unique id
 		author_id = ctx.message.author.id
+		author_registered = False
 
 		# check that user is not already registered
-		if self.bot.db_manager.query_users_all_from_discord_id(author_id):
-			return
+		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
+		if user_info[1]:
+			return await ctx.send("You have already registered a team.")
+		if user_info:
+			author_registered = True
 
 		# check that team_abbrev or team_name are not taken
 		if self.bot.db_manager.query_fantasy_teams_all_from_name(team_name):
@@ -46,12 +50,18 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("{} is taken, please choose another abbreviation.".format(team_abbrev))
 
 		# register user
-		self.bot.db_manager.insert_user_to_users(author_id)
+		if not author_regsitered:
+			self.bot.db_manager.insert_user_to_users(author_id)
 
 		# register team
 		self.bot.db_manager.insert_team_to_fantasy_teams(team_name, team_abbrev)
 
 		# commit transaction
+		se.fbot.db_manager.commit()
+
+		# register team to user
+		fantasy_team_id = self.bot.db_manager.query_fantasy_teams_all_from_name(team_name)[0]
+		self.bot.db_manager.update_users_fantasy_team(author_id, fantasy_team_id)
 		self.bot.db_manager.commit()
 
 		# reply
@@ -74,7 +84,7 @@ class StatsCog(commands.Cog):
 		if cat_type is Category.TEAM:
 			team_name = self.bot.db_manager.query_team_all_from_name(member)[1]
 			rv = self.bot.db_manager.query_team_players_from_name(member)
-			buf = "```{}:".format(team_name)
+			buf = "```\n{}:".format(team_name)
 			for row in rv:
 				buf += "\n\t" + row[0]
 			buf += "```"
