@@ -38,10 +38,10 @@ class FantasyCog(commands.Cog):
 
 		# check that user is not already registered
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
-		if user_info[1]:
-			return await ctx.send("You have already registered a team.")
 		if user_info:
 			author_registered = True
+		elif user_info[1]:
+			return await ctx.send("You have already registered a team.")
 
 		# check that team_abbrev or team_name are not taken
 		if self.bot.db_manager.query_fantasy_teams_all_from_name(team_name):
