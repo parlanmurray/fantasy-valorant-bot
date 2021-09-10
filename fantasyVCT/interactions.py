@@ -50,7 +50,7 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("{} is taken, please choose another abbreviation.".format(team_abbrev))
 
 		# register user
-		if not author_regsitered:
+		if not author_registered:
 			self.bot.db_manager.insert_user_to_users(author_id)
 
 		# register team
