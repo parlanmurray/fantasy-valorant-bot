@@ -48,6 +48,19 @@ class DatabaseManager:
 ######################################
 
 	@query_precheck
+	def insert_team_to_teams(self, team_name, team_abbrev, region=None):
+		"""
+		Insert a team into the teams table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO teams (name, abbrev, region) VALUES (%s, %s, %s)"""
+		data = (team_name, team_abbrev, region)
+		cursor.execute(query, data)
+		cursor.close()
+
+
+	@query_precheck
 	def query_team_all_from_name(self, team_name):
 		"""
 		Returns:
@@ -82,10 +95,6 @@ class DatabaseManager:
 
 		return results
 
-######################################
-## players
-######################################
-
 	@query_precheck
 	def query_team_players_from_id(self, team_id):
 		"""
@@ -99,6 +108,25 @@ class DatabaseManager:
 		data = (team_id, )
 		cursor.execute(query, data)
 		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+######################################
+## players
+######################################
+
+	@query_precheck
+	def query_players_all_from_name(self, player_name):
+		"""
+		Returns:
+		(players.id, players.name, players.team_id)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM players WHERE players.name = %s"""
+		data = (player_name, )
+		cursor.execute(query, data)
+		results = curosr.fetchone()
 		cursor.close()
 
 		return results

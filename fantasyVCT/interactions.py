@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 
 from discord.ext import commands
 
@@ -66,6 +67,40 @@ class FantasyCog(commands.Cog):
 
 		# reply
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
+
+	@commands.command()
+	async def upload(self, ctx, vlr_id: str):
+		# check that the input is valid
+		if re.match("^[0-9]{5}", vlr_id):
+			return await ctx.send("Not a valid vlr match number.")
+		
+		# parse link
+		results = self.bot.scraper.parse_match(vlr_id)
+
+		# verify teams and players exist in database
+		for _map in results.maps:
+			for team in (_map.team1, _map.team2):
+				# check that teams exist in database
+				if not self.bot.db_manager.query_team_all_from_name(self, team.name):
+					# team does not exist in database
+					self.bot.db_manager.insert_team_to_teams(team.name, )
+					self.bot.db_manager.commit()
+
+				for player in team.players:
+					# check that players exist in database
+					if not self.bot.db_manager.query_players_all_from_name(player.name):
+						# player does not exist in database
+						# TODO
+						self.bot.db_manager.commit()
+
+		# upload data
+		for _map in results.maps:
+			for team in (_map.team1, _map.team2):
+				for player in team.players:
+					# upload data
+					# TODO
+
+		await ctx.send("```\n" + str(results) + "\n```")
 
 
 class StatsCog(commands.Cog):
