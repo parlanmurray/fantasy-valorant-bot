@@ -71,7 +71,7 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def upload(self, ctx, vlr_id: str):
 		# check that the input is valid
-		if re.match("^[0-9]{5}", vlr_id):
+		if not re.match("^[0-9]{5}$", vlr_id):
 			return await ctx.send("Not a valid vlr match number.")
 		
 		# parse link
@@ -81,11 +81,12 @@ class FantasyCog(commands.Cog):
 		for _map in results.maps:
 			for team in (_map.team1, _map.team2):
 				# check that teams exist in database
-				team_info = self.bot.db_manager.query_team_all_from_name(self, team.name)
+				team_info = self.bot.db_manager.query_team_all_from_name(team.name)
 				if not team_info:
 					# team does not exist in database
-					self.bot.db_manager.insert_team_to_teams(team.name, team_abbrev)
+					self.bot.db_manager.insert_team_to_teams(team.name, team.abbrev, "TEST")
 					self.bot.db_manager.commit()
+					team_info = self.bot.db_manager.query_team_all_from_name(team.name)
 
 				team_id = team_info[0]
 
@@ -100,12 +101,8 @@ class FantasyCog(commands.Cog):
 						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
 					self.bot.db_manager.commit()
 
-		# upload data
-		for _map in results.maps:
-			for team in (_map.team1, _map.team2):
-				for player in team.players:
 					# upload data
-					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player, None)
+					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
 
 		await ctx.send("```\n" + str(results) + "\n```")
 

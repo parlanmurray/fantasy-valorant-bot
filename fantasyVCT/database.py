@@ -150,7 +150,7 @@ class DatabaseManager:
 		query = """SELECT * FROM players WHERE players.name = %s"""
 		data = (player_name, )
 		cursor.execute(query, data)
-		results = curosr.fetchone()
+		results = cursor.fetchone()
 		cursor.close()
 
 		return results
@@ -160,22 +160,23 @@ class DatabaseManager:
 ######################################
 
 	@query_precheck
-	def insert_result_to_results(self, map_name, game_id, player: Player, event_id = None):
+	def insert_result_to_results(self, map_name, game_id, player_id, player: Player, event_id = None):
 		"""
 		Args:
 		    map_name (str): the name of the map played
 		    game_id (int): the id of the game
+		    player_id (int): the player's database ID
 		    player (Player): a Player containing information for the database
 		    event_id (int, optional): the id of the event
 		"""
 		cursor = self._conn.cursor()
 		query = """INSERT INTO results 
-		(map, game_id, event_id, player_acs, player_kills, player_deaths, 
+		(map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, 
 		player_assists, player_2k, player_3k, player_4k, player_5k, 
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5) 
 		VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-		data = (map_name, game_id, event_id, player.stats['acs'], player.stats['kills'], 
-			player.stats['deaths']. player.stats['assists']. player.stats['2k'], player.stats['3k'],
+		data = (map_name, game_id, event_id, player_id, player.stats['acs'], player.stats['kills'], 
+			player.stats['deaths'], player.stats['assists'], player.stats['2k'], player.stats['3k'],
 			player.stats['4k'], player.stats['5k'], player.stats['1v2'], player.stats['1v3'],
 			player.stats['1v4'], player.stats['1v5'])
 		cursor.execute(query, data)
