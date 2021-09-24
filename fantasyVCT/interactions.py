@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 
 from discord.ext import commands
 
@@ -66,6 +67,49 @@ class FantasyCog(commands.Cog):
 
 		# reply
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
+
+	@commands.command()
+	async def upload(self, ctx, vlr_id: str):
+		# check that the input is valid
+		if not re.match("^[0-9]{5}$", vlr_id):
+			return await ctx.send("Not a valid vlr match number.")
+
+		# check that match does not exist in database
+		if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+			return await ctx.send("This match has already been uploaded.")
+		
+		# parse link
+		results = self.bot.scraper.parse_match(vlr_id)
+
+		# verify teams and players exist in database
+		for _map in results.maps:
+			for team in (_map.team1, _map.team2):
+				# check that teams exist in database
+				team_info = self.bot.db_manager.query_team_all_from_name(team.name)
+				if not team_info:
+					# team does not exist in database
+					self.bot.db_manager.insert_team_to_teams(team.name, team.abbrev, "TEST")
+					self.bot.db_manager.commit()
+					team_info = self.bot.db_manager.query_team_all_from_name(team.name)
+
+				team_id = team_info[0]
+
+				for player in team.players:
+					# check that players exist in database
+					player_info = self.bot.db_manager.query_players_all_from_name(player.name)
+					if not player_info:
+						# player does not exist in database
+						self.bot.db_manager.insert_player_to_players(player.name, team_id)
+						player_info = self.bot.db_manager.query_players_all_from_name(player.name)
+					elif not player_info[2]:
+						# player is not assigned to a team
+						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
+
+					# upload data
+					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
+					self.bot.db_manager.commit()
+
+		await ctx.send("```\n" + str(results) + "\n```")
 
 
 class StatsCog(commands.Cog):

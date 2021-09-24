@@ -2,6 +2,16 @@ from enum import Enum
 from copy import deepcopy
 
 
+def add_spaces(buff, length):
+	"""
+	Add spaces until the buffer is at least the provided length.
+	"""
+	rv = ""
+	while (len(buff) + len(rv)) < length:
+		rv += " "
+	return rv
+
+
 class Tab(Enum):
 	SUMMARY = 1
 	PERFORMANCE = 2
@@ -28,27 +38,30 @@ class Player:
 		}
 
 	def __str__(self):
-		format_str = ""
-		format_str += "{}\t\t{}\t{}\t{}/{}/{}\t".format(
-			self.name, 
-			self.agent, 
-			self.stats['acs'], 
-			self.stats['kills'], 
-			self.stats['deaths'],
-			self.stats['assists']
-			)
-		if self.stats['kills'] < 10 or self.stats['deaths'] < 10 or self.stats['assists'] < 10:
-			format_str += "\t"
-		format_str +="{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(
-			self.stats['2k'],
-			self.stats['3k'],
-			self.stats['4k'],
-			self.stats['5k'],
-			self.stats['1v2'],
-			self.stats['1v3'],
-			self.stats['1v4'],
-			self.stats['1v5'])
-		return format_str
+		line = self.name
+		line += add_spaces(line, 20)
+		line += self.agent
+		line += add_spaces(line, 40)
+		line += str(self.stats['acs'])
+		line += add_spaces(line, 50)
+		line += str(self.stats['kills']) + '/' + str(self.stats['deaths']) + '/' + str(self.stats['assists'])
+		line += add_spaces(line, 80)
+		line += str(self.stats['2k'])
+		line += add_spaces(line, 90)
+		line += str(self.stats['3k'])
+		line += add_spaces(line, 100)
+		line += str(self.stats['4k'])
+		line += add_spaces(line, 110)
+		line += str(self.stats['5k'])
+		line += add_spaces(line, 120)
+		line += str(self.stats['1v2'])
+		line += add_spaces(line, 130)
+		line += str(self.stats['1v3'])
+		line += add_spaces(line, 140)
+		line += str(self.stats['1v4'])
+		line += add_spaces(line, 150)
+		line += str(self.stats['1v5'])
+		return line
 
 	def _combine(self, other):
 		"""Combine two Players, mutating self with other's information.
@@ -75,8 +88,9 @@ class Player:
 
 
 class Team:
-	def __init__(self, name: str, won: bool = False, score: int = 0):
+	def __init__(self, name: str, won: bool = False, score: int = 0, abbrev: str = None):
 		self.name = name
+		self.abbrev = abbrev
 		self.players = list()
 		self.won = won
 		self.score = score
@@ -84,15 +98,37 @@ class Team:
 
 	def __str__(self):
 		format_str = ""
-		format_str += "{0}\t{1}".format(
-			self.name,
-			self.score
-		)
+		format_str += self.abbrev + " / " + self.name
+		format_str += add_spaces(format_str, 30)
+		format_str += str(self.score)
 		if self.won:
 			format_str += " -- Winner"
 		if self.map_pick:
 			format_str += " -- Map Pick"
-		format_str += "\nPlayer\t\tAgent\tACS\tK/D/A\t\t2k\t3k\t4k\t5k\t1v2\t1v3\t1v4\t1v5"
+		line = "Player"
+		line += add_spaces(line, 20)
+		line += "Agent"
+		line += add_spaces(line, 40)
+		line += "ACS"
+		line += add_spaces(line, 50)
+		line += "K/D/A"
+		line += add_spaces(line, 80)
+		line += "2k"
+		line += add_spaces(line, 90)
+		line += "3k"
+		line += add_spaces(line, 100)
+		line += "4k"
+		line += add_spaces(line, 110)
+		line += "5k"
+		line += add_spaces(line, 120)
+		line += "1v2"
+		line += add_spaces(line, 130)
+		line += "1v3"
+		line += add_spaces(line, 140)
+		line += "1v4"
+		line += add_spaces(line, 150)
+		line += "1v5"
+		format_str += "\n" + line
 		format_str += "\n{0}\n{1}\n{2}\n{3}\n{4}\n".format(
 			self.players[0],
 			self.players[1],

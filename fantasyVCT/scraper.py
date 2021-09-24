@@ -112,6 +112,8 @@ class Scraper:
 		# loop through players
 		for row in html_players.table.tbody.find_all('tr'):
 			team.add_player(Scraper._parse_player_summary(row))
+			if not team.abbrev:
+				team.abbrev = row.find('td', class_="mod-player").select('a > div')[1].get_text(strip=True)
 		
 		return team
 

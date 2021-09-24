@@ -14,6 +14,10 @@ def test_team_name():
 	assert full.maps[0].team1.name == "100 Thieves"
 	assert full.maps[0].team2.name == "Sentinels"
 
+def test_team_abbrev():
+	assert full.maps[0].team1.abbrev == "100T"
+	assert full.maps[0].team2.abbrev == "SEN"
+
 def test_team_won():
 	assert full.maps[0].team2.won
 	assert not full.maps[0].team1.won
@@ -60,3 +64,5 @@ def test_player_agent():
 	assert full.maps[1].team2.players[3].agent == "skye"
 	assert full.maps[1].team2.players[4].agent == "viper"
 
+
+print(full)

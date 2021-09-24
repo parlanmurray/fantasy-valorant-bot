@@ -1,3 +1,5 @@
+from fantasyVCT.valorant import Player
+
 import mysql.connector
 
 
@@ -48,6 +50,18 @@ class DatabaseManager:
 ######################################
 
 	@query_precheck
+	def insert_team_to_teams(self, team_name, team_abbrev, region=None):
+		"""
+		Insert a team into the teams table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO teams (name, abbrev, region) VALUES (%s, %s, %s)"""
+		data = (team_name, team_abbrev, region)
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
 	def query_team_all_from_name(self, team_name):
 		"""
 		Returns:
@@ -82,10 +96,6 @@ class DatabaseManager:
 
 		return results
 
-######################################
-## players
-######################################
-
 	@query_precheck
 	def query_team_players_from_id(self, team_id):
 		"""
@@ -102,6 +112,93 @@ class DatabaseManager:
 		cursor.close()
 
 		return results
+
+######################################
+## players
+######################################
+
+	@query_precheck
+	def insert_player_to_players(self, player_name, player_team_id = None):
+		"""
+		Create record for a player in the players table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO players (name, team_id) VALUES (%s, %s)"""
+		data = (player_name, player_team_id)
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
+	def update_players_team_id(self, player_id, team_id):
+		"""
+		Assign a team to a player.
+		"""
+		cursor = self._conn.cursor()
+		query = """UPDATE players SET team_id = %s WHERE id = %s"""
+		data = (team_id, player_id)
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
+	def query_players_all_from_name(self, player_name):
+		"""
+		Returns:
+		(players.id, players.name, players.team_id)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM players WHERE players.name = %s"""
+		data = (player_name, )
+		cursor.execute(query, data)
+		results = cursor.fetchone()
+		cursor.close()
+
+		return results
+
+######################################
+## results
+######################################
+
+	@query_precheck
+	def insert_result_to_results(self, map_name, game_id, player_id, player: Player, event_id = None):
+		"""
+		Args:
+		    map_name (str): the name of the map played
+		    game_id (int): the id of the game
+		    player_id (int): the player's database ID
+		    player (Player): a Player containing information for the database
+		    event_id (int, optional): the id of the event
+		"""
+		cursor = self._conn.cursor()
+		query = """INSERT INTO results 
+		(map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, 
+		player_assists, player_2k, player_3k, player_4k, player_5k, 
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5) 
+		VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+		data = (map_name, game_id, event_id, player_id, player.stats['acs'], player.stats['kills'], 
+			player.stats['deaths'], player.stats['assists'], player.stats['2k'], player.stats['3k'],
+			player.stats['4k'], player.stats['5k'], player.stats['1v2'], player.stats['1v3'],
+			player.stats['1v4'], player.stats['1v5'])
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
+	def query_results_all_from_game_id(self, game_id):
+		"""
+		Returns:
+		[(id, map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
+		player_2k, player_3k, player_4k, player_5k,
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM results WHERE game_id = %s"""
+		data = (game_id, )
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
 
 ######################################
 ## users
