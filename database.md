@@ -4,35 +4,37 @@
 
 ### FantasyValDev
 
+Development database.
+
 ### FantasyValProd
+
+Production database.
 
 ## MySQL Database creation statements
 
+### Stats tables
+
 CREATE TABLE teams 
 (
-	id INT NOT NULL AUTO_INCREMENT,
-	name VARCHAR(20) NOT NULL,
-	abbrev VARCHAR(10) NOT NULL,
-	region VARCHAR(10) NOT NULL,
-	PRIMARY KEY (id)
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(20) NOT NULL UNIQUE,
+	abbrev VARCHAR(10) NOT NULL UNIQUE,
+	region VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE players
 (
-	id INT NOT NULL AUTO_INCREMENT,
-	name VARCHAR(20) NOT NULL,
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(20) NOT NULL UNIQUE,
 	team_id INT,
-	INDEX team_ind (team_id),
-	CONSTRAINT fk_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
-	PRIMARY KEY (id)
+	CONSTRAINT fk_team FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE TABLE events
 (
-	id INT NOT NULL AUTO_INCREMENT,
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	name VARCHAR(50) NOT NULL,
-	start_date DATE NOT NULL,
-	PRIMARY KEY (id)
+	start_date DATE NOT NULL
 );
 
 CREATE TABLE results
@@ -54,8 +56,53 @@ CREATE TABLE results
 	player_clutch_v3 INT,
 	player_clutch_v4 INT,
 	player_clutch_v5 INT,
-	INDEX event_ind (event_id),
-	INDEX player_ind (player_id),
 	FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (player_id) REFERENCES players(id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+### Fantasy teams tables
+
+CREATE TABLE positions
+(
+	id INT NOT NULL PRIMARY KEY,
+	position VARCHAR(20) NOT NULL UNIQUE
+);
+
+INSERT INTO positions (id, position)
+VALUES
+	(1, "player1"),
+	(2, "player2"),
+	(3, "player3"),
+	(4, "player4"),
+	(5, "player5"),
+	(6, "flex"),
+	(7, "sub1"),
+	(8, "sub2"),
+	(9, "sub3"),
+	(10, "sub4");
+
+CREATE TABLE fantasy_teams
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(50) NOT NULL UNIQUE,
+	abbrev VARCHAR(10) NOT NULL UNIQUE
+);
+
+CREATE TABLE users
+(
+	discord_id VARCHAR(18) NOT NULL PRIMARY KEY,
+	fantasy_team_id INT UNIQUE,
+	CONSTRAINT fk_team_id FOREIGN KEY (fantasy_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE fantasy_players
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	player_id INT NOT NULL UNIQUE,
+	fantasy_team_id INT,
+	position INT,
+	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (fantasy_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
+	FOREIGN KEY (position) REFERENCES positions(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+

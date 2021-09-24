@@ -1,7 +1,6 @@
 
 from fantasyVCT.valorant import Tab, Player, Team, Map, Match
 
-import pandas
 from bs4 import BeautifulSoup
 import requests
 
