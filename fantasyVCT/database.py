@@ -174,7 +174,7 @@ class DatabaseManager:
 		(map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, 
 		player_assists, player_2k, player_3k, player_4k, player_5k, 
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5) 
-		VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+		VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 		data = (map_name, game_id, event_id, player_id, player.stats['acs'], player.stats['kills'], 
 			player.stats['deaths'], player.stats['assists'], player.stats['2k'], player.stats['3k'],
 			player.stats['4k'], player.stats['5k'], player.stats['1v2'], player.stats['1v3'],

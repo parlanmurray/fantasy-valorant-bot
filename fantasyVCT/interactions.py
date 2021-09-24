@@ -96,13 +96,14 @@ class FantasyCog(commands.Cog):
 					if not player_info:
 						# player does not exist in database
 						self.bot.db_manager.insert_player_to_players(player.name, team_id)
+						player_info = self.bot.db_manager.query_players_all_from_name(player.name)
 					elif not player_info[2]:
 						# player is not assigned to a team
 						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
-					self.bot.db_manager.commit()
 
 					# upload data
 					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
+					self.bot.db_manager.commit()
 
 		await ctx.send("```\n" + str(results) + "\n```")
 
