@@ -73,6 +73,10 @@ class FantasyCog(commands.Cog):
 		# check that the input is valid
 		if not re.match("^[0-9]{5}$", vlr_id):
 			return await ctx.send("Not a valid vlr match number.")
+
+		# check that match does not exist in database
+		if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+			return await ctx.send("This match has already been uploaded.")
 		
 		# parse link
 		results = self.bot.scraper.parse_match(vlr_id)

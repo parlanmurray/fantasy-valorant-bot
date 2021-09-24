@@ -182,6 +182,24 @@ class DatabaseManager:
 		cursor.execute(query, data)
 		cursor.close()
 
+	@query_precheck
+	def query_results_all_from_game_id(self, game_id):
+		"""
+		Returns:
+		[(id, map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
+		player_2k, player_3k, player_4k, player_5k,
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM results WHERE game_id = %s"""
+		data = (game_id, )
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+
 ######################################
 ## users
 ######################################
