@@ -75,8 +75,9 @@ class Player:
 
 
 class Team:
-	def __init__(self, name: str, won: bool = False, score: int = 0):
+	def __init__(self, name: str, won: bool = False, score: int = 0, abbrev: str = None):
 		self.name = name
+		self.abbrev = abbrev
 		self.players = list()
 		self.won = won
 		self.score = score
@@ -84,7 +85,8 @@ class Team:
 
 	def __str__(self):
 		format_str = ""
-		format_str += "{0}\t{1}".format(
+		format_str += "{0} / {1}\t{2}".format(
+			self.abbrev,
 			self.name,
 			self.score
 		)

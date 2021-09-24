@@ -81,24 +81,31 @@ class FantasyCog(commands.Cog):
 		for _map in results.maps:
 			for team in (_map.team1, _map.team2):
 				# check that teams exist in database
-				if not self.bot.db_manager.query_team_all_from_name(self, team.name):
+				team_info = self.bot.db_manager.query_team_all_from_name(self, team.name)
+				if not team_info:
 					# team does not exist in database
-					self.bot.db_manager.insert_team_to_teams(team.name, )
+					self.bot.db_manager.insert_team_to_teams(team.name, team_abbrev)
 					self.bot.db_manager.commit()
+
+				team_id = team_info[0]
 
 				for player in team.players:
 					# check that players exist in database
-					if not self.bot.db_manager.query_players_all_from_name(player.name):
+					player_info = self.bot.db_manager.query_players_all_from_name(player.name)
+					if not player_info:
 						# player does not exist in database
-						# TODO
-						self.bot.db_manager.commit()
+						self.bot.db_manager.insert_player_to_players(player.name, team_id)
+					elif not player_info[2]:
+						# player is not assigned to a team
+						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
+					self.bot.db_manager.commit()
 
 		# upload data
 		for _map in results.maps:
 			for team in (_map.team1, _map.team2):
 				for player in team.players:
 					# upload data
-					# TODO
+					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player, None)
 
 		await ctx.send("```\n" + str(results) + "\n```")
 
