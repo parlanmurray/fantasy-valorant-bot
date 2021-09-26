@@ -1,7 +1,7 @@
 from enum import Enum
 import re
 
-from fantasyVCT.scoring import PointsCalculator
+from fantasyVCT.scoring import PointCalculator
 
 from discord.ext import commands
 
@@ -156,7 +156,7 @@ class StatsCog(commands.Cog):
 				fantasy_points = self.bot.cache.retrieve(player_id, row[2])
 				if not fantasy_points:
 					# game is not in cache, so perform calculation
-					fantasy_points = PointsCalculator.score(row)
+					fantasy_points = PointCalculator.score(row)
 					self.bot.cache.store(player_id, row[2], fantasy_points)
 			total = self.bot.cache.retrieve(player_id, 'total')
 			if not total:

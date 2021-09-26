@@ -86,7 +86,7 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 
 		query = """SELECT * FROM teams WHERE teams.id = %s"""
-		data = (team_name, team_id)
+		data = (team_id, )
 		cursor.execute(query, data)
 		row = cursor.fetchone()
 		cursor.close()
