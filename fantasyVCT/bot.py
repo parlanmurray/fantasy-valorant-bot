@@ -1,5 +1,6 @@
 from fantasyVCT.database import DatabaseManager
 from fantasyVCT.scraper import Scraper
+from fantasyVCT.scoring import Cache
 
 from discord.ext import commands
 
@@ -10,6 +11,7 @@ class FantasyValBot(commands.Bot):
 		self.db_manager = DatabaseManager(db_user, db_password, db_name)
 		self.db_manager.open()
 		self.scraper = Scraper()
+		self.cache = Cache()
 
 	async def on_ready(self):
 		"""Summary

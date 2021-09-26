@@ -78,6 +78,22 @@ class DatabaseManager:
 		return row
 
 	@query_precheck
+	def query_team_all_from_id(self, team_id):
+		"""
+		Returns:
+		(team_id, team_name, team_abbrev, team_region)
+		"""
+		cursor = self._conn.cursor()
+
+		query = """SELECT * FROM teams WHERE teams.id = %s"""
+		data = (team_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+	@query_precheck
 	def query_team_players_from_name(self, team_name):
 		"""
 		Returns:
@@ -193,6 +209,22 @@ class DatabaseManager:
 		cursor = self._conn.cursor()
 		query = """SELECT * FROM results WHERE game_id = %s"""
 		data = (game_id, )
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+	@query_precheck
+	def query_results_all_from_player_id(self, player_id):
+		"""
+		[(id, map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
+		player_2k, player_3k, player_4k, player_5k,
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM results WHERE player_id = %s"""
+		data = (player_id, )
 		cursor.execute(query, data)
 		results = cursor.fetchall()
 		cursor.close()

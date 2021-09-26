@@ -1,6 +1,8 @@
 from enum import Enum
 import re
 
+from fantasyVCT.scoring import PointCalculator
+
 from discord.ext import commands
 
 
@@ -16,6 +18,15 @@ class Category(Enum):
 			return Category.PLAYER
 		else:
 			raise ValueError
+
+def add_spaces(buff, length):
+	"""
+	Add spaces until the buffer is at least the provided length.
+	"""
+	rv = ""
+	while (len(buff) + len(rv)) < length:
+		rv += " "
+	return rv
 
 
 class Test(commands.Cog):
@@ -109,6 +120,7 @@ class FantasyCog(commands.Cog):
 					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
 					self.bot.db_manager.commit()
 
+		self.bot.cache.invalidate()
 		await ctx.send("```\n" + str(results) + "\n```")
 
 
@@ -134,4 +146,37 @@ class StatsCog(commands.Cog):
 			buf += "```"
 			await ctx.send(buf)
 		elif cat_type is Category.PLAYER:
-			pass
+			# get player id, and player results
+			player_info = self.bot.db_manager.query_players_all_from_name(member)
+			player_id = player_info[0]
+			team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
+			results = self.bot.db_manager.query_results_all_from_player_id(player_id)
+			# iterate through results
+			for row in results:
+				fantasy_points = self.bot.cache.retrieve(player_id, row[2])
+				if not fantasy_points:
+					# game is not in cache, so perform calculation
+					fantasy_points = PointCalculator.score(row)
+					self.bot.cache.store(player_id, row[2], fantasy_points)
+			total = self.bot.cache.retrieve_total(player_id)
+			# format output
+			buf = "```\n" + player_info[1] + " - " + str(total) + "\n"
+			buf += "    " + "Team: " + team_info[1] + "\n"
+			buf += "\n"
+			buf += "    Match Results\n"
+			line = add_spaces("", 8) + "Points"
+			line += add_spaces(line, 16) + "ACS"
+			line += add_spaces(line, 24) + "K/D/A"
+			line += add_spaces(line, 34) + "Game ID\n"
+			buf += line
+			for row in results:
+				line = add_spaces("", 8) + str(self.bot.cache.retrieve(player_id, row[2]))
+				line += add_spaces(line, 16) + str(row[5])
+				line += add_spaces(line, 24) + str(row[6]) + "/" + str(row[7]) + "/" + str(row[8])
+				line += add_spaces(line, 34) + str(row[2]) + "\n"
+				buf += line
+			buf += "```"
+			await ctx.send(buf)
+
+
+
