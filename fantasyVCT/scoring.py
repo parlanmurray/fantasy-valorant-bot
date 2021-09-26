@@ -75,7 +75,7 @@ class Cache:
 					continue
 				rv += v
 			self._store[player_id][-1] = rv
-		return rv
+		return round(rv, 1)
 
 
 class PointCalculator:
@@ -100,4 +100,4 @@ class PointCalculator:
 		rv += player_stats[14] * 4
 		rv += player_stats[15] * 5
 		rv += player_stats[16] * 6
-		return rv
+		return round(rv, 1)
