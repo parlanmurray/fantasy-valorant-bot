@@ -44,13 +44,23 @@ class Cache:
 		    int/dict: either a specific value if a key is provided, or the entire store dict associated
 		    	with the player id
 		"""
-		if key:
+		if not player_id in self.store:
+			return None
+		elif key and key in self.store[player_id]:
 			return self.store[player_id][key]
+		elif key:
+			return None
 		else:
 			return self.store[player_id].copy()
 
 class PointCalculator:
 	
 	@staticmethod
-	def score(player: Player):
+	def score(player_stats):
+		"""
+		player_stats retrieved from results table:
+		(id, map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
+		player_2k, player_3k, player_4k, player_5k,
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
+		"""
 		raise NotImplementedError
