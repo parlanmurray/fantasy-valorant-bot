@@ -158,14 +158,7 @@ class StatsCog(commands.Cog):
 					# game is not in cache, so perform calculation
 					fantasy_points = PointCalculator.score(row)
 					self.bot.cache.store(player_id, row[2], fantasy_points)
-			total = self.bot.cache.retrieve(player_id, 'total')
-			if not total:
-				# total is not current, so perform calculation
-				total = 0
-				for k,v in self.bot.cache.retrieve(player_id):
-					if k == "total":
-						continue
-					total += v
+			total = self.bot.cache.retrieve_total(player_id)
 			# format output
 			buf = "```\n" + player_info[1] + " - " + str(total) + "\n"
 			buf += "    " + "Team: " + team_info[1] + "\n"
