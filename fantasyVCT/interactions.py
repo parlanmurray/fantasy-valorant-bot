@@ -129,7 +129,7 @@ class FantasyCog(commands.Cog):
 		# search for player
 		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
 		if not player_info:
-			await ctx.send("No player was found for \"%s\"".format(player_name))
+			await ctx.send("No player was found for \"{}\"".format(player_name))
 			return
 
 		# check that the user has a valorant roster
@@ -160,7 +160,7 @@ class FantasyCog(commands.Cog):
 		# search for player
 		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
 		if not player_info:
-			await ctx.send("No player was found for \"%s\"".format(player_name))
+			await ctx.send("No player was found for \"{}\"".format(player_name))
 			return
 
 		# check that player is on user's roster
@@ -168,13 +168,13 @@ class FantasyCog(commands.Cog):
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
 		fantasy_player_info = self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0])
 		if not fantasy_player_info or fantasy_player_info[2] != user_info[1]:
-			await ctx.send("No player %s found on your roster. Try the `!roster` command. Type `!help1 for more information.".format(player_info[1]))
+			await ctx.send("No player {} found on your roster. Try the `!roster` command. Type `!help` for more information.".format(player_info[1]))
 			return
 
 		# drop player
 		self.bot.db_manager.delete_fantasy_players_from_player_id(player_info[0])
 		self.bot.db_manager.commit()
-		await ctx.send("%s is now a free agent!".format(player_info[1]))
+		await ctx.send("{} is now a free agent!".format(player_info[1]))
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
@@ -186,25 +186,23 @@ class StatsCog(commands.Cog):
 		self.bot = bot
 
 	@commands.command()
-	async def info(self, ctx, category: str, item: str):
-		# TODO
-		cat_type = Category.from_str(category)
-		# could throw an error, do nothing for now
-		# discord will print to stderr
-		# may want to handle this later 
-		# https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#error-handling
-		
-		if cat_type is Category.TEAM:
-			team_name = self.bot.db_manager.query_team_all_from_name(item)[1]
-			rv = self.bot.db_manager.query_team_players_from_name(item)
-			buf = "```\n{}:".format(team_name)
-			for row in rv:
-				buf += "\n\t" + row[0]
+	async def info(self, ctx, *args: str):
+		query_string = " ".join(args)
+
+		# check if query_string is a team
+		team_info = self.bot.db_manager.query_team_all_from_name(query_string)
+		if team_info:
+			players = self.bot.db_manager.query_team_players_from_id(team_info[0])
+			buf = "```\n" + str(team_info[1])
+			for player in players:
+				buf += "\n    " + str(player[0])
 			buf += "```"
 			await ctx.send(buf)
-		elif cat_type is Category.PLAYER:
-			# get player id, and player results
-			player_info = self.bot.db_manager.query_players_all_from_name(item)
+			return
+
+		# check if query_string is a player
+		player_info = self.bot.db_manager.query_players_all_from_name(query_string)
+		if player_info:
 			player_id = player_info[0]
 			team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
 			results = self.bot.db_manager.query_results_all_from_player_id(player_id)
@@ -235,6 +233,9 @@ class StatsCog(commands.Cog):
 				buf += line
 			buf += "```"
 			await ctx.send(buf)
+			return
+
+		await ctx.send("A team or player was not found for {}.".format(query_string))
 
 
 
