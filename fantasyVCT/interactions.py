@@ -157,7 +157,24 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def drop(self, ctx, player_name: str):
-		raise NotImplementedError
+		# search for player
+		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+		if not player_info:
+			await ctx.send("No player was found for \"%s\"".format(player_name))
+			return
+
+		# check that player is on user's roster
+		author_id = ctx.message.author.id
+		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
+		fantasy_player_info = self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0])
+		if not fantasy_player_info or fantasy_player_info[2] != user_info[1]:
+			await ctx.send("No player %s found on your roster. Try the `!roster` command. Type `!help1 for more information.".format(player_info[1]))
+			return
+
+		# drop player
+		self.bot.db_manager.delete_fantasy_players_from_player_id(player_info[0])
+		self.bot.db_manager.commit()
+		await ctx.send("%s is now a free agent!".format(player_info[1]))
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):

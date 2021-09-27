@@ -368,3 +368,29 @@ class DatabaseManager:
 		cursor.close()
 
 		return results
+
+	@query_precheck
+	def query_fantasy_players_all_from_player_id(self, player_id):
+		"""
+		Returns:
+		(id, player_id, fantasy_team_id, position)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE player_id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+	@query_precheck
+	def delete_fantasy_players_from_player_id(self, player_id):
+		"""
+		Delete's a player's entry in the fantasy_players table.
+		"""
+		cursor = self._conn.cursor()
+		query = """DELETE FROM fantasy_players WHERE player_id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		cursor.close()
