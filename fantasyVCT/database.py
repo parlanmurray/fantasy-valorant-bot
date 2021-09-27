@@ -296,7 +296,7 @@ class DatabaseManager:
 	def query_fantasy_teams_all_from_name(self, team_name):
 		"""
 		Returns:
-		(id, name, abbrev, player1, player2, player3, player4, player5, flex, sub1, sub2, sub3, sub4) or None
+		(id, name, abbrev) or None
 		"""
 		cursor = self._conn.cursor()
 
@@ -312,7 +312,7 @@ class DatabaseManager:
 	def query_fantasy_teams_all_from_abbrev(self, team_abbrev):
 		"""
 		Returns:
-		(id, name, abbrev, player1, player2, player3, player4, player5, flex, sub1, sub2, sub3, sub4) or None
+		(id, name, abbrev) or None
 		"""
 		cursor = self._conn.cursor()
 
@@ -324,13 +324,47 @@ class DatabaseManager:
 
 		return row
 
+	@query_precheck
+	def query_fantasy_teams_all_from_id(self, team_id):
+		"""
+		Returns:
+		(id, name, abbrev) or None
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_teams WHERE id = %s"""
+		data = (team_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
 
+		return row
 
+######################################
+## fantasy_players
+######################################
 
+	@query_precheck
+	def insert_fantasy_player_to_fantasy_players(self, player_id, fantasy_team_id, position):
+		"""
+		Creates a record for a fantasy player on a given team.
+		"""
+		cursor = self._conn.cursor()
+		query = """INSERT INTO fantasy_players (player_id, fantasy_team_id, position) VALUES (%s, %s, %s)"""
+		data = (player_id, fantasy_team_id, position)
+		cursor.execute(query, data)
+		cursor.close()
 
+	@query_precheck
+	def query_fantasy_players_all_from_team_id(self, team_id):
+		"""
+		Returns:
+		[(id, player_id, fantasy_team_id, position), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s ORDER BY position"""
+		data = (team_id, )
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
 
-
-
-
-
-
+		return results
