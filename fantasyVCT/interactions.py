@@ -45,7 +45,9 @@ class FantasyCog(commands.Cog):
 		self.bot = bot
 
 	@commands.command()
-	async def register(self, ctx, team_abbrev: str, team_name: str):
+	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
+		team_name = " ".join(team_name_list)
+		
 		# get author's unique id
 		author_id = ctx.message.author.id
 		author_registered = False
@@ -179,7 +181,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
-		raise NotImplementedError
+		
 
 
 class StatsCog(commands.Cog):
