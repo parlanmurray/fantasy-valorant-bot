@@ -5,6 +5,7 @@ import typing
 from fantasyVCT.scoring import PointCalculator
 
 from discord.ext import commands
+import discord
 
 
 class Category(Enum):
