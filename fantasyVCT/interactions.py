@@ -21,6 +21,19 @@ class Category(Enum):
 		else:
 			raise ValueError
 
+POSITIONS = {
+	1 : "player1",
+	2 : "player2",
+	3 : "player3",
+	4 : "player4",
+	5 : "player5",
+	6 : "flex",
+	7 : "sub1",
+	8 : "sub2",
+	9 : "sub3",
+	10 : "sub4"
+}
+
 def add_spaces(buff, length):
 	"""
 	Add spaces until the buffer is at least the provided length.
@@ -47,7 +60,7 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
 		team_name = " ".join(team_name_list)
-		
+
 		# get author's unique id
 		author_id = ctx.message.author.id
 		author_registered = False
@@ -181,7 +194,56 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
-		
+		fantasy_team_info = None
+		players = None
+
+		# argument options
+		if member:
+			# search for the member's team
+			fantasy_team_id = self.bot.db_manager.query_users_all_from_discord_id(member.id)[1]
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(fantasy_team_id)
+			if not fantasy_team_info:
+				await ctx.send(member.name + " does not have a registered fantasy team.")
+				return
+			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		elif team:
+			# search for the specified team
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_either(team)
+			if not fantasy_team_info:
+				await ctx.send("No fantasy team found for {}".format(team))
+				return
+			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		else:
+			# otherwise, use the author's team
+			fantasy_team_id = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)[1]
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(fantasy_team_id)
+			if not fantasy_team_info:
+				await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
+				return
+			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+
+		# format output
+		buf = "```\n" + fantasy_team_info[2] + " / " + fantasy_team_info[1]
+		total = 0
+		buf2 = ""
+		for player in players:
+			line = ""
+			line += add_spaces(line, 4) + POSITIONS[player[3]]
+			player_name = self.bot.db_manager.query_players_all_from_id(player[1])
+			line += add_spaces(line, 16) + str(player_name)
+			player_points = self.bot.cache.retrieve_total(player[1])
+			total += player_points
+			line += add_spaces(line, 24) + str(player_points)
+			buf2 += line + "\n"
+		buf += " -- " + str(total) + "\n"
+		line = ""
+		line += add_spaces(line, 4) + "Position"
+		line += add_spaces(line, 16) + "Name"
+		line += add_spaces(line, 24) + "Points"
+		buf += line + "\n"
+		buf += buf2 + "```"
+
+		await ctx.send(buf)
 
 
 class StatsCog(commands.Cog):

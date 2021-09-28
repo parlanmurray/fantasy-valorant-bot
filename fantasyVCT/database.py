@@ -166,10 +166,25 @@ class DatabaseManager:
 		query = """SELECT * FROM players WHERE players.name = %s"""
 		data = (player_name, )
 		cursor.execute(query, data)
-		results = cursor.fetchone()
+		row = cursor.fetchone()
 		cursor.close()
 
-		return results
+		return row
+
+	@query_precheck
+	def query_players_all_from_id(self, player_id):
+		"""
+		Returns:
+		(players.id, players.name, players.team_id)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM players WHERE players.id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		row = curosr.fetchone()
+		cursor.close()
+
+		return row
 
 ######################################
 ## results
@@ -318,6 +333,22 @@ class DatabaseManager:
 
 		query = """SELECT * FROM fantasy_teams WHERE abbrev = %s"""
 		data = (team_abbrev, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+	@query_precheck
+	def query_fantasy_teams_all_from_either(self, team_either):
+		"""
+		Returns:
+		(id, name, abbrev) or None
+		"""
+		cursor = self._conn.cursor()
+
+		query = """SELECT * FROM fantasy_teams WHERE name = %s OR abbrev = %s"""
+		data = (team_either, team_either)
 		cursor.execute(query, data)
 		row = cursor.fetchone()
 		cursor.close()
