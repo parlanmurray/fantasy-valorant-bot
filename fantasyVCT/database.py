@@ -181,7 +181,7 @@ class DatabaseManager:
 		query = """SELECT * FROM players WHERE players.id = %s"""
 		data = (player_id, )
 		cursor.execute(query, data)
-		row = curosr.fetchone()
+		row = cursor.fetchone()
 		cursor.close()
 
 		return row

@@ -69,8 +69,8 @@ class FantasyCog(commands.Cog):
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
 		if user_info:
 			author_registered = True
-		elif user_info[1]:
-			return await ctx.send("You have already registered a team.")
+			if user_info[1]:
+				return await ctx.send("You have already registered a team.")
 
 		# check that team_abbrev or team_name are not taken
 		if self.bot.db_manager.query_fantasy_teams_all_from_name(team_name):
@@ -159,8 +159,8 @@ class FantasyCog(commands.Cog):
 			return
 
 		# find spot on roster for player
-		fantasy_team_info = query_fantasy_teams_all_from_id(user_info[1])
-		fantasy_players_info = query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
+		fantasy_players_info = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 		if len(fantasy_players_info) < 10:
 			# place player on roster
 			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(player_info[0], fantasy_team_info[0], len(fantasy_players_info) + 1)
@@ -200,8 +200,11 @@ class FantasyCog(commands.Cog):
 		# argument options
 		if member:
 			# search for the member's team
-			fantasy_team_id = self.bot.db_manager.query_users_all_from_discord_id(member.id)[1]
-			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(fantasy_team_id)
+			user_info = self.bot.db_manager.query_users_all_from_discord_id(member.id)
+			if not user_info:
+				await ctx.send(member.name + " does not have a registered fantasy team.")
+				return
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
 			if not fantasy_team_info:
 				await ctx.send(member.name + " does not have a registered fantasy team.")
 				return
@@ -215,8 +218,11 @@ class FantasyCog(commands.Cog):
 			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 		else:
 			# otherwise, use the author's team
-			fantasy_team_id = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)[1]
-			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(fantasy_team_id)
+			user_info = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)
+			if not user_info:
+				await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
+				return
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
 			if not fantasy_team_info:
 				await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
 				return
