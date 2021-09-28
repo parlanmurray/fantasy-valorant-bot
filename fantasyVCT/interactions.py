@@ -169,7 +169,7 @@ class FantasyCog(commands.Cog):
 			await ctx.send("Your roster is full. Use `!drop` if you want to make space. Type `!help` for more information.")
 			return
 
-		await ctx.invoke(self.bot.get_commmand('roster'))
+		await ctx.invoke(self.bot.get_command('roster'))
 
 	@commands.command()
 	async def drop(self, ctx, player_name: str):
@@ -238,7 +238,7 @@ class FantasyCog(commands.Cog):
 				if player[3] is k:
 					player_id = player[1]
 					player_info = self.bot.db_manager.query_players_all_from_id(player_id)
-					player_team_info = self.bot.db_manager.query_teams_all_from_id(player_info[2])
+					player_team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
 					line += add_spaces(line, 16) + "{} {}".format(player_team_info[2], player_info[1])
 					# update player information from results
 					# TODO optimize this out
@@ -257,21 +257,12 @@ class FantasyCog(commands.Cog):
 			buf2 += line + "\n"
 			if k is 6:
 				buf2 += "\n"
-# 		for player in players:
-# 			line = ""
-# 			line += add_spaces(line, 4) + POSITIONS[player[3]]
-# 			player_name = self.bot.db_manager.query_players_all_from_id(player[1])
-# 			line += add_spaces(line, 16) + str(player_name)
-# 			player_points = self.bot.cache.retrieve_total(player[1])
-# 			total += player_points
-# 			line += add_spaces(line, 24) + str(player_points)
-# 			buf2 += line + "\n"
 		buf += " -- " + str(total) + "\n"
 		line = ""
 		line += add_spaces(line, 4) + "Position"
 		line += add_spaces(line, 16) + "Name"
 		line += add_spaces(line, 30) + "Points"
-		buf += line + "\n"
+		buf += line + "\n\n"
 		buf += buf2 + "```"
 
 		await ctx.send(buf)
