@@ -22,16 +22,16 @@ class Category(Enum):
 			raise ValueError
 
 POSITIONS = {
-	1 : "player1",
-	2 : "player2",
-	3 : "player3",
-	4 : "player4",
-	5 : "player5",
-	6 : "flex",
-	7 : "sub1",
-	8 : "sub2",
-	9 : "sub3",
-	10 : "sub4"
+	1 : "Player1",
+	2 : "Player2",
+	3 : "Player3",
+	4 : "Player4",
+	5 : "Player5",
+	6 : "Flex",
+	7 : "Sub1",
+	8 : "Sub2",
+	9 : "Sub3",
+	10 : "Sub4"
 }
 
 def add_spaces(buff, length):
@@ -195,7 +195,7 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
 		fantasy_team_info = None
-		players = None
+		fantasy_players = None
 
 		# argument options
 		if member:
@@ -208,14 +208,14 @@ class FantasyCog(commands.Cog):
 			if not fantasy_team_info:
 				await ctx.send(member.name + " does not have a registered fantasy team.")
 				return
-			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 		elif team:
 			# search for the specified team
 			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_either(team)
 			if not fantasy_team_info:
 				await ctx.send("No fantasy team found for {}".format(team))
 				return
-			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 		else:
 			# otherwise, use the author's team
 			user_info = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)
@@ -226,26 +226,41 @@ class FantasyCog(commands.Cog):
 			if not fantasy_team_info:
 				await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
 				return
-			players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 
 		# format output
 		buf = "```\n" + fantasy_team_info[2] + " / " + fantasy_team_info[1]
 		total = 0
 		buf2 = ""
-		for player in players:
-			line = ""
-			line += add_spaces(line, 4) + POSITIONS[player[3]]
-			player_name = self.bot.db_manager.query_players_all_from_id(player[1])
-			line += add_spaces(line, 16) + str(player_name)
-			player_points = self.bot.cache.retrieve_total(player[1])
-			total += player_points
-			line += add_spaces(line, 24) + str(player_points)
+		for k in range(1, 11):
+			line = add_spaces("", 4) + str(POSITIONS[k])
+			for player in fantasy_players:
+				if player[3] is k:
+					player_info = self.bot.db_manager.query_players_all_from_id(player[1])
+					player_team_info = self.bot.db_manager.query_teams_all_from_id(player_info[2])
+					line += add_spaces(line, 16) + "{} {}".format(player_team_info[2], player_info[1])
+					player_points = self.bot.cache.retrieve_total(player[1])
+					if k <= 6:
+						total += player_points
+					line += add_spaces(line, 30) + str(player_points)
+					break
 			buf2 += line + "\n"
+			if k is 6:
+				buf2 += "\n"
+# 		for player in players:
+# 			line = ""
+# 			line += add_spaces(line, 4) + POSITIONS[player[3]]
+# 			player_name = self.bot.db_manager.query_players_all_from_id(player[1])
+# 			line += add_spaces(line, 16) + str(player_name)
+# 			player_points = self.bot.cache.retrieve_total(player[1])
+# 			total += player_points
+# 			line += add_spaces(line, 24) + str(player_points)
+# 			buf2 += line + "\n"
 		buf += " -- " + str(total) + "\n"
 		line = ""
 		line += add_spaces(line, 4) + "Position"
 		line += add_spaces(line, 16) + "Name"
-		line += add_spaces(line, 24) + "Points"
+		line += add_spaces(line, 30) + "Points"
 		buf += line + "\n"
 		buf += buf2 + "```"
 
