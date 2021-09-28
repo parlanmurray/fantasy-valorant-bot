@@ -236,10 +236,20 @@ class FantasyCog(commands.Cog):
 			line = add_spaces("", 4) + str(POSITIONS[k])
 			for player in fantasy_players:
 				if player[3] is k:
-					player_info = self.bot.db_manager.query_players_all_from_id(player[1])
+					player_id = player[1]
+					player_info = self.bot.db_manager.query_players_all_from_id(player_id)
 					player_team_info = self.bot.db_manager.query_teams_all_from_id(player_info[2])
 					line += add_spaces(line, 16) + "{} {}".format(player_team_info[2], player_info[1])
-					player_points = self.bot.cache.retrieve_total(player[1])
+					# update player information from results
+					# TODO optimize this out
+					results = self.bot.db_manager.query_results_all_from_player_id(player_id)
+					for row in results:
+						fantasy_points = self.bot.cache.retrieve(player_id, row[2])
+						if not fantasy_points:
+							# game is not in cache, so perform calculation
+							fantasy_points = PointCalculator.score(row)
+							self.bot.cache.store(player_id, row[2], fantasy_points)
+					player_points = self.bot.cache.retrieve_total(player_id)
 					if k <= 6:
 						total += player_points
 					line += add_spaces(line, 30) + str(player_points)
