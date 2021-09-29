@@ -296,9 +296,9 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def set(self, ctx, player: str, position: str):
 		# check position is valid
-		if not position in POSITIONS.values():
+		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
-		dest_pos = list(POSITIONS.keys())[list(POSITIONS.values()).index(position)]
+		dest_pos = list(POSITIONS.keys())[list(string.lower() for string in POSITIONS.values()).index(position.lower())]
 
 		# check that player exists
 		player_info = self.bot.db_manager.query_players_all_from_name(player)
@@ -318,10 +318,10 @@ class FantasyCog(commands.Cog):
 			# swap positions
 			self.bot.db_manager.delete_fantasy_players_from_player_id(player_info[0])
 			self.bot.db_manager.update_fantasy_players_position(dest_player[1], fantasy_player_info[3])
-			self.bot.insert_fantasy_player_to_fantasy_players(fantasy_player_info[1], fantasy_player_info[2], dest_pos)
+			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(fantasy_player_info[1], fantasy_player_info[2], dest_pos)
 		else:
 			# update source record
-			self.bot.update_fantasy_players_position(fantasy_player_info[1], dest_pos)
+			self.bot.db_manager.update_fantasy_players_position(fantasy_player_info[1], dest_pos)
 
 		self.bot.db_manager.commit()
 		await ctx.invoke(self.bot.get_command('roster'))
