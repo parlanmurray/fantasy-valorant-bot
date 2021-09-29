@@ -74,7 +74,7 @@ class Cache:
 				if k == -1:
 					continue
 				rv += v
-			self._store[player_id][-1] = rv
+			self._store[player_id][-1] = round(rv, 1)
 		return round(rv, 1)
 
 
