@@ -293,6 +293,39 @@ class FantasyCog(commands.Cog):
 		buf += "```"
 		await ctx.send(buf)
 
+	@commands.command()
+	async def set(self, ctx, player: str, position: str):
+		# check position is valid
+		if not position.lower() in (string.lower() for string in POSITIONS.values()):
+			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
+		dest_pos = list(POSITIONS.keys())[list(string.lower() for string in POSITIONS.values()).index(position.lower())]
+
+		# check that player exists
+		player_info = self.bot.db_manager.query_players_all_from_name(player)
+		if not player_info:
+			return await ctx.send("No player was not found for \"{}\".".format(player))
+
+		# check that the player is on the user's team
+		user_info = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)
+		found_flag = False
+		fantasy_player_info = self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0])
+		if not fantasy_player_info:
+			return await ctx.send("{} is not on your roster.".format(player_info[1]))
+
+		# check if the desired position is filled
+		dest_player = self.bot.db_manager.query_fantasy_players_all_from_team_id_and_position(user_info[1], dest_pos)
+		if dest_player:
+			# swap positions
+			self.bot.db_manager.delete_fantasy_players_from_player_id(player_info[0])
+			self.bot.db_manager.update_fantasy_players_position(dest_player[1], fantasy_player_info[3])
+			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(fantasy_player_info[1], fantasy_player_info[2], dest_pos)
+		else:
+			# update source record
+			self.bot.db_manager.update_fantasy_players_position(fantasy_player_info[1], dest_pos)
+
+		self.bot.db_manager.commit()
+		await ctx.invoke(self.bot.get_command('roster'))
+
 
 class StatsCog(commands.Cog):
 	def __init__(self, bot):

@@ -460,6 +460,17 @@ class DatabaseManager:
 		return results
 
 	@query_precheck
+	def update_fantasy_players_position(self, player_id, position):
+		"""
+		Update a given player's position.
+		"""
+		cursor = self._conn.cursor()
+		query = """UPDATE fantasy_players SET position = %s WHERE player_id = %s"""
+		data = (position, player_id)
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
 	def delete_fantasy_players_from_player_id(self, player_id):
 		"""
 		Delete's a player's entry in the fantasy_players table.
