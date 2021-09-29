@@ -275,8 +275,8 @@ class FantasyCog(commands.Cog):
 		line += add_spaces(line, 24) + "Points"
 		buf += line + "\n\n"
 		for player_info in free_agents:
-			player_id = player_info[2]
-			team_info = self.bot.db_manager.query_team_all_from_id(player_id)
+			player_id = player_info[0]
+			team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
 			# update player information from results
 			# TODO optimize this out
 			results = self.bot.db_manager.query_results_all_from_player_id(player_id)
