@@ -416,6 +416,35 @@ class DatabaseManager:
 		return row
 
 	@query_precheck
+	def query_fantasy_players_all_from_team_id_and_position(self, team_id, position):
+		"""
+		Returns:
+		(id, player_id, fantasy_team_id, position)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND position = %s"""
+		data = (team_id, position)
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+	@query_precheck
+	def query_fantasy_players_same_real_team(self, fantasy_team_id, team_id):
+		"""
+		[(id, player_id, fantasy_team_id, position), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND player_id IN (SELECT * FROM (SELECT id FROM players WHERE team_id = %s) AS subquery)"""
+		data = (fantasy_team_id, team_id)
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+	@query_precheck
 	def delete_fantasy_players_from_player_id(self, player_id):
 		"""
 		Delete's a player's entry in the fantasy_players table.
