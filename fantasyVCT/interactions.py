@@ -1,9 +1,11 @@
 from enum import Enum
 import re
+import typing
 
 from fantasyVCT.scoring import PointCalculator
 
 from discord.ext import commands
+import discord
 
 
 class Category(Enum):
@@ -18,6 +20,19 @@ class Category(Enum):
 			return Category.PLAYER
 		else:
 			raise ValueError
+
+POSITIONS = {
+	1 : "Player1",
+	2 : "Player2",
+	3 : "Player3",
+	4 : "Player4",
+	5 : "Player5",
+	6 : "Flex",
+	7 : "Sub1",
+	8 : "Sub2",
+	9 : "Sub3",
+	10 : "Sub4"
+}
 
 def add_spaces(buff, length):
 	"""
@@ -43,7 +58,9 @@ class FantasyCog(commands.Cog):
 		self.bot = bot
 
 	@commands.command()
-	async def register(self, ctx, team_abbrev: str, team_name: str):
+	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
+		team_name = " ".join(team_name_list)
+
 		# get author's unique id
 		author_id = ctx.message.author.id
 		author_registered = False
@@ -52,8 +69,8 @@ class FantasyCog(commands.Cog):
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
 		if user_info:
 			author_registered = True
-		elif user_info[1]:
-			return await ctx.send("You have already registered a team.")
+			if user_info[1]:
+				return await ctx.send("You have already registered a team.")
 
 		# check that team_abbrev or team_name are not taken
 		if self.bot.db_manager.query_fantasy_teams_all_from_name(team_name):
@@ -123,31 +140,156 @@ class FantasyCog(commands.Cog):
 		self.bot.cache.invalidate()
 		await ctx.send("```\n" + str(results) + "\n```")
 
+	@commands.command()
+	async def draft(self, ctx, player_name: str):
+		# search for player
+		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+		if not player_info:
+			return await ctx.send("No player was found for \"{}\"".format(player_name))
+
+		# check that player isn't already on a team
+		if self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0]):
+			return await ctx.send("{} has already been drafted to a fantasy team.")
+
+		# check that the user has a valorant roster
+		author_id = ctx.message.author.id
+		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
+		if not user_info:
+			return await ctx.send("You are not registered. Please use the `!register` command to register. Type `!help` for more informaiton.")
+		elif not user_info[1]:
+			return await ctx.send("You do not have a fantasy team. Please use the `!register` command to create a fantasy team. Type `!help` for more information.")
+
+		# find spot on roster for player
+		fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
+		fantasy_players_info = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		skip_flag = False
+		for i in range(1, 11):
+			if skip_flag and i < 6:
+				continue
+			elif self.bot.db_manager.query_fantasy_players_all_from_team_id_and_position(fantasy_team_info[0], i):
+				continue
+			elif i < 6 and player_info[2] and self.bot.db_manager.query_fantasy_players_same_real_team(fantasy_team_info[0], player_info[2]):
+				skip_flag = True
+				continue
+
+			# place player on roster
+			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(player_info[0], fantasy_team_info[0], i)
+			self.bot.db_manager.commit()
+			return await ctx.invoke(self.bot.get_command('roster'))
+
+		return await ctx.send("You do not have a spot for this player on your roster. Use `!drop` if you want to make space. Type `!help` for more information.")
+
+	@commands.command()
+	async def drop(self, ctx, player_name: str):
+		# search for player
+		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+		if not player_info:
+			return await ctx.send("No player was found for \"{}\"".format(player_name))
+
+		# check that player is on user's roster
+		author_id = ctx.message.author.id
+		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
+		fantasy_player_info = self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0])
+		if not fantasy_player_info or fantasy_player_info[2] != user_info[1]:
+			return await ctx.send("No player {} found on your roster. Try the `!roster` command. Type `!help` for more information.".format(player_info[1]))
+
+		# drop player
+		self.bot.db_manager.delete_fantasy_players_from_player_id(player_info[0])
+		self.bot.db_manager.commit()
+		await ctx.send("{} is now a free agent!".format(player_info[1]))
+
+	@commands.command()
+	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
+		fantasy_team_info = None
+		fantasy_players = None
+
+		# argument options
+		if member:
+			# search for the member's team
+			user_info = self.bot.db_manager.query_users_all_from_discord_id(member.id)
+			if not user_info:
+				return await ctx.send(member.name + " does not have a registered fantasy team.")
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
+			if not fantasy_team_info:
+				return await ctx.send(member.name + " does not have a registered fantasy team.")
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		elif team:
+			# search for the specified team
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_either(team)
+			if not fantasy_team_info:
+				return await ctx.send("No fantasy team found for {}".format(team))
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+		else:
+			# otherwise, use the author's team
+			user_info = self.bot.db_manager.query_users_all_from_discord_id(ctx.message.author.id)
+			if not user_info:
+				return await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
+			fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
+			if not fantasy_team_info:
+				return await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
+
+		# format output
+		buf = "```\n" + fantasy_team_info[2] + " / " + fantasy_team_info[1]
+		total = 0
+		buf2 = ""
+		for k in range(1, 11):
+			line = add_spaces("", 4) + str(POSITIONS[k])
+			for player in fantasy_players:
+				if player[3] is k:
+					player_id = player[1]
+					player_info = self.bot.db_manager.query_players_all_from_id(player_id)
+					player_team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
+					line += add_spaces(line, 16) + "{} {}".format(player_team_info[2], player_info[1])
+					# update player information from results
+					# TODO optimize this out
+					results = self.bot.db_manager.query_results_all_from_player_id(player_id)
+					for row in results:
+						fantasy_points = self.bot.cache.retrieve(player_id, row[2])
+						if not fantasy_points:
+							# game is not in cache, so perform calculation
+							fantasy_points = PointCalculator.score(row)
+							self.bot.cache.store(player_id, row[2], fantasy_points)
+					player_points = self.bot.cache.retrieve_total(player_id)
+					if k <= 6:
+						total += player_points
+					line += add_spaces(line, 30) + str(player_points)
+					break
+			buf2 += line + "\n"
+			if k is 6:
+				buf2 += "\n"
+		buf += " -- " + str(total) + "\n"
+		line = ""
+		line += add_spaces(line, 4) + "Position"
+		line += add_spaces(line, 16) + "Name"
+		line += add_spaces(line, 30) + "Points"
+		buf += line + "\n\n"
+		buf += buf2 + "```"
+
+		await ctx.send(buf)
+
 
 class StatsCog(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
 	@commands.command()
-	async def info(self, ctx, category: str, member: str):
-		# TODO
-		cat_type = Category.from_str(category)
-		# could throw an error, do nothing for now
-		# discord will print to stderr
-		# may want to handle this later 
-		# https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#error-handling
-		
-		if cat_type is Category.TEAM:
-			team_name = self.bot.db_manager.query_team_all_from_name(member)[1]
-			rv = self.bot.db_manager.query_team_players_from_name(member)
-			buf = "```\n{}:".format(team_name)
-			for row in rv:
-				buf += "\n\t" + row[0]
+	async def info(self, ctx, *args: str):
+		query_string = " ".join(args)
+
+		# check if query_string is a team
+		team_info = self.bot.db_manager.query_team_all_from_name(query_string)
+		if team_info:
+			players = self.bot.db_manager.query_team_players_from_id(team_info[0])
+			buf = "```\n" + str(team_info[1])
+			for player in players:
+				buf += "\n    " + str(player[0])
 			buf += "```"
-			await ctx.send(buf)
-		elif cat_type is Category.PLAYER:
-			# get player id, and player results
-			player_info = self.bot.db_manager.query_players_all_from_name(member)
+			return await ctx.send(buf)
+
+		# check if query_string is a player
+		player_info = self.bot.db_manager.query_players_all_from_name(query_string)
+		if player_info:
 			player_id = player_info[0]
 			team_info = self.bot.db_manager.query_team_all_from_id(player_info[2])
 			results = self.bot.db_manager.query_results_all_from_player_id(player_id)
@@ -159,6 +301,7 @@ class StatsCog(commands.Cog):
 					fantasy_points = PointCalculator.score(row)
 					self.bot.cache.store(player_id, row[2], fantasy_points)
 			total = self.bot.cache.retrieve_total(player_id)
+
 			# format output
 			buf = "```\n" + player_info[1] + " - " + str(total) + "\n"
 			buf += "    " + "Team: " + team_info[1] + "\n"
@@ -176,7 +319,9 @@ class StatsCog(commands.Cog):
 				line += add_spaces(line, 34) + str(row[2]) + "\n"
 				buf += line
 			buf += "```"
-			await ctx.send(buf)
+			return await ctx.send(buf)
+
+		await ctx.send("A team or player was not found for {}.".format(query_string))
 
 
 

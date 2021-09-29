@@ -166,10 +166,25 @@ class DatabaseManager:
 		query = """SELECT * FROM players WHERE players.name = %s"""
 		data = (player_name, )
 		cursor.execute(query, data)
-		results = cursor.fetchone()
+		row = cursor.fetchone()
 		cursor.close()
 
-		return results
+		return row
+
+	@query_precheck
+	def query_players_all_from_id(self, player_id):
+		"""
+		Returns:
+		(players.id, players.name, players.team_id)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM players WHERE players.id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
 
 ######################################
 ## results
@@ -296,7 +311,7 @@ class DatabaseManager:
 	def query_fantasy_teams_all_from_name(self, team_name):
 		"""
 		Returns:
-		(id, name, abbrev, player1, player2, player3, player4, player5, flex, sub1, sub2, sub3, sub4) or None
+		(id, name, abbrev) or None
 		"""
 		cursor = self._conn.cursor()
 
@@ -312,7 +327,7 @@ class DatabaseManager:
 	def query_fantasy_teams_all_from_abbrev(self, team_abbrev):
 		"""
 		Returns:
-		(id, name, abbrev, player1, player2, player3, player4, player5, flex, sub1, sub2, sub3, sub4) or None
+		(id, name, abbrev) or None
 		"""
 		cursor = self._conn.cursor()
 
@@ -324,13 +339,118 @@ class DatabaseManager:
 
 		return row
 
+	@query_precheck
+	def query_fantasy_teams_all_from_either(self, team_either):
+		"""
+		Returns:
+		(id, name, abbrev) or None
+		"""
+		cursor = self._conn.cursor()
 
+		query = """SELECT * FROM fantasy_teams WHERE name = %s OR abbrev = %s"""
+		data = (team_either, team_either)
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
 
+		return row
 
+	@query_precheck
+	def query_fantasy_teams_all_from_id(self, team_id):
+		"""
+		Returns:
+		(id, name, abbrev) or None
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_teams WHERE id = %s"""
+		data = (team_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
 
+		return row
 
+######################################
+## fantasy_players
+######################################
 
+	@query_precheck
+	def insert_fantasy_player_to_fantasy_players(self, player_id, fantasy_team_id, position):
+		"""
+		Creates a record for a fantasy player on a given team.
+		"""
+		cursor = self._conn.cursor()
+		query = """INSERT INTO fantasy_players (player_id, fantasy_team_id, position) VALUES (%s, %s, %s)"""
+		data = (player_id, fantasy_team_id, position)
+		cursor.execute(query, data)
+		cursor.close()
 
+	@query_precheck
+	def query_fantasy_players_all_from_team_id(self, team_id):
+		"""
+		Returns:
+		[(id, player_id, fantasy_team_id, position), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s ORDER BY position"""
+		data = (team_id, )
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
 
+		return results
 
+	@query_precheck
+	def query_fantasy_players_all_from_player_id(self, player_id):
+		"""
+		Returns:
+		(id, player_id, fantasy_team_id, position)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE player_id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
 
+		return row
+
+	@query_precheck
+	def query_fantasy_players_all_from_team_id_and_position(self, team_id, position):
+		"""
+		Returns:
+		(id, player_id, fantasy_team_id, position)
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND position = %s"""
+		data = (team_id, position)
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+	@query_precheck
+	def query_fantasy_players_same_real_team(self, fantasy_team_id, team_id):
+		"""
+		[(id, player_id, fantasy_team_id, position), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND player_id IN (SELECT * FROM (SELECT id FROM players WHERE team_id = %s) AS subquery)"""
+		data = (fantasy_team_id, team_id)
+		cursor.execute(query, data)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+	@query_precheck
+	def delete_fantasy_players_from_player_id(self, player_id):
+		"""
+		Delete's a player's entry in the fantasy_players table.
+		"""
+		cursor = self._conn.cursor()
+		query = """DELETE FROM fantasy_players WHERE player_id = %s"""
+		data = (player_id, )
+		cursor.execute(query, data)
+		cursor.close()
