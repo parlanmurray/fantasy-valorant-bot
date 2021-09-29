@@ -33,7 +33,7 @@ class Status:
 		if self.draft_complete:
 			return True
 		elif self.draft_started:
-			if user_id is self.current_drafter:
+			if str(user_id) == str(self.current_drafter):
 				return True
 		return False
 

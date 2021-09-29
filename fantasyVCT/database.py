@@ -314,6 +314,7 @@ class DatabaseManager:
 		"""
 		cursor = self._conn.cursor()
 		query = """SELECT users.discord_id FROM users"""
+		cursor.execute(query)
 		results = cursor.fetchall()
 		cursor.close()
 
