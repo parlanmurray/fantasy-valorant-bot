@@ -194,7 +194,7 @@ class FantasyCog(commands.Cog):
 			if self.bot.status.is_draft_started() and not self.bot.status.is_draft_complete():
 				next_drafter = self.bot.status.next()
 				if next_drafter:
-					await ctx.send("It is {}'s turn to draft!".format(next_drafter))
+					await ctx.send("It is <@!{}>'s turn to draft!".format(next_drafter))
 				else:
 					await ctx.send("Initial draft is complete!")
 			return
@@ -360,7 +360,7 @@ class FantasyCog(commands.Cog):
 		elif self.bot.status.is_draft_started():
 			return await ctx.send("Draft has already begun.")
 		next_drafter = self.bot.status.start_draft()
-		await ctx.send("It is {}'s turn!".format(next_drafter))
+		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
 
 
 class StatsCog(commands.Cog):
