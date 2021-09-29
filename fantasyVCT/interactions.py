@@ -61,6 +61,9 @@ class FantasyCog(commands.Cog):
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
 		team_name = " ".join(team_name_list)
 
+		if self.bot.status.is_draft_started() or self.bot.status.is_draft_complete():
+			return await ctx.send("Not accepting registrations at this time.")
+
 		# get author's unique id
 		author_id = ctx.message.author.id
 		author_registered = False
@@ -92,6 +95,9 @@ class FantasyCog(commands.Cog):
 		fantasy_team_id = self.bot.db_manager.query_fantasy_teams_all_from_name(team_name)[0]
 		self.bot.db_manager.update_users_fantasy_team(author_id, fantasy_team_id)
 		self.bot.db_manager.commit()
+
+		# update status
+		assert self.bot.status.register_user(author_id)
 
 		# reply
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
@@ -142,6 +148,14 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
+		author_id = ctx.message.author.id
+
+		# check status
+		if not self.bot.status.is_draft_started():
+			return await ctx.send("Draft has not started yet!")
+		elif not self.bot.status.can_draft(author_id):
+			return await ctx.send("It is not your turn yet!")
+
 		# search for player
 		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
 		if not player_info:
@@ -152,7 +166,6 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("{} has already been drafted to a fantasy team.")
 
 		# check that the user has a valorant roster
-		author_id = ctx.message.author.id
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
 		if not user_info:
 			return await ctx.send("You are not registered. Please use the `!register` command to register. Type `!help` for more informaiton.")
@@ -175,19 +188,27 @@ class FantasyCog(commands.Cog):
 			# place player on roster
 			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(player_info[0], fantasy_team_info[0], i)
 			self.bot.db_manager.commit()
+			# update status
+			if self.bot.status.is_draft_started() and not self.bot.status.is_draft_complete():
+				self.bot.status.next()
 			return await ctx.invoke(self.bot.get_command('roster'))
 
 		return await ctx.send("You do not have a spot for this player on your roster. Use `!drop` if you want to make space. Type `!help` for more information.")
 
 	@commands.command()
 	async def drop(self, ctx, player_name: str):
+		author_id = ctx.message.author.id
+
+		# check status
+		if not self.bot.status.is_draft_complete():
+			return await ctx.send("Cannot drop players until initial draft is complete.")
+
 		# search for player
 		player_info = self.bot.db_manager.query_players_all_from_name(player_name)
 		if not player_info:
 			return await ctx.send("No player was found for \"{}\"".format(player_name))
 
 		# check that player is on user's roster
-		author_id = ctx.message.author.id
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
 		fantasy_player_info = self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0])
 		if not fantasy_player_info or fantasy_player_info[2] != user_info[1]:
