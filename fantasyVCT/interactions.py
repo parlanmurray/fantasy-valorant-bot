@@ -188,10 +188,16 @@ class FantasyCog(commands.Cog):
 			# place player on roster
 			self.bot.db_manager.insert_fantasy_player_to_fantasy_players(player_info[0], fantasy_team_info[0], i)
 			self.bot.db_manager.commit()
+			await ctx.invoke(self.bot.get_command('roster'))
+
 			# update status
 			if self.bot.status.is_draft_started() and not self.bot.status.is_draft_complete():
-				self.bot.status.next()
-			return await ctx.invoke(self.bot.get_command('roster'))
+				next_drafter = self.bot.status.next()
+				if next_drafter:
+					await ctx.send("It is {}'s turn to draft!".format(next_drafter))
+				else:
+					await ctx.send("Initial draft is complete!")
+			return
 
 		return await ctx.send("You do not have a spot for this player on your roster. Use `!drop` if you want to make space. Type `!help` for more information.")
 
@@ -346,6 +352,15 @@ class FantasyCog(commands.Cog):
 
 		self.bot.db_manager.commit()
 		await ctx.invoke(self.bot.get_command('roster'))
+
+	@commands.command()
+	async def startdraft(self, ctx):
+		if self.bot.status.is_draft_complete():
+			return await ctx.send("Draft is already complete.")
+		elif self.bot.status.is_draft_started():
+			return await ctx.send("Draft has already begun.")
+		next_drafter = self.bot.status.start_draft()
+		await ctx.send("It is {}'s turn!".format(next_drafter))
 
 
 class StatsCog(commands.Cog):

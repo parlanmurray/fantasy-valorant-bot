@@ -31,6 +31,7 @@ class Status:
 			for user_id in self.registered_users:
 				self.queue.put(user_id)
 		self.draft_started = True
+		return self.queue[0]
 
 	def can_draft(self, user_id):
 		if self.draft_complete:
