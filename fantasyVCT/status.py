@@ -8,6 +8,7 @@ class Status:
 		self.draft_complete = False
 		self.registered_users = list()
 		self.queue = queue.Queue()
+		self.current_drafter = None
 
 	def is_draft_complete(self):
 		return self.draft_complete
@@ -15,15 +16,9 @@ class Status:
 	def is_draft_started(self):
 		return self.draft_started
 
-	def register_user(self, user_id):
-		if self.draft_started or self.draft_complete:
-			return False
-		else:
-			self.registered_users.append(user_id)
-			return True
-
-	def start_draft(self):
+	def start_draft(self, registered_users):
 		# randomize user order
+		self.registered_users = registered_users
 		random.shuffle(self.registered_users)
 		# put users in queue for snake draft
 		for i in range(10):
@@ -31,13 +26,14 @@ class Status:
 			for user_id in self.registered_users:
 				self.queue.put(user_id)
 		self.draft_started = True
-		return self.queue[0]
+		self.current_drafter = self.queue.get()
+		return self.current_drafter
 
 	def can_draft(self, user_id):
 		if self.draft_complete:
 			return True
 		elif self.draft_started:
-			if user_id is self.queue[0]:
+			if user_id is self.current_drafter:
 				return True
 		return False
 
@@ -45,4 +41,5 @@ class Status:
 		if self.queue.empty():
 			self.draft_complete = True
 			return None
-		return self.queue.get()
+		self.current_drafter = self.queue.get()
+		return self.current_drafter

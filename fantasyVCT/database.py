@@ -306,6 +306,19 @@ class DatabaseManager:
 
 		return row
 
+	@query_precheck
+	def query_users_discord_id(self):
+		"""
+		Returns:
+		[(users.discord_id, ), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT users.discord_id FROM users"""
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
 ######################################
 ## fantasy_teams
 ######################################

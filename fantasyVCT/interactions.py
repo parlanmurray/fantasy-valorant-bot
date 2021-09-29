@@ -61,9 +61,6 @@ class FantasyCog(commands.Cog):
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
 		team_name = " ".join(team_name_list)
 
-		if self.bot.status.is_draft_started() or self.bot.status.is_draft_complete():
-			return await ctx.send("Not accepting registrations at this time.")
-
 		# get author's unique id
 		author_id = ctx.message.author.id
 		author_registered = False
@@ -95,9 +92,6 @@ class FantasyCog(commands.Cog):
 		fantasy_team_id = self.bot.db_manager.query_fantasy_teams_all_from_name(team_name)[0]
 		self.bot.db_manager.update_users_fantasy_team(author_id, fantasy_team_id)
 		self.bot.db_manager.commit()
-
-		# update status
-		assert self.bot.status.register_user(author_id)
 
 		# reply
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
@@ -359,7 +353,11 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("Draft is already complete.")
 		elif self.bot.status.is_draft_started():
 			return await ctx.send("Draft has already begun.")
-		next_drafter = self.bot.status.start_draft()
+		registered_users = self.bot.db_manager.query_users_discord_id()
+		users_list = list()
+		for user in registered_users:
+			users_list.append(user[0])
+		next_drafter = self.bot.status.start_draft(users_list)
 		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
 
 
