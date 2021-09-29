@@ -92,7 +92,7 @@ class PointCalculator:
 		rv += player_stats[6] * 2
 		rv += player_stats[7] * -1
 		rv += player_stats[8] * 0.5
-		rv += player_stats[9] * 1
+		# rv += player_stats[9] * 1
 		rv += player_stats[10] * 1.5
 		rv += player_stats[11] * 2
 		rv += player_stats[12] * 2.5
