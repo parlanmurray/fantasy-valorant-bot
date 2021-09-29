@@ -88,14 +88,14 @@ class PointCalculator:
 		player_2k, player_3k, player_4k, player_5k,
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
 		"""
-		rv = player_stats[5] * 0.1
-		rv += player_stats[6] * 1
+		rv = player_stats[5] * 0.05
+		rv += player_stats[6] * 2
 		rv += player_stats[7] * -1
 		rv += player_stats[8] * 0.5
-		rv += player_stats[9] * 2
-		rv += player_stats[10] * 3
-		rv += player_stats[11] * 4
-		rv += player_stats[12] * 5
+		rv += player_stats[9] * 1
+		rv += player_stats[10] * 1.5
+		rv += player_stats[11] * 2
+		rv += player_stats[12] * 2.5
 		rv += player_stats[13] * 3
 		rv += player_stats[14] * 4
 		rv += player_stats[15] * 5
