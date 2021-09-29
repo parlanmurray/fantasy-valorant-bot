@@ -271,6 +271,9 @@ class FantasyCog(commands.Cog):
 	async def freeagents(self, ctx):
 		free_agents = self.bot.db_manager.query_players_all_not_drafted()
 		buf = "```\nFree Agents\n"
+		line = add_spaces("", 4) + "Player"
+		line += add_spaces(line, 24) + "Points"
+		buf += line + "\n\n"
 		for player_info in free_agents:
 			player_id = player_info[2]
 			team_info = self.bot.db_manager.query_team_all_from_id(player_id)
@@ -284,7 +287,7 @@ class FantasyCog(commands.Cog):
 					fantasy_points = PointCalculator.score(row)
 					self.bot.cache.store(player_id, row[2], fantasy_points)
 			player_points = self.bot.cache.retrieve_total(player_id)
-			line = add_spaces("", 4) + "{} {}\n".format(team_info[2], player_info[1])
+			line = add_spaces("", 4) + "{} {}".format(team_info[2], player_info[1])
 			line += add_spaces(line, 24) + str(player_points)
 			buf += line + "\n"
 		buf += "```"
