@@ -147,6 +147,10 @@ class FantasyCog(commands.Cog):
 		if not player_info:
 			return await ctx.send("No player was found for \"{}\"".format(player_name))
 
+		# check that player isn't already on a team
+		if self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0]):
+			return await ctx.send("{} has already been drafted to a fantasy team.")
+
 		# check that the user has a valorant roster
 		author_id = ctx.message.author.id
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
