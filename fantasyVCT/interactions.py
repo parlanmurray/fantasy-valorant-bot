@@ -265,7 +265,32 @@ class FantasyCog(commands.Cog):
 		line += add_spaces(line, 30) + "Points"
 		buf += line + "\n\n"
 		buf += buf2 + "```"
+		await ctx.send(buf)
 
+	@commands.command()
+	async def freeagents(self, ctx):
+		free_agents = self.bot.db_manager.query_players_all_not_drafted()
+		buf = "```\nFree Agents\n"
+		line = add_spaces("", 4) + "Player"
+		line += add_spaces(line, 24) + "Points"
+		buf += line + "\n\n"
+		for player_info in free_agents:
+			player_id = player_info[2]
+			team_info = self.bot.db_manager.query_team_all_from_id(player_id)
+			# update player information from results
+			# TODO optimize this out
+			results = self.bot.db_manager.query_results_all_from_player_id(player_id)
+			for row in results:
+				fantasy_points = self.bot.cache.retrieve(player_id, row[2])
+				if not fantasy_points:
+					# game is not in cache, so perform calculation
+					fantasy_points = PointCalculator.score(row)
+					self.bot.cache.store(player_id, row[2], fantasy_points)
+			player_points = self.bot.cache.retrieve_total(player_id)
+			line = add_spaces("", 4) + "{} {}".format(team_info[2], player_info[1])
+			line += add_spaces(line, 24) + str(player_points)
+			buf += line + "\n"
+		buf += "```"
 		await ctx.send(buf)
 
 

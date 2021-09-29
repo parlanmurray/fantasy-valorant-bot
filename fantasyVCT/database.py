@@ -186,6 +186,21 @@ class DatabaseManager:
 
 		return row
 
+	@query_precheck
+	def query_players_all_not_drafted(self):
+		"""
+		[(players.id, players.name, players.team_id), ...]
+		"""
+		cursor = self._conn.cursor()
+		query = """SELECT * FROM players where id NOT IN 
+		(SELECT * FROM (SELECT player_id FROM fantasy_players) AS subquery) 
+		ORDER BY team_id"""
+		cursor.execute(query)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
 ######################################
 ## results
 ######################################
