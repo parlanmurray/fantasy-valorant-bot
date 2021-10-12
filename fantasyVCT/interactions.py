@@ -387,7 +387,8 @@ class FantasyCog(commands.Cog):
 			elif not player_info[2] or player_info[2] != team_id:
 				# player is not assigned to a team
 				self.bot.db_manager.update_players_team_id(player_info[0], team_id)
-		return await ctx.invoke(self.bot.get_command('info'), args=team_name)
+		self.bot.db_manager.commit()
+		return await ctx.invoke(self.bot.get_command('info'), team_name)
 
 	@commands.command()
 	async def skipdraft(self, ctx):
