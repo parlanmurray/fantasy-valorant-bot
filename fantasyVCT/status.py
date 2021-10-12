@@ -43,3 +43,7 @@ class Status:
 			return None
 		self.current_drafter = self.queue.get()
 		return self.current_drafter
+
+	def skip_draft(self):
+		self.draft_started = True
+		self.draft_complete = True
