@@ -277,7 +277,10 @@ class Scraper:
 
 		team_header = getNthDiv(header, 1).div
 		team_name = team_header.h1.get_text(strip=True)
-		team_abbrev = team_header.h2.get_text(strip=True)
+		if team_header.h2:
+			team_abbrev = team_header.h2.get_text(strip=True)
+		else:
+			team_abbrev = team_name
 		players = getNthDiv(body.div, 1).find_all('div', {'class': 'team-roster-item'})
 
 		player_names = list()
