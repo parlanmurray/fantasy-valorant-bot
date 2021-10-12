@@ -266,3 +266,22 @@ class Scraper:
 		match_summary = Scraper._parse_match_summary(game_id_int)
 		match_performance = Scraper._parse_match_performance(game_id_int)
 		return match_summary.combine(match_performance)
+
+	@staticmethod
+	def parse_team(url: str):
+		"""Parse a vlr.gg team page.
+		"""
+		html = Scraper.scrape_url(url)
+		header = html.body.find('div', {'class': 'team-header'})
+		body = html.body.find('div', {'class': 'team-summary-container-1'})
+
+		team_header = getNthDiv(header, 1).div
+		team_name = team_header.h1.get_text(strip=True)
+		team_abbrev = team_header.h2.get_text(strip=True)
+		players = getNthDiv(body.div, 1).find_all('div', {'class': 'team-roster-item'})
+
+		player_names = list()
+		for player in players:
+			player_names.append(player.find('div', {'class': 'team-roster-item-name-alias'}).get_text(strip=True))
+
+		return team_name, team_abbrev, player_names

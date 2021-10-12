@@ -129,7 +129,7 @@ class FantasyCog(commands.Cog):
 						# player does not exist in database
 						self.bot.db_manager.insert_player_to_players(player.name, team_id)
 						player_info = self.bot.db_manager.query_players_all_from_name(player.name)
-					elif not player_info[2]:
+					elif not player_info[2] or player_info[2] != team_id:
 						# player is not assigned to a team
 						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
 
@@ -360,6 +360,38 @@ class FantasyCog(commands.Cog):
 		next_drafter = self.bot.status.start_draft(users_list)
 		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
 
+	@commands.command()
+	async def newteam(self, ctx, url: str):
+		if self.bot.status.is_draft_started():
+			return await ctx.send("Cannot add additional teams/players once draft has started.")
+		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
+
+		# check if team exists in database
+		team_info = self.bot.db_manager.query_team_all_from_name(team_name)
+		if not team_info:
+			# team does not exist in database
+			self.bot.db_manager.insert_team_to_teams(team_name, team_abbrev, "TEST")
+			self.bot.db_manager.commit()
+			team_info = self.bot.db_manager.query_team_all_from_name(team_name)
+
+		team_id = team_info[0]
+
+		# check if players exist in database
+		for player_name in player_names:
+			# check that players exist in database
+			player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+			if not player_info:
+				# player does not exist in database
+				self.bot.db_manager.insert_player_to_players(player_name, team_id)
+				player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+			elif not player_info[2] or player_info[2] != team_id:
+				# player is not assigned to a team
+				self.bot.db_manager.update_players_team_id(player_info[0], team_id)
+		return await ctx.invoke(self.bot.get_command('info'), args=team_name)
+
+	@commands.command()
+	async def skipdraft(self, ctx):
+		self.bot.status.skip_draft()
 
 class StatsCog(commands.Cog):
 	def __init__(self, bot):
