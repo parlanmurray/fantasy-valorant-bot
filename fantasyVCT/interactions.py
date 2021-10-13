@@ -138,7 +138,8 @@ class FantasyCog(commands.Cog):
 					self.bot.db_manager.commit()
 
 		self.bot.cache.invalidate()
-		await ctx.send("```\n" + str(results) + "\n```")
+		for _map in results.maps:
+			await ctx.send("```\n" + str(_map) + "\n```")
 
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
@@ -157,7 +158,7 @@ class FantasyCog(commands.Cog):
 
 		# check that player isn't already on a team
 		if self.bot.db_manager.query_fantasy_players_all_from_player_id(player_info[0]):
-			return await ctx.send("{} has already been drafted to a fantasy team.")
+			return await ctx.send("{} has already been drafted to a fantasy team.".format(player_info[1]))
 
 		# check that the user has a valorant roster
 		user_info = self.bot.db_manager.query_users_all_from_discord_id(author_id)
@@ -274,16 +275,16 @@ class FantasyCog(commands.Cog):
 					player_points = self.bot.cache.retrieve_total(player_id)
 					if k <= 6:
 						total += player_points
-					line += add_spaces(line, 30) + str(player_points)
+					line += add_spaces(line, 36) + str(player_points)
 					break
 			buf2 += line + "\n"
 			if k is 6:
 				buf2 += "\n"
-		buf += " -- " + str(total) + "\n"
+		buf += " -- " + str(round(total, 1)) + "\n"
 		line = ""
 		line += add_spaces(line, 4) + "Position"
 		line += add_spaces(line, 16) + "Name"
-		line += add_spaces(line, 30) + "Points"
+		line += add_spaces(line, 36) + "Points"
 		buf += line + "\n\n"
 		buf += buf2 + "```"
 		await ctx.send(buf)
