@@ -37,7 +37,7 @@ class DatabaseManager:
 			self._conn = None
 
 	def is_open(self):
-		return self._conn.is_connected()
+		return self._conn.is_connected() if self._conn else False
 
 	def commit(self):
 		self._conn.commit()
