@@ -5,10 +5,10 @@ import mysql.connector
 
 def query_precheck(func):
 	def wrapper(*args):
-		if args[0].is_open():
-			return func(*args)
-		else:
-			raise RuntimeError("Database connection is not open.")
+		if not args[0].is_open():
+			print("Database connection been closed due to timeout. Reopening...")
+		args[0].open()
+		return func(*args)
 	return wrapper
 
 
@@ -37,7 +37,7 @@ class DatabaseManager:
 			self._conn = None
 
 	def is_open(self):
-		return True if self._conn else False
+		return self._conn.is_connected()
 
 	def commit(self):
 		self._conn.commit()
