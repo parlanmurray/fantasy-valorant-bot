@@ -21,7 +21,7 @@ class Status:
 		self.registered_users = registered_users
 		random.shuffle(self.registered_users)
 		# put users in queue for snake draft
-		for i in range(10):
+		for i in range(7):
 			self.registered_users.reverse()
 			for user_id in self.registered_users:
 				self.queue.put(user_id)
