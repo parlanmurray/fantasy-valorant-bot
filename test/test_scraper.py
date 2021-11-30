@@ -3,7 +3,7 @@ from fantasyVCT.scraper import Scraper
 # unit testing
 # Run with pytest
 
-# full = Scraper.parse_match(25206)
+full = Scraper.parse_match(25206)
 
 def test_map_names():
 	assert len(full.maps) == 2
@@ -68,5 +68,5 @@ def test_player_agent():
 	assert Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
 
 
-team = Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
-print(team)
+# team = Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
+# print(team)
