@@ -281,7 +281,9 @@ class Scraper:
 			team_abbrev = team_header.h2.get_text(strip=True)
 		else:
 			team_abbrev = team_name
-		players = getNthDiv(body.div, 1).find_all('div', {'class': 'team-roster-item'})
+		roster_body = body.find('div', {'class': 'wf-card'})
+		roster_players = getNthDiv(roster_body, 1)
+		players = roster_players.find_all('div', {'class': 'team-roster-item'})
 
 		player_names = list()
 		for player in players:

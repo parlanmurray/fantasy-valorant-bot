@@ -64,6 +64,9 @@ def test_player_agent():
 	assert full.maps[1].team2.players[3].agent == "skye"
 	assert full.maps[1].team2.players[4].agent == "viper"
 
+def test_player_agent():
+	assert Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
 
-team = Scraper.parse_team("https://www.vlr.gg/team/2815/version1")
+
+team = Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
 print(team)
