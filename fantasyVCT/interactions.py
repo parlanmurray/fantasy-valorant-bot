@@ -311,6 +311,15 @@ class FantasyCog(commands.Cog):
 			player_points = self.bot.cache.retrieve_total(player_id)
 			line = add_spaces("", 4) + "{} {}".format(team_info[2], player_info[1])
 			line += add_spaces(line, 24) + str(player_points)
+
+			# check to ensure that the message has not exceeded discord's character limit
+			if len(buf + line) > 1900:
+				buf += "```"
+				await ctx.send(buf)
+				buf = "```\nFree Agents (page 2)\n"
+				line2 = add_spaces("", 4) + "Player"
+				line2 += add_spaces(line, 24) + "Points"
+				buf += line2 + "\n\n"
 			buf += line + "\n"
 		buf += "```"
 		await ctx.send(buf)
