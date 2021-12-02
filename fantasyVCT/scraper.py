@@ -132,16 +132,18 @@ class Scraper:
 		Returns:
 			Map: a Map containing information parsed from html
 		"""
-		header = html.div.find_all('div', recursive=False)
+		header = html.div
 
 		# build Map
-		map_name = header[1].get_text().split()[0]
+		map_header = header.find('div', {'class': 'map'})
+		map_name = map_header.get_text().split()[0]
 		game_id = int(html['data-game-id'])
 		map_ = Map(game_id, name=map_name)
 
 		# build teams
-		score1 = header[0]
-		score2 = header[2]
+		scores = header.find_all('div', {'class': 'team'})
+		score1 = scores[0]
+		score2 = scores[1]
 
 		players = getNthDiv(html, 2)
 		players1 = getNthDiv(players, 0)
@@ -151,9 +153,9 @@ class Scraper:
 		team2 = Scraper._parse_team_summary(score2, players2)
 
 		# set map pick
-		if 'mod-1' in header[1].find('span', class_="picked")['class']:
+		if 'mod-1' in map_header.find('span', class_="picked")['class']:
 			team1.set_map_pick()
-		elif 'mod-2' in header[1].find('span', class_="picked")['class']:
+		elif 'mod-2' in map_header.find('span', class_="picked")['class']:
 			team2.set_map_pick()
 
 		# add teams to map
