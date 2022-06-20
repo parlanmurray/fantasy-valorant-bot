@@ -62,10 +62,10 @@ class Scraper:
 
 		player_stats = html.find_all('td', class_="mod-stat")
 
-		player.set_stat_int("acs", player_stats[0].get_text(strip=True))
-		player.set_stat_int("kills", player_stats[1].get_text(strip=True))
-		player.set_stat_int("deaths", player_stats[2].get_text(strip=True).strip('/'))
-		player.set_stat_int("assists", player_stats[3].get_text(strip=True))
+		player.set_stat_int("acs", player_stats[0].find('span', class_="mod-both").get_text(strip=True))
+		player.set_stat_int("kills", player_stats[1].find('span', class_="mod-both").get_text(strip=True))
+		player.set_stat_int("deaths", player_stats[2].find('span', class_="mod-both").get_text(strip=True).strip('/'))
+		player.set_stat_int("assists", player_stats[3].find('span', class_="mod-both").get_text(strip=True))
 
 		return player
 
