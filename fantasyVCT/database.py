@@ -45,6 +45,7 @@ class DatabaseManager:
 	def rollback(self):
 		self._conn.rollback()
 
+
 ######################################
 ## teams
 ######################################
