@@ -404,6 +404,7 @@ class FantasyCog(commands.Cog):
 	async def skipdraft(self, ctx):
 		self.bot.status.skip_draft()
 
+
 class StatsCog(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
@@ -457,6 +458,3 @@ class StatsCog(commands.Cog):
 			return await ctx.send(buf)
 
 		await ctx.send("A team or player was not found for {}.".format(query_string))
-
-
-
