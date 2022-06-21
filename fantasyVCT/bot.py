@@ -2,7 +2,6 @@ from fantasyVCT.database import DatabaseManager
 from fantasyVCT.scraper import Scraper
 from fantasyVCT.scoring import Cache
 from fantasyVCT.status import Status
-from fantasyVCT.vlr_api import get_results
 
 from discord.ext import commands
 
