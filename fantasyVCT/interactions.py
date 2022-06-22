@@ -90,7 +90,7 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def upload(self, ctx, vlr_id: str):
 		# check that the input is valid
-		if not re.match("^[0-9]{5}$", vlr_id):
+		if not re.match("^[0-9]{5,6}$", vlr_id):
 			return await ctx.send("Not a valid vlr match number.")
 
 		# check that match does not exist in database
@@ -402,6 +402,7 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("{} is already being tracked.".format(event_name))
 
 		self.bot.db_manager.insert_event_to_events(event_name)
+		self.bot.db_manager.commit()
 		await ctx.send("Started tracking {}.".format(event_name))
 
 	@commands.command()
@@ -411,6 +412,7 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("{} is not currently being tracked.".format(event_name))
 
 		self.bot.db_manager.delete_events_from_name(event_name)
+		self.bot.db_manager.commit()
 		await ctx.send("Stopped tracking {}.".format(event_name))
 
 
