@@ -321,6 +321,52 @@ class DatabaseManager:
 
 		return results
 
+
+######################################
+## events
+######################################
+
+	@query_precheck
+	def insert_event_to_events(self, event_name):
+		"""
+		Regsiter event into events table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """INSERT INTO events (name) VALUES (%s)"""
+		data = (event_name, )
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
+	def delete_events_from_name(self, event_name):
+		"""
+		Remove event from events table.
+		"""
+		cursor = self._conn.cursor()
+
+		query = """DELETE FROM events WHERE name = %s"""
+		data = (event_name, )
+		cursor.execute(query, data)
+		cursor.close()
+
+	@query_precheck
+	def query_events_from_name(self, event_name):
+		"""
+		Returns:
+		(id, name) or None
+		"""
+		cursor = self._conn.cursor()
+
+		query = """SELECT * FROM events WHERE name = %s"""
+		data = (event_name, )
+		cursor.execute(query, data)
+		row = cursor.fetchone()
+		cursor.close()
+
+		return row
+
+
 ######################################
 ## fantasy_teams
 ######################################
