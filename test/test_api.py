@@ -1,10 +1,12 @@
-from fantasyVCT.vlr_api import get_results
+import requests
 
 # unit testing
 # run with pytest
 
-def test_results):
-	json = get_results()
+vlr_api = "https://vlrggapi.herokuapp.com/{}"
+
+def test_results():
+	json = requests.get(vlr_api.format("match/results")).json()
 	assert json['data']
 	assert json['data']['status'] == 200
 	assert json['data']['segments']

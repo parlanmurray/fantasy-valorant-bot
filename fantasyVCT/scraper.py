@@ -110,7 +110,7 @@ class Scraper:
 		team = Team(team_name, won, score)
 
 		# loop through players
-		for row in html_players.table.tbody.find_all('tr'):
+		for row in html_players.tbody.find_all('tr'):
 			team.add_player(Scraper._parse_player_summary(row))
 			if not team.abbrev:
 				team.abbrev = row.find('td', class_="mod-player").select('a > div')[1].get_text(strip=True)
@@ -145,9 +145,9 @@ class Scraper:
 		score1 = scores[0]
 		score2 = scores[1]
 
-		players = getNthDiv(html, 2)
-		players1 = getNthDiv(players, 0)
-		players2 = getNthDiv(players, 1)
+		players = html.find_all('table')
+		players1 = players[0]
+		players2 = players[1]
 
 		team1 = Scraper._parse_team_summary(score1, players1)
 		team2 = Scraper._parse_team_summary(score2, players2)
