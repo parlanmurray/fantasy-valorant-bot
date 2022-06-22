@@ -7,18 +7,19 @@ from discord.ext import tasks, commands
 vlr_api = "https://vlrggapi.herokuapp.com/{}"
 
 class FetchCog(commands.Cog):
-    def __init__(self, bot):
-    	self.bot = bot
-        self.get_results.start()
+	def __init__(self, bot):
+		self.bot = bot
+		self.get_results.start()
 
-    def cog_unload(self):
-        self.get_results.cancel()
+	def cog_unload(self):
+		self.get_results.cancel()
 
-    @tasks.loop(hours=1.0)
-    async def get_results(self):
-        r = requests.get(vlr_api.format("match/results"))
+	@tasks.loop(hours=1.0)
+	async def get_results(self):
+		r = requests.get(vlr_api.format("match/results"))
+		json = r.json()
 
-        # check for 200 status code
+		# check for 200 status code
 		if json['data']['status'] != 200:
 			ts = datetime.datetime.now()
 			print(ts, "- ", str(json['data']['status']), " status returned from vlrggapi")
