@@ -26,7 +26,8 @@ class FetchCog(commands.Cog):
 
 		# check each game if the tournament name is registered in the event table
 		for game in json['data']['segments']:
-			if self.bot.db_manager.query_events_from_name(game['tournament_name']):
+			event_info = self.bot.db_manager.query_events_from_name(game['tournament_name'])
+			if event_info:
 				vlr_id = game['match_page'].split('/')[1]
 
 				# check that the input is valid
@@ -67,7 +68,7 @@ class FetchCog(commands.Cog):
 								self.bot.db_manager.update_players_team_id(player_info[0], team_id)
 
 							# upload data
-							self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
+							self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, event_info[0])
 							self.bot.db_manager.commit()
 
 				self.bot.cache.invalidate()

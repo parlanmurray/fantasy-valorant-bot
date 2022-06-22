@@ -1,7 +1,7 @@
 import os
 
 from fantasyVCT.bot import FantasyValBot
-from fantasyVCT.interactions import Test, StatsCog, FantasyCog
+from fantasyVCT.interactions import StatsCog, FantasyCog
 from fantasyVCT.vlr_api import FetchCog
 
 from dotenv import load_dotenv
