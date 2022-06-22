@@ -88,7 +88,7 @@ class Player:
 
 
 class Team:
-	def __init__(self, name: str, won: bool = False, score: int = 0, abbrev: str = None):
+	def __init__(self, name: str, won: bool = False, score: int = 0, abbrev: str = ""):
 		self.name = name
 		self.abbrev = abbrev
 		self.players = list()
@@ -162,7 +162,7 @@ class Team:
 					continue
 
 			if not found:
-				raise ValueError("Corresponding player not found for {} in \n{}.".format(self_player.name, str(other)))
+				raise ValueError("Corresponding player not found for {} in {}\n.".format(self_player.name, str(other.name)))
 
 	def add_player(self, player: Player):
 		self.players.append(player)
@@ -263,10 +263,12 @@ class Match:
 					copy_map._combine(other_map)
 					found = True
 					break
-				except ValueError:
+				except ValueError as ve:
 					continue
 
 			if not found:
+				print(str(self))
+				print(str(other))
 				raise ValueError("Corresponding map not found for map {}.".format(copy_map.game_id))
 
 		return match_copy

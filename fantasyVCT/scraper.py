@@ -81,7 +81,7 @@ class Scraper:
 		"""
 		# parse player info
 		items = html.find_all('td')
-		name = items[0].get_text().split()[0]
+		name = " ".join(items[0].get_text().split()[:-1])
 		player = Player(name)
 
 		stat_list = {2 : "2k", 3 : "3k", 4 : "4k", 5 : "5k", 7 : "1v2", 8 : "1v3", 9 : "1v4", 10 : "1v5"}
