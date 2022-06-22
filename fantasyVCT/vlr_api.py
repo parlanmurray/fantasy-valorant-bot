@@ -1,5 +1,6 @@
 import datetime
 import re
+import asyncio
 
 import requests
 from discord.ext import tasks, commands
@@ -22,12 +23,20 @@ class FetchCog(commands.Cog):
 		# check for 200 status code
 		if json['data']['status'] != 200:
 			ts = datetime.datetime.now()
-			print(ts, "- ", str(json['data']['status']), " status returned from vlrggapi")
+			print(ts, "- ", str(json['data']['status']), "status returned from vlrggapi")
 			return
 
 		# check each game if the tournament name is registered in the event table
+		print("----- starting upload of", str(len(json['data']['segments'])), "matches -----")
+		i = 1
 		for game in json['data']['segments']:
 			event_info = self.bot.db_manager.query_events_from_name(game['tournament_name'])
+			print("----- uploading match", str(i), "/", str(len(json['data']['segments'])), "-----")
+			i = i + 1
+
+			# allow other tasks to run
+			await asyncio.sleep(5)
+
 			if event_info:
 				vlr_id = game['match_page'].split('/')[1]
 
@@ -38,7 +47,8 @@ class FetchCog(commands.Cog):
 					return
 
 				# check that match does not exist in database
-				if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+				if self.bot.db_manager.query_results_all_from_game_id(str(vlr_id)):
+					print("exists in db, returning....")
 					return
 
 				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
@@ -55,8 +65,16 @@ class FetchCog(commands.Cog):
 			return
 
 		# check each game if the tournament name is registered in the event table
+		print("----- starting upload of", str(len(json['data']['segments'])), "matches -----")
+		i = 1
 		for game in json['data']['segments']:
 			event_info = self.bot.db_manager.query_events_from_name(game['tournament_name'])
+			print("----- uploading match", str(i), "/", str(len(json['data']['segments'])), "-----")
+			i = i + 1
+
+			# allow other tasks to run
+			await asyncio.sleep(5)
+
 			if event_info:
 				vlr_id = game['match_page'].split('/')[1]
 
@@ -67,7 +85,8 @@ class FetchCog(commands.Cog):
 					return
 
 				# check that match does not exist in database
-				if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+				if self.bot.db_manager.query_results_all_from_game_id(str(vlr_id)):
+					print("exists in db, returning....")
 					return
 
 				# parse link
