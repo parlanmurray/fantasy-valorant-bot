@@ -103,6 +103,6 @@ class FetchCog(commands.Cog):
 
 				self.bot.cache.invalidate()
 
-	@get_results.before_loop()
+	@get_results.before_loop
 	async def before_get_results(self):
 		await self.bot.wait_until_ready()
