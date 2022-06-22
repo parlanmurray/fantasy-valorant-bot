@@ -44,15 +44,6 @@ def add_spaces(buff, length):
 	return rv
 
 
-class Test(commands.Cog):
-	def __init__(self, bot):
-		self.bot = bot
-
-	@commands.command()
-	async def hello(self, ctx):
-		await ctx.send("Hello {0.name}".format(ctx.author))
-
-
 class FantasyCog(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
@@ -403,6 +394,24 @@ class FantasyCog(commands.Cog):
 	@commands.command()
 	async def skipdraft(self, ctx):
 		self.bot.status.skip_draft()
+
+	@commands.command()
+	async def trackevent(self, ctx, event_name: str):
+		event_info = self.bot.db_manager.query_events_from_name(event_name)
+		if event_info:
+			return await ctx.send("{} is already being tracked.".format(event_name))
+
+		self.bot.db_manager.insert_event_to_events(event_name)
+		await ctx.send("Started tracking {}.".format(event_name))
+
+	@commands.command()
+	async def untrackevent(self, ctx, event_name: str):
+		event_info = self.bot.db_manager.query_events_from_name(event_name)
+		if not event_info:
+			return await ctx.send("{} is not currently being tracked.".format(event_name))
+
+		self.bot.db_manager.delete_events_from_name(event_name)
+		await ctx.send("Stopped tracking {}.".format(event_name))
 
 
 class StatsCog(commands.Cog):
