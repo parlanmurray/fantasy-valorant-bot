@@ -31,6 +31,16 @@ class FetchCog(commands.Cog):
 			if event_info:
 				vlr_id = game['match_page'].split('/')[1]
 
+				# check that the input is valid
+				if not re.match("^[0-9]{5,6}$", vlr_id):
+					ts = datetime.datetime.now()
+					print(ts, "- ", "invalid match id ", vlr_id)
+					return
+
+				# check that match does not exist in database
+				if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+					return
+
 				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
 
 	@tasks.loop(hours=1.0)
@@ -51,7 +61,7 @@ class FetchCog(commands.Cog):
 				vlr_id = game['match_page'].split('/')[1]
 
 				# check that the input is valid
-				if not re.match("^[0-9]{5}$", vlr_id):
+				if not re.match("^[0-9]{5,6}$", vlr_id):
 					ts = datetime.datetime.now()
 					print(ts, "- ", "invalid match id ", vlr_id)
 					return
