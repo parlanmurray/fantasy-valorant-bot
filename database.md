@@ -41,6 +41,7 @@ CREATE TABLE results
 	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	map VARCHAR(20) NOT NULL,
 	game_id INT NOT NULL,
+	match_id INT NOT NULL,
 	event_id INT,
 	player_id INT NOT NULL,
 	player_acs FLOAT,

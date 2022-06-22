@@ -47,7 +47,7 @@ class FetchCog(commands.Cog):
 					return
 
 				# check that match does not exist in database
-				if self.bot.db_manager.query_results_all_from_game_id(str(vlr_id)):
+				if self.bot.db_manager.query_results_all_from_match_id(str(vlr_id)):
 					print("exists in db, returning....")
 					return
 
@@ -85,7 +85,7 @@ class FetchCog(commands.Cog):
 					return
 
 				# check that match does not exist in database
-				if self.bot.db_manager.query_results_all_from_game_id(str(vlr_id)):
+				if self.bot.db_manager.query_results_all_from_match_id(str(vlr_id)):
 					print("exists in db, returning....")
 					return
 
@@ -117,7 +117,7 @@ class FetchCog(commands.Cog):
 								self.bot.db_manager.update_players_team_id(player_info[0], team_id)
 
 							# upload data
-							self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, event_info[0])
+							self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, vlr_id, player_info[0], player, event_info[0])
 							self.bot.db_manager.commit()
 
 				self.bot.cache.invalidate()

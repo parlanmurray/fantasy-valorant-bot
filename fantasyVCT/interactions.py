@@ -125,7 +125,7 @@ class FantasyCog(commands.Cog):
 						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
 
 					# upload data
-					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, player_info[0], player, None)
+					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, vlr_id, player_info[0], player, None)
 					self.bot.db_manager.commit()
 
 		self.bot.cache.invalidate()
