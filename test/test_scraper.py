@@ -67,6 +67,10 @@ def test_player_agent():
 def test_player_agent():
 	assert Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
 
+def test_scrape_resolves():
+	Scraper.parse_match(109588)
+	assert True
+
 
 # team = Scraper.parse_team("https://www.vlr.gg/team/188/cloud9-blue")
 # print(team)
