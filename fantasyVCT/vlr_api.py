@@ -14,6 +14,25 @@ class FetchCog(commands.Cog):
 	def cog_unload(self):
 		self.get_results.cancel()
 
+	@commands.command()
+	async def update(self, ctx):
+		r = requests.get(vlr_api.format("match/results"))
+		json = r.json()
+
+		# check for 200 status code
+		if json['data']['status'] != 200:
+			ts = datetime.datetime.now()
+			print(ts, "- ", str(json['data']['status']), " status returned from vlrggapi")
+			return
+
+		# check each game if the tournament name is registered in the event table
+		for game in json['data']['segments']:
+			event_info = self.bot.db_manager.query_events_from_name(game['tournament_name'])
+			if event_info:
+				vlr_id = game['match_page'].split('/')[1]
+
+				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
+
 	@tasks.loop(hours=1.0)
 	async def get_results(self):
 		r = requests.get(vlr_api.format("match/results"))
