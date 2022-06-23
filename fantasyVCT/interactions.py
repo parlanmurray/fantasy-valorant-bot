@@ -94,7 +94,7 @@ class FantasyCog(commands.Cog):
 			return await ctx.send("Not a valid vlr match number.")
 
 		# check that match does not exist in database
-		if self.bot.db_manager.query_results_all_from_game_id(vlr_id):
+		if self.bot.db_manager.query_results_all_from_match_id(vlr_id):
 			return await ctx.send("This match has already been uploaded.")
 		
 		# parse link

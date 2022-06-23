@@ -40,11 +40,11 @@ class FetchCog(commands.Cog):
 				if not re.match("^[0-9]{5,6}$", vlr_id):
 					ts = datetime.datetime.now()
 					print(ts, "- ", "invalid match id ", vlr_id)
-					return
+					continue
 
 				# check that match does not exist in database
 				if self.bot.db_manager.query_results_all_from_match_id(str(vlr_id)):
-					return
+					continue
 
 				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
 
