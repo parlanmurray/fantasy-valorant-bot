@@ -403,6 +403,21 @@ class DatabaseManager:
 		cursor.close()
 
 	@query_precheck
+	def query_fantasy_teams_all(self):
+		"""
+		Returns:
+		[(id, name, abbrev), ...] or None
+		"""
+		cursor = self._conn.cursor()
+
+		query = """SELECT * FROM fantasy_teams"""
+		cursor.execute(query)
+		results = cursor.fetchall()
+		cursor.close()
+
+		return results
+
+	@query_precheck
 	def query_fantasy_teams_all_from_name(self, team_name):
 		"""
 		Returns:
