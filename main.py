@@ -1,7 +1,7 @@
 import os
 
 from fantasyVCT.bot import FantasyValBot
-from fantasyVCT.interactions import StatsCog, FantasyCog
+from fantasyVCT.interactions import StatsCog, FantasyCog, ConfigCog
 from fantasyVCT.vlr_api import FetchCog
 
 from dotenv import load_dotenv
@@ -26,6 +26,7 @@ def main():
 	bot.add_cog(StatsCog(bot))
 	bot.add_cog(FantasyCog(bot))
 	bot.add_cog(FetchCog(bot))
+	bot.add_cog(ConfigCog(bot))
 	bot.run(TOKEN)
 
 
