@@ -44,7 +44,7 @@ def add_spaces(buff, length):
 	return rv
 
 
-class FantasyCog(commands.Cog, name="Fantasy"):
+class ConfigCog(commands.Cog, name="Configuration"):
 	def __init__(self, bot):
 		self.bot = bot
 
@@ -87,6 +87,83 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		# reply
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
+
+	@commands.command()
+	async def skipdraft(self, ctx):
+		"""Skip past the draft step."""
+		self.bot.status.skip_draft()
+
+	@commands.command()
+	async def trackevent(self, ctx, event_name: str):
+		"""Start tracking matches from an event"""
+		event_info = self.bot.db_manager.query_events_from_name(event_name)
+		if event_info:
+			return await ctx.send("{} is already being tracked.".format(event_name))
+
+		self.bot.db_manager.insert_event_to_events(event_name)
+		self.bot.db_manager.commit()
+		await ctx.send("Started tracking {}.".format(event_name))
+
+	@commands.command()
+	async def untrackevent(self, ctx, event_name: str):
+		"""Stop tracking new matches from an event"""
+		event_info = self.bot.db_manager.query_events_from_name(event_name)
+		if not event_info:
+			return await ctx.send("{} is not currently being tracked.".format(event_name))
+
+		self.bot.db_manager.delete_events_from_name(event_name)
+		self.bot.db_manager.commit()
+		await ctx.send("Stopped tracking {}.".format(event_name))
+
+	@commands.command()
+	async def startdraft(self, ctx):
+		"""Begin the draft"""
+		if self.bot.status.is_draft_complete():
+			return await ctx.send("Draft is already complete.")
+		elif self.bot.status.is_draft_started():
+			return await ctx.send("Draft has already begun.")
+		registered_users = self.bot.db_manager.query_users_discord_id()
+		users_list = list()
+		for user in registered_users:
+			users_list.append(user[0])
+		next_drafter = self.bot.status.start_draft(users_list)
+		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
+
+	@commands.command()
+	async def newteam(self, ctx, url: str):
+		"""Upload a team and players to the database using a vlr.gg team url"""
+		if self.bot.status.is_draft_started():
+			return await ctx.send("Cannot add additional teams/players once draft has started.")
+		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
+
+		# check if team exists in database
+		team_info = self.bot.db_manager.query_team_all_from_name(team_name)
+		if not team_info:
+			# team does not exist in database
+			self.bot.db_manager.insert_team_to_teams(team_name, team_abbrev, "TEST")
+			self.bot.db_manager.commit()
+			team_info = self.bot.db_manager.query_team_all_from_name(team_name)
+
+		team_id = team_info[0]
+
+		# check if players exist in database
+		for player_name in player_names:
+			# check that players exist in database
+			player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+			if not player_info:
+				# player does not exist in database
+				self.bot.db_manager.insert_player_to_players(player_name, team_id)
+				player_info = self.bot.db_manager.query_players_all_from_name(player_name)
+			elif not player_info[2] or player_info[2] != team_id:
+				# player is not assigned to a team
+				self.bot.db_manager.update_players_team_id(player_info[0], team_id)
+		self.bot.db_manager.commit()
+		return await ctx.invoke(self.bot.get_command('info'), team_name)
+
+
+class FantasyCog(commands.Cog, name="Fantasy"):
+	def __init__(self, bot):
+		self.bot = bot
 
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
@@ -308,78 +385,6 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		self.bot.db_manager.commit()
 		await ctx.invoke(self.bot.get_command('roster'))
-
-	@commands.command()
-	async def startdraft(self, ctx):
-		"""Begin the draft"""
-		if self.bot.status.is_draft_complete():
-			return await ctx.send("Draft is already complete.")
-		elif self.bot.status.is_draft_started():
-			return await ctx.send("Draft has already begun.")
-		registered_users = self.bot.db_manager.query_users_discord_id()
-		users_list = list()
-		for user in registered_users:
-			users_list.append(user[0])
-		next_drafter = self.bot.status.start_draft(users_list)
-		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
-
-	@commands.command()
-	async def newteam(self, ctx, url: str):
-		"""Upload a team and players to the database using a vlr.gg team url"""
-		if self.bot.status.is_draft_started():
-			return await ctx.send("Cannot add additional teams/players once draft has started.")
-		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
-
-		# check if team exists in database
-		team_info = self.bot.db_manager.query_team_all_from_name(team_name)
-		if not team_info:
-			# team does not exist in database
-			self.bot.db_manager.insert_team_to_teams(team_name, team_abbrev, "TEST")
-			self.bot.db_manager.commit()
-			team_info = self.bot.db_manager.query_team_all_from_name(team_name)
-
-		team_id = team_info[0]
-
-		# check if players exist in database
-		for player_name in player_names:
-			# check that players exist in database
-			player_info = self.bot.db_manager.query_players_all_from_name(player_name)
-			if not player_info:
-				# player does not exist in database
-				self.bot.db_manager.insert_player_to_players(player_name, team_id)
-				player_info = self.bot.db_manager.query_players_all_from_name(player_name)
-			elif not player_info[2] or player_info[2] != team_id:
-				# player is not assigned to a team
-				self.bot.db_manager.update_players_team_id(player_info[0], team_id)
-		self.bot.db_manager.commit()
-		return await ctx.invoke(self.bot.get_command('info'), team_name)
-
-	@commands.command()
-	async def skipdraft(self, ctx):
-		"""Skip past the draft step."""
-		self.bot.status.skip_draft()
-
-	@commands.command()
-	async def trackevent(self, ctx, event_name: str):
-		"""Start tracking matches from an event"""
-		event_info = self.bot.db_manager.query_events_from_name(event_name)
-		if event_info:
-			return await ctx.send("{} is already being tracked.".format(event_name))
-
-		self.bot.db_manager.insert_event_to_events(event_name)
-		self.bot.db_manager.commit()
-		await ctx.send("Started tracking {}.".format(event_name))
-
-	@commands.command()
-	async def untrackevent(self, ctx, event_name: str):
-		"""Stop tracking new matches from an event"""
-		event_info = self.bot.db_manager.query_events_from_name(event_name)
-		if not event_info:
-			return await ctx.send("{} is not currently being tracked.".format(event_name))
-
-		self.bot.db_manager.delete_events_from_name(event_name)
-		self.bot.db_manager.commit()
-		await ctx.send("Stopped tracking {}.".format(event_name))
 
 	@commands.command()
 	async def standings(self, ctx):
