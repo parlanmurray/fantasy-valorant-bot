@@ -44,12 +44,13 @@ def add_spaces(buff, length):
 	return rv
 
 
-class FantasyCog(commands.Cog):
+class FantasyCog(commands.Cog, name="Fantasy"):
 	def __init__(self, bot):
 		self.bot = bot
 
 	@commands.command()
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
+		"""Register a team"""
 		team_name = " ".join(team_name_list)
 
 		# get author's unique id
@@ -88,52 +89,8 @@ class FantasyCog(commands.Cog):
 		await ctx.send("{} / {} has been registered for {}".format(team_abbrev, team_name, ctx.message.author.mention))
 
 	@commands.command()
-	async def upload(self, ctx, vlr_id: str):
-		# check that the input is valid
-		if not re.match("^[0-9]{5,6}$", vlr_id):
-			return await ctx.send("Not a valid vlr match number.")
-
-		# check that match does not exist in database
-		if self.bot.db_manager.query_results_all_from_match_id(vlr_id):
-			return await ctx.send("This match has already been uploaded.")
-		
-		# parse link
-		results = self.bot.scraper.parse_match(vlr_id)
-
-		# verify teams and players exist in database
-		for _map in results.maps:
-			for team in (_map.team1, _map.team2):
-				# check that teams exist in database
-				team_info = self.bot.db_manager.query_team_all_from_name(team.name)
-				if not team_info:
-					# team does not exist in database
-					self.bot.db_manager.insert_team_to_teams(team.name, team.abbrev, "TEST")
-					self.bot.db_manager.commit()
-					team_info = self.bot.db_manager.query_team_all_from_name(team.name)
-
-				team_id = team_info[0]
-
-				for player in team.players:
-					# check that players exist in database
-					player_info = self.bot.db_manager.query_players_all_from_name(player.name)
-					if not player_info:
-						# player does not exist in database
-						self.bot.db_manager.insert_player_to_players(player.name, team_id)
-						player_info = self.bot.db_manager.query_players_all_from_name(player.name)
-					elif not player_info[2] or player_info[2] != team_id:
-						# player is not assigned to a team
-						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
-
-					# upload data
-					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, vlr_id, player_info[0], player, None)
-					self.bot.db_manager.commit()
-
-		self.bot.cache.invalidate()
-		for _map in results.maps:
-			await ctx.send("```\n" + str(_map) + "\n```")
-
-	@commands.command()
 	async def draft(self, ctx, player_name: str):
+		"""Pick up a free agent"""
 		author_id = ctx.message.author.id
 
 		# check status
@@ -189,6 +146,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def drop(self, ctx, player_name: str):
+		"""Drop a player from your team"""
 		author_id = ctx.message.author.id
 
 		# check status
@@ -213,6 +171,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
+		"""Display a fantasy roster"""
 		fantasy_team_info = None
 		fantasy_players = None
 
@@ -282,6 +241,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def freeagents(self, ctx):
+		"""Show all available free agents"""
 		free_agents = self.bot.db_manager.query_players_all_not_drafted()
 		buf = "```\nFree Agents\n"
 		line = add_spaces("", 4) + "Player"
@@ -317,6 +277,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def set(self, ctx, player: str, position: str):
+		"""Set a player's position in your team"""
 		# check position is valid
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
@@ -350,6 +311,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def startdraft(self, ctx):
+		"""Begin the draft"""
 		if self.bot.status.is_draft_complete():
 			return await ctx.send("Draft is already complete.")
 		elif self.bot.status.is_draft_started():
@@ -363,6 +325,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def newteam(self, ctx, url: str):
+		"""Upload a team and players to the database using a vlr.gg team url"""
 		if self.bot.status.is_draft_started():
 			return await ctx.send("Cannot add additional teams/players once draft has started.")
 		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
@@ -393,10 +356,12 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def skipdraft(self, ctx):
+		"""Skip past the draft step."""
 		self.bot.status.skip_draft()
 
 	@commands.command()
 	async def trackevent(self, ctx, event_name: str):
+		"""Start tracking matches from an event"""
 		event_info = self.bot.db_manager.query_events_from_name(event_name)
 		if event_info:
 			return await ctx.send("{} is already being tracked.".format(event_name))
@@ -407,6 +372,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def untrackevent(self, ctx, event_name: str):
+		"""Stop tracking new matches from an event"""
 		event_info = self.bot.db_manager.query_events_from_name(event_name)
 		if not event_info:
 			return await ctx.send("{} is not currently being tracked.".format(event_name))
@@ -417,6 +383,7 @@ class FantasyCog(commands.Cog):
 
 	@commands.command()
 	async def standings(self, ctx):
+		"""Show the current fantasy league standings"""
 		# get current scores
 		fantasy_teams = self.bot.db_manager.query_fantasy_teams_all()
 		for i, team in enumerate(fantasy_teams):
@@ -452,12 +419,13 @@ class FantasyCog(commands.Cog):
 		await ctx.send(buf)
 
 
-class StatsCog(commands.Cog):
+class StatsCog(commands.Cog, name="Stats"):
 	def __init__(self, bot):
 		self.bot = bot
 
 	@commands.command()
 	async def info(self, ctx, *args: str):
+		"""Get information about a player or team"""
 		query_string = " ".join(args)
 
 		# check if query_string is a team
