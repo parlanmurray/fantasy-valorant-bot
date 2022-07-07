@@ -415,6 +415,42 @@ class FantasyCog(commands.Cog):
 		self.bot.db_manager.commit()
 		await ctx.send("Stopped tracking {}.".format(event_name))
 
+	@commands.command()
+	async def standings(self, ctx):
+		# get current scores
+		fantasy_teams = self.bot.db_manager.query_fantasy_teams_all()
+		for i, team in enumerate(fantasy_teams):
+			# team: (id, name, abbrev)
+			fantasy_players = self.bot.db_manager.query_fantasy_players_all_from_team_id(team[0])
+			total = 0
+			for player in fantasy_players:
+				# dont count subs
+				if player[3] < 7:
+					player_id = player[1]
+					player_info = self.bot.db_manager.query_players_all_from_id(player_id)
+					# update player information from results
+					# TODO optimize this out
+					results = self.bot.db_manager.query_results_all_from_player_id(player_id)
+					for row in results:
+						fantasy_points = self.bot.cache.retrieve(player_id, row[2])
+						if not fantasy_points:
+							# game is not in cache, so perform calculation
+							fantasy_points = PointCalculator.score(row)
+							self.bot.cache.store(player_id, row[2], fantasy_points)
+					player_points = self.bot.cache.retrieve_total(player_id)
+					total += player_points
+			fantasy_teams[i].append(total_points)
+
+		sorted_teams = sorted(fantasy_teams.items(), key=lambda k: k[3], reverse=True)
+
+		# format output
+		buf = "```\n" + "Standings\n\n"
+		for team in sorted_teams:
+			# team: (id, name, abbrev, score)
+			buf += "\t" + team[2] + " / " + team[1] + " - " + team[3] + "\n"
+		buf += "```"
+		await ctx.send(buf)
+
 
 class StatsCog(commands.Cog):
 	def __init__(self, bot):
