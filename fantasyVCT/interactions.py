@@ -411,15 +411,15 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							self.bot.cache.store(player_id, row[2], fantasy_points)
 					player_points = self.bot.cache.retrieve_total(player_id)
 					total += player_points
-			fantasy_teams[i].append(total_points)
+			fantasy_teams[i] = fantasy_teams[i] + (total,)
 
-		sorted_teams = sorted(fantasy_teams.items(), key=lambda k: k[3], reverse=True)
+		sorted_teams = sorted(fantasy_teams, key=lambda k: k[3], reverse=True)
 
 		# format output
 		buf = "```\n" + "Standings\n\n"
 		for team in sorted_teams:
 			# team: (id, name, abbrev, score)
-			buf += "\t" + team[2] + " / " + team[1] + " - " + team[3] + "\n"
+			buf += "\t" + team[2] + " / " + team[1] + " - " + str(team[3]) + "\n"
 		buf += "```"
 		await ctx.send(buf)
 
