@@ -1,4 +1,5 @@
 import os
+import argparse
 
 from fantasyVCT.bot import FantasyValBot
 from fantasyVCT.interactions import StatsCog, FantasyCog, ConfigCog
@@ -21,6 +22,11 @@ def main():
 		DB_NAME = os.getenv('DATABASE_PROD')
 
 	bot = FantasyValBot("!", DB_USER, DB_PASSWORD, DB_NAME)
+
+	# parse args
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--skip-draft', action='store_true', help='skip the draft step')
+	args = parser.parse_args(namespace=bot)
 
 	# configure and start bot
 	bot.add_cog(StatsCog(bot))

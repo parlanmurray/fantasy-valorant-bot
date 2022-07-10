@@ -16,6 +16,9 @@ class FantasyValBot(commands.Bot):
 		self.status = Status()
 
 	async def on_ready(self):
-		"""Summary
+		"""perform startup procedure
 		"""
 		print(f'{self.user} has connected to Discord!')
+		# skip the draft if argument was supplied
+		if self.skip_draft:
+			self.status.skip_draft()
