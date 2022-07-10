@@ -470,8 +470,8 @@ class StatsCog(commands.Cog, name="Stats"):
 			buf += line
 			for row in results:
 				line = add_spaces("", 8) + str(self.bot.cache.retrieve(player_id, row[2]))
-				line += add_spaces(line, 16) + str(row[5])
-				line += add_spaces(line, 24) + str(row[6]) + "/" + str(row[7]) + "/" + str(row[8])
+				line += add_spaces(line, 16) + str(row[6])
+				line += add_spaces(line, 24) + str(row[7]) + "/" + str(row[8]) + "/" + str(row[9])
 				line += add_spaces(line, 34) + str(row[2]) + "\n"
 				buf += line
 			buf += "```"
