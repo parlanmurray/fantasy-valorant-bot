@@ -84,20 +84,20 @@ class PointCalculator:
 	def score(player_stats):
 		"""
 		player_stats retrieved from results table:
-		(id, map, game_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
+		(id, map, game_id, match_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
 		player_2k, player_3k, player_4k, player_5k,
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
 		"""
-		rv = player_stats[5] * 0.05
-		rv += player_stats[6] * 2
-		rv += player_stats[7] * -1
-		rv += player_stats[8] * 0.5
-		rv += player_stats[9] * 1
-		rv += player_stats[10] * 1.5
-		rv += player_stats[11] * 2
-		rv += player_stats[12] * 2.5
-		rv += player_stats[13] * 3
-		rv += player_stats[14] * 4
-		rv += player_stats[15] * 5
-		rv += player_stats[16] * 6
+		rv = player_stats[6] * 0.05
+		rv += player_stats[7] * 2
+		rv += player_stats[8] * -1
+		rv += player_stats[9] * 0.5
+		rv += player_stats[10] * 1
+		rv += player_stats[11] * 1.5
+		rv += player_stats[12] * 2
+		rv += player_stats[13] * 2.5
+		rv += player_stats[14] * 3
+		rv += player_stats[15] * 4
+		rv += player_stats[16] * 5
+		rv += player_stats[17] * 6
 		return round(rv, 1)
