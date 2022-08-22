@@ -1,4 +1,17 @@
-from fantasyVCT.valorant import Player
+from fantasyVCT.valorant import Player, add_spaces
+
+ACS = 0.05
+KILLS = 2
+DEATHS = -1
+ASSISTS = 0.5
+KILLS2 = 1
+KILLS3 = 1.5
+KILLS4 = 2
+KILLS5 = 2.5
+CLUTCH_V2 = 3
+CLUTCH_V3 = 4
+CLUTCH_V4 = 5
+CLUTCH_V5 = 6
 
 class Cache:
 
@@ -79,7 +92,40 @@ class Cache:
 
 
 class PointCalculator:
-	
+
+	@staticmethod
+	def get_scoring_info(self):
+		"""
+		print storing info.
+		similar to __str__ or __repr__ but static
+		"""
+		rv + "Scoring info:\n"
+		rv += "ACS"
+		rv += add_spaces(rv, 35) + str(ACS) + "\n"
+		rv += "KILLS" 
+		rv ++ add_spaces(rv, 55) + str(KILLS) + "\n"
+		rv += "DEATHS"
+		rv ++ add_spaces(rv, 75) + str(DEATHS) + "\n"
+		rv += "ASSISTS"
+		rv += add_spaces(rv, 95) + str(ASSISTS) + "\n"
+		rv += "KILLS2"
+		rv += add_spaces(rv, 115) + str(KILLS2) + "\n"
+		rv += "KILLS3"
+		rv += add_spaces(rv, 135) + str(KILLS3) + "\n"
+		rv += "KILLS4"
+		rv += add_spaces(rv, 155) + str(KILLS4) + "\n"
+		rv += "KILLS5"
+		rv += add_spaces(rv, 175) + str(KILLS5) + "\n"
+		rv += "CLUTCH_V2"
+		rv += add_spaces(rv, 195) + str(CLUTCH_V2) + "\n"
+		rv += "CLUTCH_V3"
+		rv += add_spaces(rv, 215) + str(CLUTCH_V3) + "\n"
+		rv += "CLUTCH_V4"
+		rv += add_spaces(rv, 235) + str(CLUTCH_V4) + "\n"
+		rv += "CLUTCH_V5"
+		rv += add_spaces(rv, 255) + str(CLUTCH_V5)
+		return rv
+
 	@staticmethod
 	def score(player_stats):
 		"""
@@ -88,16 +134,16 @@ class PointCalculator:
 		player_2k, player_3k, player_4k, player_5k,
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
 		"""
-		rv = player_stats[6] * 0.05
-		rv += player_stats[7] * 2
-		rv += player_stats[8] * -1
-		rv += player_stats[9] * 0.5
-		rv += player_stats[10] * 1
-		rv += player_stats[11] * 1.5
-		rv += player_stats[12] * 2
-		rv += player_stats[13] * 2.5
-		rv += player_stats[14] * 3
-		rv += player_stats[15] * 4
-		rv += player_stats[16] * 5
-		rv += player_stats[17] * 6
+		rv = player_stats[6] * ACS
+		rv += player_stats[7] * KILLS
+		rv += player_stats[8] * DEATHS
+		rv += player_stats[9] * ASSISTS
+		rv += player_stats[10] * KILLS2
+		rv += player_stats[11] * KILLS3
+		rv += player_stats[12] * KILLS4
+		rv += player_stats[13] * KILLS5
+		rv += player_stats[14] * CLUTCH_V2
+		rv += player_stats[15] * CLUTCH_V3
+		rv += player_stats[16] * CLUTCH_V4
+		rv += player_stats[17] * CLUTCH_V5
 		return round(rv, 1)

@@ -9,6 +9,7 @@ class Status:
 		self.registered_users = list()
 		self.queue = queue.Queue()
 		self.current_drafter = None
+		self.num_rounds = 7
 
 	def is_draft_complete(self):
 		return self.draft_complete
@@ -21,7 +22,7 @@ class Status:
 		self.registered_users = registered_users
 		random.shuffle(self.registered_users)
 		# put users in queue for snake draft
-		for i in range(6):
+		for i in range(self.num_rounds):
 			self.registered_users.reverse()
 			for user_id in self.registered_users:
 				self.queue.put(user_id)
@@ -47,3 +48,6 @@ class Status:
 	def skip_draft(self):
 		self.draft_started = True
 		self.draft_complete = True
+
+	def set_num_rounds(self, num_rounds: int):
+		self.num_rounds = num_rounds
