@@ -22,16 +22,16 @@ class Category(Enum):
 			raise ValueError
 
 POSITIONS = {
-	1 : "Player1",
-	2 : "Player2",
-	3 : "Player3",
-	4 : "Player4",
-	5 : "Player5",
-	6 : "Flex",
-	7 : "Sub1",
-	8 : "Sub2",
-	9 : "Sub3",
-	10 : "Sub4"
+	0 : "Player1",
+	1 : "Player2",
+	2 : "Player3",
+	3 : "Player4",
+	4 : "Player5",
+	5 : "Flex",
+	6 : "Sub1",
+	7 : "Sub2",
+	8 : "Sub3",
+	9 : "Sub4"
 }
 
 def add_spaces(buff, length):
@@ -160,10 +160,43 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		self.bot.db_manager.commit()
 		return await ctx.invoke(self.bot.get_command('info'), team_name)
 
+	@commands.command()
+	async def rules(self, ctx):
+		"""Display rules"""
+		buf = "```\n"
+		buf += "How to play:\n"
+		buf += "- Draft a team of valorant players, and compete to see who whose players have the best performance over the course of the event\n"
+		buf += "- Players will receive points based on their performance in the games\n"
+		buf += "- During the draft phase, participants will take turns picking players for their teams\n"
+		buf == "- Until the draft phase is over, you will not be able to add or drop players outside of your turn\n"
+		buf += "- After the draft phase, you can add, drop and move players as much as you'd like\n"
+		buf += "- Each team can only have ONE player from a given team. i.e. you can only have one member of 100 Thieves on your active roster\n"
+		buf += "- Each team has 6 active slots and " + str(self.bot.sub_slots) + " sub slot(s)\n"
+		buf =+ "- The Captain role is a special role that does not follow the 'one player from each team' restriction. You can have a player from ANY team as your flex, even if you already have a player from that team\n"
+		buf += "- Only players in active slots count towards your team's total points\n"
+		buf += "- At the end of the event, the fantasy team with the most total points wins\n"
+		buf += "\n"
+		buf += "Draft phase:\n"
+		buf += "- There will be " + str(self.bot.num_rounds) + " rounds\n"
+		buf += "- Snake draft (1234554321123...)\n"
+		buf += "- The draft is asynchronous, and you will be pinged when it is your turn to draft\n"
+		buf += "```"
+		return await ctx.send(buf)
+
+
+	@commands.command()
+	async def scoring(self, ctx):
+		"""Display scoring information"""
+		buf = "```\n"
+		buf += PointsCalculator.get_scoring_info()
+		buf += "```"
+		return await ctx.send(buf)
+
 
 class FantasyCog(commands.Cog, name="Fantasy"):
 	def __init__(self, bot):
 		self.bot = bot
+		self.pos_max = min(10, 6 + bot.sub_slots)
 
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
@@ -196,7 +229,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
 		fantasy_players_info = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
 		skip_flag = False
-		for i in range(1, 11):
+		for i in range(self.pos_max):
 			if skip_flag and i < 6:
 				continue
 			elif self.bot.db_manager.query_fantasy_players_all_from_team_id_and_position(fantasy_team_info[0], i):
@@ -282,7 +315,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		buf = "```\n" + fantasy_team_info[2] + " / " + fantasy_team_info[1]
 		total = 0
 		buf2 = ""
-		for k in range(1, 11):
+		for k in range(self.pos_max):
 			line = add_spaces("", 4) + str(POSITIONS[k])
 			for player in fantasy_players:
 				if player[3] is k:
@@ -359,6 +392,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
 		dest_pos = list(POSITIONS.keys())[list(string.lower() for string in POSITIONS.values()).index(position.lower())]
+		if dest_pos >= self.pos_max:
+			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
 
 		# check that player exists
 		player_info = self.bot.db_manager.query_players_all_from_name(player)

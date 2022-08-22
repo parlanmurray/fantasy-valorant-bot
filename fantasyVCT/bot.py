@@ -14,6 +14,10 @@ class FantasyValBot(commands.Bot):
 		self.scraper = Scraper()
 		self.cache = Cache()
 		self.status = Status()
+		# there are several more fields here added by argparse
+		# skip_draft
+		# num_rounds
+		# sub_slots
 
 	async def on_ready(self):
 		"""perform startup procedure
@@ -22,3 +26,4 @@ class FantasyValBot(commands.Bot):
 		# skip the draft if argument was supplied
 		if self.skip_draft:
 			self.status.skip_draft()
+		self.status.set_num_rounds(self.num_rounds)

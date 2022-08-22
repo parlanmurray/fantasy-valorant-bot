@@ -70,16 +70,16 @@ CREATE TABLE positions
 
 INSERT INTO positions (id, position)
 VALUES
-	(1, "player1"),
-	(2, "player2"),
-	(3, "player3"),
-	(4, "player4"),
-	(5, "player5"),
-	(6, "flex"),
-	(7, "sub1"),
-	(8, "sub2"),
-	(9, "sub3"),
-	(10, "sub4");
+	(0, "player1"),
+	(1, "player2"),
+	(2, "player3"),
+	(3, "player4"),
+	(4, "player5"),
+	(5, "flex"),
+	(6, "sub1"),
+	(7, "sub2"),
+	(8, "sub3"),
+	(9, "sub4");
 
 CREATE TABLE fantasy_teams
 (
