@@ -94,36 +94,36 @@ class Cache:
 class PointCalculator:
 
 	@staticmethod
-	def get_scoring_info(self):
+	def get_scoring_info():
 		"""
 		print storing info.
 		similar to __str__ or __repr__ but static
 		"""
-		rv + "Scoring info:\n"
-		rv += "ACS"
-		rv += add_spaces(rv, 35) + str(ACS) + "\n"
-		rv += "KILLS" 
-		rv ++ add_spaces(rv, 55) + str(KILLS) + "\n"
-		rv += "DEATHS"
-		rv ++ add_spaces(rv, 75) + str(DEATHS) + "\n"
-		rv += "ASSISTS"
-		rv += add_spaces(rv, 95) + str(ASSISTS) + "\n"
-		rv += "KILLS2"
-		rv += add_spaces(rv, 115) + str(KILLS2) + "\n"
-		rv += "KILLS3"
-		rv += add_spaces(rv, 135) + str(KILLS3) + "\n"
-		rv += "KILLS4"
-		rv += add_spaces(rv, 155) + str(KILLS4) + "\n"
-		rv += "KILLS5"
-		rv += add_spaces(rv, 175) + str(KILLS5) + "\n"
-		rv += "CLUTCH_V2"
-		rv += add_spaces(rv, 195) + str(CLUTCH_V2) + "\n"
-		rv += "CLUTCH_V3"
-		rv += add_spaces(rv, 215) + str(CLUTCH_V3) + "\n"
-		rv += "CLUTCH_V4"
-		rv += add_spaces(rv, 235) + str(CLUTCH_V4) + "\n"
-		rv += "CLUTCH_V5"
-		rv += add_spaces(rv, 255) + str(CLUTCH_V5)
+		rv = "Scoring info:\n"
+		line = "ACS"
+		rv += line + add_spaces(line, 20) + str(ACS) + "\n"
+		line = "KILLS" 
+		rv += line + add_spaces(line, 20) + str(KILLS) + "\n"
+		line = "DEATHS"
+		rv += line + add_spaces(line, 20) + str(DEATHS) + "\n"
+		line = "ASSISTS"
+		rv += line + add_spaces(line, 20) + str(ASSISTS) + "\n"
+		line = "KILLS2"
+		rv += line + add_spaces(line, 20) + str(KILLS2) + "\n"
+		line = "KILLS3"
+		rv += line + add_spaces(line, 20) + str(KILLS3) + "\n"
+		line = "KILLS4"
+		rv += line + add_spaces(line, 20) + str(KILLS4) + "\n"
+		line = "KILLS5"
+		rv += line + add_spaces(line, 20) + str(KILLS5) + "\n"
+		line = "CLUTCH_V2"
+		rv += line + add_spaces(line, 20) + str(CLUTCH_V2) + "\n"
+		line = "CLUTCH_V3"
+		rv += line + add_spaces(line, 20) + str(CLUTCH_V3) + "\n"
+		line = "CLUTCH_V4"
+		rv += line + add_spaces(line, 20) + str(CLUTCH_V4) + "\n"
+		line = "CLUTCH_V5"
+		rv += line + add_spaces(line, 20) + str(CLUTCH_V5)
 		return rv
 
 	@staticmethod

@@ -172,7 +172,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf += "- After the draft phase, you can add, drop and move players as much as you'd like\n"
 		buf += "- Each team can only have ONE player from a given team. i.e. you can only have one member of 100 Thieves on your active roster\n"
 		buf += "- Each team has 6 active slots and " + str(self.bot.sub_slots) + " sub slot(s)\n"
-		buf =+ "- The Captain role is a special role that does not follow the 'one player from each team' restriction. You can have a player from ANY team as your flex, even if you already have a player from that team\n"
+		buf += "- The Captain role is a special role that does not follow the 'one player from each team' restriction. You can have a player from ANY team as your flex, even if you already have a player from that team\n"
 		buf += "- Only players in active slots count towards your team's total points\n"
 		buf += "- At the end of the event, the fantasy team with the most total points wins\n"
 		buf += "\n"
@@ -188,7 +188,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	async def scoring(self, ctx):
 		"""Display scoring information"""
 		buf = "```\n"
-		buf += PointsCalculator.get_scoring_info()
+		buf += PointCalculator.get_scoring_info()
 		buf += "```"
 		return await ctx.send(buf)
 
