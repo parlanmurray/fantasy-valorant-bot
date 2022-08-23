@@ -19,13 +19,12 @@ class FetchCog(commands.Cog, name="Results"):
 	async def update(self, ctx):
 		"""Get new match results early"""
 		r = requests.get(vlr_api.format("match/results"))
-		json = r.json()
-
-		# check for 200 status code
-		if json['data']['status'] != 200:
+		# verify request
+		if r.status_code != 200:
 			ts = datetime.datetime.now()
-			print(ts, "- ", str(json['data']['status']), "status returned from vlrggapi")
+			print(ts, "- ", str(r.status_code), "status returned from vlrggapi")
 			return
+		json = r.json()
 
 		# check each game if the tournament name is registered in the event table
 		for game in json['data']['segments']:
@@ -98,13 +97,13 @@ class FetchCog(commands.Cog, name="Results"):
 	@tasks.loop(hours=1.0)
 	async def get_results(self):
 		r = requests.get(vlr_api.format("match/results"))
-		json = r.json()
 
-		# check for 200 status code
-		if json['data']['status'] != 200:
+		# verify request
+		if r.status_code != 200:
 			ts = datetime.datetime.now()
-			print(ts, "- ", str(json['data']['status']), " status returned from vlrggapi")
+			print(ts, "- ", str(r.status_code), "status returned from vlrggapi")
 			return
+		json = r.json()
 
 		# check each game if the tournament name is registered in the event table
 		for game in json['data']['segments']:
