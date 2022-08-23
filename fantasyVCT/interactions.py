@@ -22,12 +22,12 @@ class Category(Enum):
 			raise ValueError
 
 POSITIONS = {
-	0 : "Player1",
-	1 : "Player2",
-	2 : "Player3",
-	3 : "Player4",
-	4 : "Player5",
-	5 : "Flex",
+	0 : "Captain",
+	1 : "Player1",
+	2 : "Player2",
+	3 : "Player3",
+	4 : "Player4",
+	5 : "Player5",
 	6 : "Sub1",
 	7 : "Sub2",
 	8 : "Sub3",
@@ -228,14 +228,14 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		# find spot on roster for player
 		fantasy_team_info = self.bot.db_manager.query_fantasy_teams_all_from_id(user_info[1])
 		fantasy_players_info = self.bot.db_manager.query_fantasy_players_all_from_team_id(fantasy_team_info[0])
-		skip_flag = False
+		sub_flag = False
 		for i in range(self.pos_max):
-			if skip_flag and i < 6:
+			if sub_flag and i < 6:
 				continue
 			elif self.bot.db_manager.query_fantasy_players_all_from_team_id_and_position(fantasy_team_info[0], i):
 				continue
-			elif i < 6 and player_info[2] and self.bot.db_manager.query_fantasy_players_same_real_team(fantasy_team_info[0], player_info[2]):
-				skip_flag = True
+			elif i > 0 and i < 6 and player_info[2] and self.bot.db_manager.query_fantasy_players_same_real_team(fantasy_team_info[0], player_info[2]):
+				sub_flag = True
 				continue
 
 			# place player on roster
@@ -418,6 +418,18 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			# update source record
 			self.bot.db_manager.update_fantasy_players_position(fantasy_player_info[1], dest_pos)
 
+		# verify that we do not violate the one from each team rule
+		existing_teams = list()
+		for i in range(1, 6):
+			curr_player = self.bot.db_manager.query_fantasy_players_all_from_team_id_and_position(user_info[1], i)
+			if curr_player:
+				curr_player_info = self.bot.db_manager.query_players_all_from_id(curr_player[1])
+				if curr_player_info[2] in existing_teams:
+					return await ctx.invoke("Cannot assign player to this position due to team restriction. See !rules.")
+				else:
+					existing_teams.append(curr_player_info[2])
+
+		# commit transaction and format output
 		self.bot.db_manager.commit()
 		await ctx.invoke(self.bot.get_command('roster'))
 
