@@ -425,7 +425,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			if curr_player:
 				curr_player_info = self.bot.db_manager.query_players_all_from_id(curr_player[1])
 				if curr_player_info[2] in existing_teams:
-					return await ctx.invoke("Cannot assign player to this position due to team restriction. See !rules.")
+					return await ctx.send("Cannot assign player to this position due to team restriction. See !rules.")
 				else:
 					existing_teams.append(curr_player_info[2])
 
