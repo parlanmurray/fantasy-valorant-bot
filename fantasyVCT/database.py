@@ -546,7 +546,7 @@ class DatabaseManager:
 		[(id, player_id, fantasy_team_id, position), ...]
 		"""
 		cursor = self._conn.cursor()
-		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND player_id IN (SELECT * FROM (SELECT id FROM players WHERE team_id = %s) AS subquery)"""
+		query = """SELECT * FROM fantasy_players WHERE fantasy_team_id = %s AND position != 0 AND player_id IN (SELECT * FROM (SELECT id FROM players WHERE team_id = %s) AS subquery)"""
 		data = (fantasy_team_id, team_id)
 		cursor.execute(query, data)
 		results = cursor.fetchall()
