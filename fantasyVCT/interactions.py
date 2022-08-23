@@ -338,7 +338,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 					line += add_spaces(line, 36) + str(player_points)
 					break
 			buf2 += line + "\n"
-			if k is 6:
+			if k is 5:
 				buf2 += "\n"
 		buf += " -- " + str(round(total, 1)) + "\n"
 		line = ""
