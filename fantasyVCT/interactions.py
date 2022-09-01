@@ -333,7 +333,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							fantasy_points = PointCalculator.score(row)
 							self.bot.cache.store(player_id, row[2], fantasy_points)
 					player_points = self.bot.cache.retrieve_total(player_id)
-					if k <= 6:
+					if k < 6:
 						total += player_points
 					line += add_spaces(line, 36) + str(player_points)
 					break
