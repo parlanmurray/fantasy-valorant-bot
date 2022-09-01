@@ -5,7 +5,7 @@ import asyncio
 import requests
 from discord.ext import tasks, commands
 
-vlr_api = "https://vlrggapi.herokuapp.com/{}"
+vlr_api = "https://vlrggapi.vercel.app/{}"
 
 class FetchCog(commands.Cog, name="Results"):
 	def __init__(self, bot):
