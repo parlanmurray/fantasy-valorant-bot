@@ -448,7 +448,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			total = 0
 			for player in fantasy_players:
 				# dont count subs
-				if player[3] < 7:
+				if player[3] < 6:
 					player_id = player[1]
 					player_info = self.bot.db_manager.query_players_all_from_id(player_id)
 					# update player information from results
@@ -461,6 +461,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							fantasy_points = PointCalculator.score(row)
 							self.bot.cache.store(player_id, row[2], fantasy_points)
 					player_points = self.bot.cache.retrieve_total(player_id)
+					if i is 0:
+						player_points = player_points * 1.2
 					total = round(total + player_points, 1)
 			fantasy_teams[i] = fantasy_teams[i] + (total,)
 
