@@ -461,7 +461,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							fantasy_points = PointCalculator.score(row)
 							self.bot.cache.store(player_id, row[2], fantasy_points)
 					player_points = self.bot.cache.retrieve_total(player_id)
-					if i is 0:
+					if player[3] is 0:
 						player_points = player_points * 1.2
 					total = round(total + player_points, 1)
 			fantasy_teams[i] = fantasy_teams[i] + (total,)
