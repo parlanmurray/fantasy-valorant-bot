@@ -15,13 +15,27 @@ def main():
 	TOKEN = os.getenv('DISCORD_TOKEN')
 	DB_USER = os.getenv('DATABASE_USER')
 	DB_PASSWORD = os.getenv('DATABASE_PASSWORD')
+	DB_TYPE = os.getenv('DATABASE_TYPE')
 
 	if USE_DEV:
 		DB_NAME = os.getenv('DATABASE_DEV')
 	else:
 		DB_NAME = os.getenv('DATABASE_PROD')
 
-	bot = FantasyValBot("!", DB_USER, DB_PASSWORD, DB_NAME)
+	if not DB_USER:
+		print("No database user specified. Check .env file.")
+		exit(1)
+	elif not DB_PASSWORD:
+		print("No database password specified. Check .env file.")
+		exit(1)
+	elif not DB_NAME:
+		print("No database name specified. Check .env file.")
+		exit(1)
+	elif not TOKEN:
+		print("No discord token specified. Check .env file.")
+		exit(1)
+
+	bot = FantasyValBot("!", DB_USER, DB_PASSWORD, DB_NAME, db_type=DB_TYPE)
 
 	# parse args
 	# these arguments get automatically added to the bot as variables

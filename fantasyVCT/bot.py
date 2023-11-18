@@ -4,11 +4,12 @@ from fantasyVCT.scoring import Cache
 from fantasyVCT.status import Status
 
 from discord.ext import commands
+from discord import Intents
 
 
 class FantasyValBot(commands.Bot):
 	def __init__(self, command_prefix, db_user, db_password, db_name, db_type = "mysql"):
-		super().__init__(command_prefix)
+		super().__init__(command_prefix, intents=Intents.all())
 		self.db_manager = DatabaseManager(db_type, db_user, db_password, db_name)
 		self.scraper = Scraper()
 		self.cache = Cache()
