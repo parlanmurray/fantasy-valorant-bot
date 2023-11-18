@@ -105,7 +105,7 @@ class Result(Base):
 	__tablename__ = "results"
 
 	id: Mapped[int] = mapped_column(primary_key=True)
-	map: Mapped[str] = mappend_column(String(20), nullable=False)
+	map: Mapped[str] = mapped_column(String(20), nullable=False)
 	game_id: Mapped[int] = mapped_column(nullable=False)
 	match_id: Mapped[int] = mapped_column(nullable=False)
 	event_id: Mapped[int]
