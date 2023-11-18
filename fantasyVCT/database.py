@@ -35,10 +35,6 @@ class DatabaseManager:
 		# "mysql:///<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string)
 
-	def __del__(self):
-		# if connection is open, close it
-		if self._conn:
-			self.close()
 
 	# def open(self):
 	# 	if self.is_open():
