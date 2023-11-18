@@ -91,7 +91,7 @@ class Player(Base):
 	
 	team: Mapped[Team] = relationship(back_populates="players")
 	results: Mapped[List["Result"]] = relationship(back_populates="player")
-	fantasyplayer: Mapped[FantasyPlayer] = relationship(back_populates="player")
+	fantasyplayer: Mapped["FantasyPlayer"] = relationship(back_populates="player")
 
 	def __repr__(self) -> str:
 		return f"Player(id={self.id!r}, name={self.name!r}, team_id={self.team_id!r})"
@@ -141,7 +141,7 @@ class FantasyTeam(Base):
 	name: Mapped[str] = mapped_column(String(50), nullable=False)
 	abbrev: Mapped[str] = mapped_column(String(10), nullable=False)
 
-	user: Mapped[User] = relationship(back_populates="fantasyteam")
+	user: Mapped["User"] = relationship(back_populates="fantasyteam")
 	fantasyplayers: Mapped[List["FantasyPlayer"]] = relationship(back_populates="fantasyteam")
 
 	def __repr__(self) -> str:
