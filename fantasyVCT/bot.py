@@ -7,10 +7,9 @@ from discord.ext import commands
 
 
 class FantasyValBot(commands.Bot):
-	def __init__(self, command_prefix, db_user, db_password, db_name):
+	def __init__(self, command_prefix, db_user, db_password, db_name, db_type = "mysql"):
 		super().__init__(command_prefix)
-		self.db_manager = DatabaseManager(db_user, db_password, db_name)
-		self.db_manager.open()
+		self.db_manager = DatabaseManager(db_type, db_user, db_password, db_name)
 		self.scraper = Scraper()
 		self.cache = Cache()
 		self.status = Status()
