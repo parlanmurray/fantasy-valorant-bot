@@ -5,13 +5,17 @@ from fantasyVCT.database import DatabaseManager, Player
 from dotenv import dotenv_values
 from sqlalchemy import select
 
+# unit testing for database
+# requires database on host machine
+# run with pytest
+
 config = dotenv_values("../.env")
 
 db_manager = DatabaseManager(
     config["DATABASE_TYPE"],
     config["DATABASE_USER"],
     config["DATABASE_PASSWORD"],
-    config["DATABASE_NAME"]
+    config["DATABASE_DEV"]
 )
 
 
