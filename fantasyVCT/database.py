@@ -105,7 +105,7 @@ class Result(Base):
 	game_id: Mapped[int] = mapped_column(nullable=False)
 	match_id: Mapped[int] = mapped_column(nullable=False)
 	event_id: Mapped[int]
-	player_id: Mapped[int] = mapped_column(nullable=False)
+	player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
 	player_acs: Mapped[float]
 	player_kills: Mapped[int]
 	player_deaths: Mapped[int]
