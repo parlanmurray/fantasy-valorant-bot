@@ -96,11 +96,9 @@ class Player(Base):
 	def __repr__(self) -> str:
 		return f"Player(id={self.id!r}, name={self.name!r}, team_id={self.team_id!r})"
 
-
-class Event(Base):
-	__tablename__ = "events"
-
-	# TODO implement events table
+# TODO implement events table
+# class Event(Base):
+# 	__tablename__ = "events"
 
 
 class Result(Base):
