@@ -3,6 +3,7 @@ from fantasyVCT.valorant import Player
 from typing import List
 
 from sqlalchemy import create_engine
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -29,7 +30,8 @@ class DatabaseManager:
 		self.password = password
 		self.database = database
 		self.host = host
-		self.uri_string = f"{db_type}:///{db_user}:{db_password}@localhost/{db_name}"
+		self.type = type
+		self.uri_string = f"{self.type}:///{self.user}:{self.password}@localhost/{self.database}"
 		# "mysql:///<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string)
 
