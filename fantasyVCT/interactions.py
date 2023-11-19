@@ -91,7 +91,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	@commands.command()
 	async def skipdraft(self, ctx):
 		"""Skip past the draft step."""
-		self.bot.status.skip_draft()
+		self.bot.draft_state.skip_draft()
 
 	@commands.command()
 	async def trackevent(self, ctx, event_name: str):
@@ -118,21 +118,21 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	@commands.command()
 	async def startdraft(self, ctx):
 		"""Begin the draft"""
-		if self.bot.status.is_draft_complete():
+		if self.bot.draft_state.is_draft_complete():
 			return await ctx.send("Draft is already complete.")
-		elif self.bot.status.is_draft_started():
+		elif self.bot.draft_state.is_draft_started():
 			return await ctx.send("Draft has already begun.")
 		registered_users = self.bot.db_manager.query_users_discord_id()
 		users_list = list()
 		for user in registered_users:
 			users_list.append(user[0])
-		next_drafter = self.bot.status.start_draft(users_list)
+		next_drafter = self.bot.draft_state.start_draft(users_list)
 		await ctx.send("It is <@!{}>'s turn!".format(next_drafter))
 
 	@commands.command()
 	async def newteam(self, ctx, url: str):
 		"""Upload a team and players to the database using a vlr.gg team url"""
-		if self.bot.status.is_draft_started():
+		if self.bot.draft_state.is_draft_started():
 			return await ctx.send("Cannot add additional teams/players once draft has started.")
 		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
 
@@ -203,10 +203,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		"""Pick up a free agent"""
 		author_id = ctx.message.author.id
 
-		# check status
-		if not self.bot.status.is_draft_started():
+		# check draft state
+		if not self.bot.draft_state.is_draft_started():
 			return await ctx.send("Draft has not started yet!")
-		elif not self.bot.status.can_draft(author_id):
+		elif not self.bot.draft_state.can_draft(author_id):
 			return await ctx.send("It is not your turn yet!")
 
 		# search for player
@@ -243,9 +243,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			self.bot.db_manager.commit()
 			await ctx.invoke(self.bot.get_command('roster'))
 
-			# update status
-			if self.bot.status.is_draft_started() and not self.bot.status.is_draft_complete():
-				next_drafter = self.bot.status.next()
+			# update draft state
+			if self.bot.draft_state.is_draft_started() and not self.bot.draft_state.is_draft_complete():
+				next_drafter = self.bot.draft_state.next()
 				if next_drafter:
 					await ctx.send("It is <@!{}>'s turn to draft!".format(next_drafter))
 				else:
@@ -259,8 +259,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		"""Drop a player from your team"""
 		author_id = ctx.message.author.id
 
-		# check status
-		if not self.bot.status.is_draft_complete():
+		# check draft state
+		if not self.bot.draft_state.is_draft_complete():
 			return await ctx.send("Cannot drop players until initial draft is complete.")
 
 		# search for player

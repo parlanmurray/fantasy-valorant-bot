@@ -1,7 +1,7 @@
 from fantasyVCT.database import DatabaseManager
 from fantasyVCT.scraper import Scraper
 from fantasyVCT.scoring import Cache
-from fantasyVCT.status import Status
+from fantasyVCT.draft_state import DraftState
 
 from discord.ext import commands
 from discord import Intents
@@ -13,7 +13,7 @@ class FantasyValBot(commands.Bot):
 		self.db_manager = DatabaseManager(db_type, db_user, db_password, db_name)
 		self.scraper = Scraper()
 		self.cache = Cache()
-		self.status = Status()
+		self.draft_state = DraftState()
 		# there are several more fields here added by argparse
 		# skip_draft
 		# num_rounds
@@ -25,5 +25,5 @@ class FantasyValBot(commands.Bot):
 		print(f'{self.user} has connected to Discord!')
 		# skip the draft if argument was supplied
 		if self.skip_draft:
-			self.status.skip_draft()
-		self.status.set_num_rounds(self.num_rounds)
+			self.draft_state.skip_draft()
+		self.draft_state.set_num_rounds(self.num_rounds)
