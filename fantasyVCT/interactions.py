@@ -531,3 +531,9 @@ class StatsCog(commands.Cog, name="Stats"):
 			return await ctx.send(buf)
 
 		await ctx.send("A team or player was not found for {}.".format(query_string))
+
+
+async def setup(bot):
+	await bot.add_cog(StatsCog(bot))
+	await bot.add_cog(FantasyCog(bot))
+	await bot.add_cog(ConfigCog(bot))
