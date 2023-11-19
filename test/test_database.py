@@ -33,5 +33,3 @@ def test_update():
         for player in session.scalars(stmt):
             print(player)
         session.rollback()
-
-print(db_manager.uri_string)
