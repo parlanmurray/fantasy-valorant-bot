@@ -28,8 +28,10 @@ def test_update():
     with db_manager.create_session() as session:
         sandy = Player(name="sandy", team_id=None)
         session.add(sandy)
-        stmt = select(Player).where(Player.name.in_("sandy"))
+        stmt = select(Player).where(Player.name.in_(["sandy"]))
         assert session.scalars(stmt)
         for player in session.scalars(stmt):
             print(player)
         session.rollback()
+
+print(db_manager.uri_string)

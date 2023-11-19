@@ -31,8 +31,8 @@ class DatabaseManager:
 		self.database = database
 		self.host = host
 		self.type = type
-		self.uri_string = f"{self.type}:///{self.user}:{self.password}@localhost/{self.database}"
-		# "mysql:///<user>:<password>@localhost/FantasyValProd"
+		self.uri_string = f"{self.type}://{self.user}:{self.password}@localhost/{self.database}"
+		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string)
 
 
