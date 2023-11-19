@@ -30,6 +30,4 @@ def test_update():
         session.add(sandy)
         stmt = select(Player).where(Player.name.in_(["sandy"]))
         assert session.scalars(stmt)
-        for player in session.scalars(stmt):
-            print(player)
         session.rollback()

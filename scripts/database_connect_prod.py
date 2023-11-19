@@ -11,5 +11,7 @@ db_manager = DatabaseManager(
     config["DATABASE_TYPE"],
     config["DATABASE_USER"],
     config["DATABASE_PASSWORD"],
-    config["DATABASE_DEV"]
+    config["DATABASE_PROD"]
 )
+
+session = db_manager.create_session()
