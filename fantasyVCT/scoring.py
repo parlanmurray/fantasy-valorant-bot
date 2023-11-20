@@ -1,4 +1,5 @@
-from fantasyVCT.valorant import Player, add_spaces
+from fantasyVCT.valorant import add_spaces
+from fantasyVCT.database import Result
 
 ACS = 0.05
 KILLS = 2
@@ -127,23 +128,23 @@ class PointCalculator:
 		return rv
 
 	@staticmethod
-	def score(player_stats):
+	def score(player_stats: Result):
 		"""
 		player_stats retrieved from results table:
 		(id, map, game_id, match_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
 		player_2k, player_3k, player_4k, player_5k,
 		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
 		"""
-		rv = player_stats[6] * ACS
-		rv += player_stats[7] * KILLS
-		rv += player_stats[8] * DEATHS
-		rv += player_stats[9] * ASSISTS
-		rv += player_stats[10] * KILLS2
-		rv += player_stats[11] * KILLS3
-		rv += player_stats[12] * KILLS4
-		rv += player_stats[13] * KILLS5
-		rv += player_stats[14] * CLUTCH_V2
-		rv += player_stats[15] * CLUTCH_V3
-		rv += player_stats[16] * CLUTCH_V4
-		rv += player_stats[17] * CLUTCH_V5
+		rv = player_stats.player_acs * ACS
+		rv += player_stats.player_kills * KILLS
+		rv += player_stats.player_deaths * DEATHS
+		rv += player_stats.player_assists * ASSISTS
+		rv += player_stats.player_2k * KILLS2
+		rv += player_stats.player_3k * KILLS3
+		rv += player_stats.player_4k * KILLS4
+		rv += player_stats.player_5k * KILLS5
+		rv += player_stats.player_clutch_v2 * CLUTCH_V2
+		rv += player_stats.player_clutch_v3 * CLUTCH_V3
+		rv += player_stats.player_clutch_v4 * CLUTCH_V4
+		rv += player_stats.player_clutch_v5 * CLUTCH_V5
 		return round(rv, 1)
