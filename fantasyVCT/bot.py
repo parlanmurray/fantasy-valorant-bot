@@ -8,9 +8,9 @@ from discord import Intents
 
 
 class FantasyValBot(commands.Bot):
-	def __init__(self, command_prefix, db_user, db_password, db_name, db_type = "mysql"):
+	def __init__(self, command_prefix):
 		super().__init__(command_prefix, intents=Intents.all())
-		self.db_manager = DatabaseManager(db_type, db_user, db_password, db_name)
+		self.db_manager = None
 		self.scraper = Scraper()
 		self.cache = Cache()
 		self.draft_state = DraftState()
@@ -18,6 +18,14 @@ class FantasyValBot(commands.Bot):
 		# skip_draft
 		# num_rounds
 		# sub_slots
+		# prod
+
+	def configure_db(self, db_user, db_password, db_dev, db_prod, db_type="mysql"):
+		if self.prod:
+			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_prod)
+		else:
+			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_dev)
+		
 
 	async def on_ready(self):
 		"""perform startup procedure
