@@ -15,15 +15,6 @@ class Base(DeclarativeBase):
 	pass
 
 
-def query_precheck(func):
-	def wrapper(*args):
-		if not args[0].is_open():
-			print("Database connection been closed due to timeout. Reopening...")
-		args[0].open()
-		return func(*args)
-	return wrapper
-
-
 class DatabaseManager:
 	def __init__(self, type, user, password, database, host = "127.0.0.1"):
 		self.user = user
@@ -34,18 +25,6 @@ class DatabaseManager:
 		self.uri_string = f"{self.type}://{self.user}:{self.password}@localhost/{self.database}"
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string)
-
-
-	# def open(self):
-	# 	if self.is_open():
-	# 		return
-	# 	self._conn = mysql.connector.connect(user=self.user, password=self.password,
-	# 										 host=self.host, database=self.database)
-
-	# def close(self):
-	# 	if self._conn:
-	# 		self._conn.close()
-	# 		self._conn = None
 
 	def connect(self):
 		"""
