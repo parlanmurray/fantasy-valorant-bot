@@ -7,6 +7,9 @@ import requests
 
 vlr_api = "https://vlrggapi.herokuapp.com/{}"
 
+def test_request_200():
+	assert requests.get(vlr_api.format("match/results")).status_code == 200
+
 def test_results():
 	json = requests.get(vlr_api.format("match/results")).json()
 	assert json['data']

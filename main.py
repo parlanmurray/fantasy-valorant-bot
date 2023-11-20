@@ -48,7 +48,7 @@ async def main():
 	async with bot:
 		# configure and start bot
 		await setup(bot)
-		await fetch_setup(bot)
+		# await fetch_setup(bot)
 		await bot.start(TOKEN)
 
 
