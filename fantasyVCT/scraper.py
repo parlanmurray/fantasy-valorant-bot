@@ -7,10 +7,6 @@ import requests
 vlr_performance = "https://vlr.gg/{}/?game=all&tab=performance"
 vlr_summary = "https://vlr.gg/{}/?game=all"
 
-# TODO verify 200 response from request
-# TODO create a scrape test to autonomously verify that the UI hasn't changed
-# TODO scrape performance tab
-
 
 def getNthDiv(soup, n):
 	"""Return the nth child div tag of soup.
@@ -62,10 +58,10 @@ class Scraper:
 
 		player_stats = html.find_all('td', class_="mod-stat")
 
-		player.set_stat_int("acs", player_stats[0].find('span', class_="mod-both").get_text(strip=True))
-		player.set_stat_int("kills", player_stats[1].find('span', class_="mod-both").get_text(strip=True))
-		player.set_stat_int("deaths", player_stats[2].find('span', class_="mod-both").get_text(strip=True).strip('/'))
-		player.set_stat_int("assists", player_stats[3].find('span', class_="mod-both").get_text(strip=True))
+		player.set_stat_int("acs", player_stats[1].find('span', class_="mod-both").get_text(strip=True))
+		player.set_stat_int("kills", player_stats[2].find('span', class_="mod-both").get_text(strip=True))
+		player.set_stat_int("deaths", player_stats[3].find('span', class_="mod-both").get_text(strip=True).strip('/'))
+		player.set_stat_int("assists", player_stats[4].find('span', class_="mod-both").get_text(strip=True))
 
 		return player
 
