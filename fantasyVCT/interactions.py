@@ -312,7 +312,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			# argument options
 			if member:
 				# search for the member's team
-				user = session.execute(select(db.Player).filter_by(member.id)).scalar_one_or_none()
+				user = session.execute(select(db.User).filter_by(discord_id=member.id)).scalar_one_or_none()
 				if not user or not user.fantasyteam:
 					return await ctx.send(f"{member.name} does not have a registered fantasy team.")
 				fantasy_team = user.fantasyteam
@@ -323,12 +323,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						db.FantasyTeam.name == team,
 						db.FantasyTeam.abbrev == team
 					)
-				))
+				)).scalar_one_or_none()
 				if not fantasy_team:
 					return await ctx.send(f"No fantasy team found for {team}")
 			else:
 				# otherwise, use the author's team
-				author = session.execute(select(db.Player).filter_by(ctx.message.author.id)).scalar_one_or_none()
+				author = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one_or_none()
 				if not author or not author.fantasyteam:
 					return await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
 				fantasy_team = author.fantasyteam
