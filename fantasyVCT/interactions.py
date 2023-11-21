@@ -331,6 +331,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				author = session.execute(select(db.Player).filter_by(ctx.message.author.id)).scalar_one_or_none()
 				if not author or not author.fantasyteam:
 					return await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
+				fantasy_team = author.fantasyteam
 
 			fantasy_players = fantasy_team.fantasyplayers
 
@@ -463,7 +464,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		with self.bot.db_manager.create_session() as session:
 			# get curret scores
-			fteams = session.scalars(select(db.FantasyTeam))
+			fteams = list(session.scalars(select(db.FantasyTeam)))
 			for fteam in fteams:
 				total = 0
 				for fp in fteam.fantasyplayers:
