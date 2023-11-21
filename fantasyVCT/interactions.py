@@ -50,6 +50,10 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	def __init__(self, bot):
 		self.bot = bot
 
+	# Cog error handler
+	async def cog_command_error(self, ctx, error):
+		await ctx.send(f"An error occurred in the Config cog: {error}")
+
 	@commands.command()
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
 		"""Register a team"""
@@ -211,6 +215,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		self.bot = bot
 		self.pos_max = min(10, 6 + bot.sub_slots)
 
+	# Cog error handler
+	async def cog_command_error(self, ctx, error):
+		await ctx.send(f"An error occurred in the Fantasy cog: {error}")
+
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
 		"""Pick up a free agent"""
@@ -292,7 +300,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			# check that player is on user's roster
 			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
-			if dropped_player.fantasyplayer not in user.fantasyteam.players:
+			if dropped_player.fantasyplayer not in user.fantasyteam.fantasyplayers:
 				return await ctx.send(f"No player {dropped_player.name} found on your roster. Try the `!roster` command. Type `!help` for more information.")
 
 			# drop player
@@ -353,16 +361,16 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
 						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if k is 0:
+						if k == 0:
 							player_points = player_points * 1.2
 						if k < 6:
 							total += player_points
 						line += add_spaces(line, 36) + str(round(player_points, 1))
-						if k is 0:
+						if k == 0:
 							line += " (1.2x)"
 						break
 				buf2 += line + "\n"
-				if k is 5:
+				if k == 5:
 					buf2 += "\n"
 			buf += " -- " + str(round(total, 1)) + "\n"
 			line = ""
@@ -430,7 +438,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			
 			# check that the player is on the user's team
 			user = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one_or_none()
-			if set_player not in user.fantasyteam.fantasyplayers:
+			if set_player.fantasyplayer not in user.fantasyteam.fantasyplayers:
 				return await ctx.send(f"{set_player.name} is not on your roster.")
 
 			# check if the desired position is filled
@@ -479,7 +487,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
 						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if fp.position is 0:
+						if fp.position == 0:
 							player_points = player_points * 1.2
 						total = round(total + player_points, 1)
 				fteam.points = total
@@ -498,6 +506,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 class StatsCog(commands.Cog, name="Stats"):
 	def __init__(self, bot):
 		self.bot = bot
+
+	# Cog error handler
+	async def cog_command_error(self, ctx, error):
+		await ctx.send(f"An error occurred in the Stats cog: {error}")
 
 	@commands.command()
 	async def info(self, ctx, *args: str):
