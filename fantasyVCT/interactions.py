@@ -336,7 +336,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			fantasy_players = fantasy_team.fantasyplayers
 
 			# format output
-			buf = "```\n" + fantasy_team.abbrev + " / " + fantasy_team.team
+			buf = "```\n" + fantasy_team.abbrev + " / " + fantasy_team.name
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
