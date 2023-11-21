@@ -138,6 +138,16 @@ class User(Base):
 		return f"User(discord_id={self.discord_id!r}, fantasy_team_id={self.fantasy_team_id!r})"
 
 
+class Position(Base):
+	__tablename__ = "positions"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	position: Mapped[str] = mapped_column(String(20), nullable=False)
+
+	def __repr__(self) -> str:
+		return f"Position(position={self.position!r})"
+
+
 class FantasyPlayer(Base):
 	__tablename__ = "fantasy_players"
 

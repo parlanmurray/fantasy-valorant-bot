@@ -442,7 +442,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				return await ctx.send(f"{set_player.name} is not on your roster.")
 
 			# check if the desired position is filled
-			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasyteam, position=dest_pos)).scalar_one_or_none()
+			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasy_team_id, position=dest_pos)).scalar_one_or_none()
 			if dest_player:
 				# swap positions
 				dest_player.position = set_player.position
