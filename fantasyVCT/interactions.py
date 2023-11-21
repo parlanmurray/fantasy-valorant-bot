@@ -61,7 +61,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		with self.bot.db_manager.create_session() as session:
 			# check that user is not already registered
 			stmt = select(db.User).filter_by(discord_id=author_id)
-			author = session.execute(stmt).scalar_one()
+			author = session.execute(stmt).scalar_one_or_none()
 			if author and author.fantasyteam:
 				return await ctx.send("You have already registered a team.")
 				
@@ -105,7 +105,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	async def trackevent(self, ctx, event_name: str):
 		"""Start tracking matches from an event"""
 		with self.bot.db_manager.create_session() as session:
-			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one()
+			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if event:
 				return await ctx.send(f"{event_name} is already being tracked.")
 
@@ -120,7 +120,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	async def untrackevent(self, ctx, event_name: str):
 		"""Stop tracking new matches from an event"""
 		with self.bot.db_manager.create_session() as session:
-			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one()
+			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if not event:
 				return await ctx.send("{event_name} is not currently being tracked.")
 		
@@ -155,7 +155,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 		with self.bot.db_manager.create_session() as session:
 			# check if team exists in database
-			team = session.execute(select(db.Team).filter_by(name=team_name)).scalar_one()
+			team = session.execute(select(db.Team).filter_by(name=team_name)).scalar_one_or_none()
 			if not team:
 				# team does not exist in database
 				team = db.Team(name=team_name, abbrev=team_abbrev)
@@ -163,7 +163,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			
 			for player_name in player_names:
 				# check that players exist in database
-				player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one()
+				player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 				if not player:
 					# player does not exist in database
 					player = db.Player(name=player_name)
@@ -224,7 +224,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		with self.bot.db_manager.create_session() as session:
 			# search for player
-			drafted_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one()
+			drafted_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not drafted_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
 
@@ -233,7 +233,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				return await ctx.send("{player.name} has already been drafted to a fantasy team.")
 
 			# check that the user has a valorant roster
-			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one()
+			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
 			if not user:
 				return await ctx.send("You are not registered. Please use the `!register` command to register. Type `!help` for more informaiton.")
 			elif not user.fantasyteam:
@@ -286,12 +286,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		
 		with self.bot.db_manager.create_session() as session:
 			# search for player
-			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one()
+			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not dropped_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
 
 			# check that player is on user's roster
-			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one()
+			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
 			if dropped_player.fantasyplayer not in user.fantasyteam.players:
 				return await ctx.send(f"No player {dropped_player.name} found on your roster. Try the `!roster` command. Type `!help` for more information.")
 
@@ -312,7 +312,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			# argument options
 			if member:
 				# search for the member's team
-				user = session.execute(select(db.Player).filter_by(member.id)).scalar_one()
+				user = session.execute(select(db.Player).filter_by(member.id)).scalar_one_or_none()
 				if not user or not user.fantasyteam:
 					return await ctx.send(f"{member.name} does not have a registered fantasy team.")
 				fantasy_team = user.fantasyteam
@@ -328,7 +328,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 					return await ctx.send(f"No fantasy team found for {team}")
 			else:
 				# otherwise, use the author's team
-				author = session.execute(select(db.Player).filter_by(ctx.message.author.id)).scalar_one()
+				author = session.execute(select(db.Player).filter_by(ctx.message.author.id)).scalar_one_or_none()
 				if not author or not author.fantasyteam:
 					return await ctx.send("You do not have a registered fantasy team. Use the `!register` command. Type `!help` for more information.")
 
@@ -423,17 +423,17 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		with self.bot.db_manager.create_session() as session:
 			# check that player exists
-			set_player = session.execute(select(db.Player).filter_by(name=player)).scalar_one()
+			set_player = session.execute(select(db.Player).filter_by(name=player)).scalar_one_or_none()
 			if not set_player:
 				return await ctx.send(f"No player was not found for \"{player}\".")
 			
 			# check that the player is on the user's team
-			user = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one()
+			user = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one_or_none()
 			if set_player not in user.fantasyteam.fantasyplayers:
 				return await ctx.send(f"{set_player.name} is not on your roster.")
 
 			# check if the desired position is filled
-			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasyteam, position=dest_pos)).scalar_one()
+			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasyteam, position=dest_pos)).scalar_one_or_none()
 			if dest_player:
 				# swap positions
 				dest_player.position = set_player.position
@@ -505,7 +505,7 @@ class StatsCog(commands.Cog, name="Stats"):
 
 		with self.bot.db_manager.create_session() as session:
 			# check if query_string is a team
-			team = session.execute(select(db.Team).filter_by(name=query_string)).scalar_one()
+			team = session.execute(select(db.Team).filter_by(name=query_string)).scalar_one_or_none()
 			if team:
 				buf = "```\n" + str(team.name)
 				for player in team.players:
@@ -514,7 +514,7 @@ class StatsCog(commands.Cog, name="Stats"):
 				return await ctx.send(buf)
 
 			# check if query_string is a player
-			player = session.execute(select(db.Player).filter_by(name=query_string)).scalar_one()
+			player = session.execute(select(db.Player).filter_by(name=query_string)).scalar_one_or_none()
 			if player:
 				for row in player.results:
 					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
