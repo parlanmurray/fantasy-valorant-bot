@@ -250,6 +250,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			# find a spot on the roster for the player
 			fantasy_players = user.fantasyteam.fantasyplayers
 			sub_flag = False
+			placed_player = False
 			for i in range(self.pos_max):
 				if sub_flag and i < 6:
 					continue
@@ -270,16 +271,18 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				# commit changes and print new roster info
 				session.flush()
 				session.commit()
-				await ctx.invoke(self.bot.get_command('roster'))
 
-				# update draft status
-				if self.bot.draft_state.is_draft_started() and not self.bot.draft_state.is_draft_complete():
-					next_drafter = self.bot.draft_state.next()
-					if next_drafter:
-						await ctx.send(f"It is <@!{next_drafter}>'s turn to draft!")
-					else:
-						await ctx.send("Initial draft is complete!")
-				return
+		if placed_player:
+			await ctx.invoke(self.bot.get_command('roster'))
+
+			# update draft status
+			if self.bot.draft_state.is_draft_started() and not self.bot.draft_state.is_draft_complete():
+				next_drafter = self.bot.draft_state.next()
+				if next_drafter:
+					await ctx.send(f"It is <@!{next_drafter}>'s turn to draft!")
+				else:
+					await ctx.send("Initial draft is complete!")
+			return
 
 		return await ctx.send("You do not have a spot for this player on your roster. Use `!drop` if you want to make space. Type `!help` for more information.")
 
@@ -308,7 +311,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			session.flush()
 			session.commit()
 
-		await ctx.send(f"{dropped_player.name} is now a free agent!")
+			await ctx.send(f"{dropped_player.name} is now a free agent!")
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
