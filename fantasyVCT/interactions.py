@@ -248,40 +248,36 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				return await ctx.send("You do not have a fantasy team. Please use the `!register` command to create a fantasy team. Type `!help` for more information.")
 			
 			# find a spot on the roster for the player
-			fantasy_players = user.fantasyteam.fantasyplayers
+			drafted_fp = None
 			sub_flag = False
-			placed_player = False
+			placed_flag = False
 			for i in range(self.pos_max):
 				if sub_flag and i < 6:
 					continue
-				for fp in fantasy_players:
+				skip_flag = False
+				for fp in user.fantasyteam.fantasyplayers:
 					if fp.position == i:
 						if i > 0 and i < 6 and drafted_player.team and fp.player.team == drafted_player.team:
 							sub_flag = True
-							break
-					else:
-						continue
+						skip_flag = True
+						break
+						
+				if skip_flag or drafted_fp:
+					continue
 
-				await ctx.send("before add")
-				
 				# place player on roster in current position
 				drafted_fp = db.FantasyPlayer(position=i)
 				drafted_fp.player = drafted_player
 				drafted_fp.fantasyteam = user.fantasyteam
 				session.add(drafted_fp)
-
-				await ctx.send("after add, before commit")
 				
 				# commit changes and print new roster info
 				session.flush()
 				session.commit()
-
-				await ctx.send("after commit")
-
-				placed_player = True
+				placed_flag = True
 				break
 
-		if placed_player:
+		if placed_flag:
 			await ctx.invoke(self.bot.get_command('roster'))
 
 			# update draft status
