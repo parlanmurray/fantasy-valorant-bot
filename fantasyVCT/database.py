@@ -32,11 +32,11 @@ class DatabaseManager:
 		"""
 		return self._engine.connect()
 
-	def create_session(self):
+	def create_session(self, autoflush=False):
 		"""
 		Caller is responsible for Session object.
 		"""
-		return Session(self._engine)
+		return Session(self._engine, autoflush=autoflush)
 
 
 ######################################
