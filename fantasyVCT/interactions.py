@@ -238,7 +238,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			# check that player isn't already on a team
 			if drafted_player.fantasyplayer:
-				return await ctx.send(f"{player.name} has already been drafted to a fantasy team.")
+				return await ctx.send(f"{drafted_player.name} has already been drafted to a fantasy team.")
 
 			# check that the user has a valorant roster
 			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
@@ -261,16 +261,22 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							break
 					else:
 						break
+
+				await ctx.send("before add")
 				
 				# place player on roster in current position
 				drafted_fp = db.FantasyPlayer(position=i)
 				drafted_fp.player = drafted_player
 				drafted_fp.fantasyteam = user.fantasyteam
 				session.add(drafted_fp)
+
+				await ctx.send("after add, before commit")
 				
 				# commit changes and print new roster info
 				session.flush()
 				session.commit()
+
+				await ctx.send("after commit")
 
 		if placed_player:
 			await ctx.invoke(self.bot.get_command('roster'))
@@ -298,12 +304,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		with self.bot.db_manager.create_session() as session:
 			# search for player
 			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
-			if not dropped_player or not dropped_player.fantasyplayer:
+			if not dropped_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
 
 			# check that player is on user's roster
 			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
-			if dropped_player.fantasyplayer not in user.fantasyteam.fantasyplayers:
+			if not dropped_player.fantasyplayer or dropped_player.fantasyplayer not in user.fantasyteam.fantasyplayers:
 				return await ctx.send(f"No player {dropped_player.name} found on your roster. Try the `!roster` command. Type `!help` for more information.")
 
 			# drop player
@@ -312,12 +318,6 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			session.commit()
 
 			await ctx.send(f"{dropped_player.name} is now a free agent!")
-		
-		# TODO remove
-		# TODO check with a new session that the player was deleted
-		with self.bot.db_manager.create_session() as session:
-			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
-			assert not dropped_player.fantasyplayer
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
