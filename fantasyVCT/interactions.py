@@ -260,7 +260,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							sub_flag = True
 							break
 					else:
-						break
+						continue
 
 				await ctx.send("before add")
 				
