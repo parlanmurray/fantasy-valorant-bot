@@ -278,6 +278,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 				await ctx.send("after commit")
 
+				placed_player = True
+				break
+
 		if placed_player:
 			await ctx.invoke(self.bot.get_command('roster'))
 
