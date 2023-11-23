@@ -18,6 +18,10 @@ class FetchCog(commands.Cog, name="Results"):
 	def cog_unload(self):
 		self.get_results.cancel()
 
+	# Cog error handler
+	async def cog_command_error(self, ctx, error):
+		await ctx.send(f"An error occurred in the Fetch cog: {error}")
+
 	# @commands.command()
 	async def update(self, ctx):
 		"""Get new match results early"""
@@ -61,7 +65,7 @@ class FetchCog(commands.Cog, name="Results"):
 		
 		with self.bot.db_manager.create_session() as session:
 			# check that match does not exist in database
-			if session.scalars(select(db.Result).where(db.Result.match_id.in_([vlr_id]))):
+			if session.scalars(select(db.Result).filter_by(match_id=vlr_id)).first():
 				return await ctx.send("This match has already been uploaded.")
 
 			# parse link
@@ -69,9 +73,9 @@ class FetchCog(commands.Cog, name="Results"):
 		
 			# verify teams and players exist in database
 			for map_scraped in results_scraped.maps:
-				for team_scraped in (_map.team1, _map.team2):
+				for team_scraped in (map_scraped.team1, map_scraped.team2):
 					# check that teams exist in database
-					team = session.execute(select(db.Team).filter_by(name=team_scraped.name)).scalar_one()
+					team = session.execute(select(db.Team).filter_by(name=team_scraped.name)).scalar_one_or_none()
 					if not team:
 						# team does not exist in database
 						team = db.Team(name=team_scraped.name, abbrev=team_scraped.abbrev)
@@ -79,7 +83,7 @@ class FetchCog(commands.Cog, name="Results"):
 					
 					for player_scraped in team_scraped.players:
 						# check that player exists in database
-						player = session.execute(select(db.Player).filter_by(name=player_scraped.name)).scalar_one()
+						player = session.execute(select(db.Player).filter_by(name=player_scraped.name)).scalar_one_or_none()
 						if not player:
 							# player does not exist in database
 							player = db.Player(name=player_scraped.name)

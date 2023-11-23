@@ -15,15 +15,6 @@ class Base(DeclarativeBase):
 	pass
 
 
-def query_precheck(func):
-	def wrapper(*args):
-		if not args[0].is_open():
-			print("Database connection been closed due to timeout. Reopening...")
-		args[0].open()
-		return func(*args)
-	return wrapper
-
-
 class DatabaseManager:
 	def __init__(self, type, user, password, database, host = "127.0.0.1"):
 		self.user = user
@@ -35,29 +26,17 @@ class DatabaseManager:
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string)
 
-
-	# def open(self):
-	# 	if self.is_open():
-	# 		return
-	# 	self._conn = mysql.connector.connect(user=self.user, password=self.password,
-	# 										 host=self.host, database=self.database)
-
-	# def close(self):
-	# 	if self._conn:
-	# 		self._conn.close()
-	# 		self._conn = None
-
 	def connect(self):
 		"""
 		Caller is repsonsible for Connection object.
 		"""
 		return self._engine.connect()
 
-	def create_session(self):
+	def create_session(self, autoflush=False):
 		"""
 		Caller is responsible for Session object.
 		"""
-		return Session(self._engine)
+		return Session(self._engine, autoflush=autoflush)
 
 
 ######################################
@@ -157,6 +136,16 @@ class User(Base):
 
 	def __repr__(self) -> str:
 		return f"User(discord_id={self.discord_id!r}, fantasy_team_id={self.fantasy_team_id!r})"
+
+
+class Position(Base):
+	__tablename__ = "positions"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	position: Mapped[str] = mapped_column(String(20), nullable=False)
+
+	def __repr__(self) -> str:
+		return f"Position(position={self.position!r})"
 
 
 class FantasyPlayer(Base):
