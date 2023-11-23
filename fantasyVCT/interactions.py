@@ -454,10 +454,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			if dest_player:
 				# swap positions
 				dest_player.position = set_player.position
-				set_player.position = dest_pos
+				set_player.fantasyplayer.position = dest_pos
 			else:
 				# update source player position
-				set_player.position = dest_pos
+				set_player.fantasyplayer.position = dest_pos
 			
 			# verify that we do not violate the one from each team rule
 			existing_teams = list()
