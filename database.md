@@ -57,6 +57,7 @@ CREATE TABLE results
 	player_clutch_v3 INT,
 	player_clutch_v4 INT,
 	player_clutch_v5 INT,
+	agent VARCHAR(20),
 	FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (player_id) REFERENCES players(id) ON UPDATE CASCADE ON DELETE CASCADE
 );

@@ -1,5 +1,5 @@
 
-from fantasyVCT.valorant import Tab, Player, Team, Map, Match
+import fantasyVCT.database as db
 
 from bs4 import BeautifulSoup
 import requests
@@ -42,101 +42,110 @@ class Scraper:
 		return soup
 
 	@staticmethod
-	def _parse_player_summary(html) -> Player:
+	def _parse_player_summary(html, player):
 		"""Parse an html object for player information, assuming summary tab.
 		
 		Args:
 		    html (BeautifulSoup): html object containing player information
-		
-		Returns:
-		    Player: a Player containing information parsed from html
+			player (db.Player): object to place player information in
 		"""
 		# parse player info
 		name = html.find('td', class_="mod-player").a.div.get_text(strip=True)
-		agent = html.find('td', class_="mod-agents").img['alt']
-		player = Player(name, agent)
+
+		if name != player.name:
+			raise ValueError(f"Player name {name} does not match destination name {player.name}")
+
+		if not player.results:
+			player.results.append(db.Result())
+
+		player.results[0].agent = html.find('td', class_="mod-agents").img['alt']
 
 		player_stats = html.find_all('td', class_="mod-stat")
 
-		player.set_stat_int("acs", player_stats[1].find('span', class_="mod-both").get_text(strip=True))
-		player.set_stat_int("kills", player_stats[2].find('span', class_="mod-both").get_text(strip=True))
-		player.set_stat_int("deaths", player_stats[3].find('span', class_="mod-both").get_text(strip=True).strip('/'))
-		player.set_stat_int("assists", player_stats[4].find('span', class_="mod-both").get_text(strip=True))
-
-		return player
+		player.results[0].player_acs = int(player_stats[1].find('span', class_="mod-both").get_text(strip=True))
+		player.results[0].player_kills = int(player_stats[2].find('span', class_="mod-both").get_text(strip=True))
+		player.results[0].player_deaths = int(player_stats[3].find('span', class_="mod-both").get_text(strip=True).strip('/'))
+		player.results[0].player_assists = int(player_stats[4].find('span', class_="mod-both").get_text(strip=True))
 
 	@staticmethod
-	def _parse_player_performance(html) -> Player:
+	def _parse_player_performance(html, player: db.Player):
 		"""Parse an html object for player information, assuming performance tab.
 		
 		Args:
 		    html (BeautifulSoup): html object containing player information
-		
-		Returns:
-		    Player: a Player containing information parsed from html
+			player (db.Player): object to place player information in
 		"""
 		# parse player info
 		items = html.find_all('td')
 		name = " ".join(items[0].get_text().split()[:-1])
-		player = Player(name)
+		if name != player.name:
+			raise ValueError(f"Player name {name} does not match destination name {player.name}")
 
-		stat_list = {2 : "2k", 3 : "3k", 4 : "4k", 5 : "5k", 7 : "1v2", 8 : "1v3", 9 : "1v4", 10 : "1v5"}
+		# place stats inside a Result
+		if not player.results:
+			player.results.append(db.Result())
+
+		stat_list = {2 : "player_2k", 3 : "player_3k", 4 : "player_4k", 5 : "player_5k", 7 : "player_clutch_v2", 8 : "player_clutch_v3", 9 : "player_clutch_v4", 10 : "player_clutch_v5"}
 		for k, v in stat_list.items():
 			contents = items[k].get_text().split()
 			if contents:
-				player.set_stat_int(v, contents[0])
-
-		return player
+				setattr(player.results[0], v, int(contents[0]))
+			else:
+				setattr(player.results[0], v, 0)
 
 	@staticmethod
-	def _parse_team_summary(html_score, html_players) -> Team:
+	def _parse_team_summary(html_score, html_players, team: db.Team):
 		"""Parse an html object for team information.
 		
 		Args:
 		    html_score (BeautifulSoup): html object containing score information
 		    html_players (BeautifulSoup): html object containing player information
-		
-		Returns:
-		    Team: a Team containing information parsed from html
+			team (db.Team): db.Team object to place team information in
 		"""
 		# parse score info
-		team_name = html_score.find('div', class_="team-name").get_text(strip=True)
-		won = 'mod-win' in html_score.find('div', class_="score")['class']
-		score = int(html_score.find('div', class_="score").get_text(strip=True))
-		team = Team(team_name, won, score)
+		team.name = html_score.find('div', class_="team-name").get_text(strip=True)
+		team.won = 'mod-win' in html_score.find('div', class_="score")['class']
+		team.score = int(html_score.find('div', class_="score").get_text(strip=True))
 
 		# loop through players
 		for row in html_players.tbody.find_all('tr'):
-			team.add_player(Scraper._parse_player_summary(row))
+			name = row.find('td', class_="mod-player").a.div.get_text(strip=True)
+			player = team.get_player(name)
+			if not player:
+				player = db.Player(name=name)
+				team.players.append(player)
+			Scraper._parse_player_summary(row, player)
 			if not team.abbrev:
 				team.abbrev = row.find('td', class_="mod-player").select('a > div')[1].get_text(strip=True)
-		
-		return team
 
 	@staticmethod
-	def __parse_team_performance(html) -> Player:
+	def __parse_team_performance(html, team: db.Map):
 		raise NotImplementedError
 
 	@staticmethod
-	def _parse_map_summary(html) -> Map:
+	def _parse_map_summary(html, map_: db.Map):
 		"""Parse an html object for summary information about a map, assuming
 		summary tab.
 		
 		Args:
 		    html (BeautifulSoup): a div containing information about a single map
-
-		Returns:
-			Map: a Map containing information parsed from html
+			map_ (db.Map): db.Map object to place map information in
 		"""
 		header = html.div
 
 		# build Map
 		map_header = header.find('div', {'class': 'map'})
-		map_name = map_header.get_text().split()[0]
+		map_.name = map_header.get_text().split()[0]
 		game_id = int(html['data-game-id'])
-		map_ = Map(game_id, name=map_name)
+		if game_id != map_.game_id:
+			raise ValueError(f"game_id {game_id} does not match destination game_id {map_.game_id}")
 
 		# build teams
+		if not map_.team1:
+			map_.team1 = db.Team()
+		if not map_.team2:
+			map_.team2 = db.Team()
+
 		scores = header.find_all('div', {'class': 'team'})
 		score1 = scores[0]
 		score2 = scores[1]
@@ -145,42 +154,37 @@ class Scraper:
 		players1 = players[0]
 		players2 = players[1]
 
-		team1 = Scraper._parse_team_summary(score1, players1)
-		team2 = Scraper._parse_team_summary(score2, players2)
+		Scraper._parse_team_summary(score1, players1, map_.team1)
+		Scraper._parse_team_summary(score2, players2, map_.team2)
 
 		# set map pick
 		if not map_header.find('span', class_="picked"):
 			pass
 		elif 'mod-1' in map_header.find('span', class_="picked")['class']:
-			team1.set_map_pick()
+			map_.team1.map_pick = True
 		elif 'mod-2' in map_header.find('span', class_="picked")['class']:
-			team2.set_map_pick()
-
-		# add teams to map
-		map_.set_team(team1)
-		map_.set_team(team2)
-
-		return map_
+			map_.team2.map_pick = True
 
 	@staticmethod
-	def _parse_map_performance(html) -> Map:
+	def _parse_map_performance(html, map_: db.Map):
 		"""Parse an html object for performance information about a map.
 		
 		Args:
 		    html (BeautifulSoup): a div containing informaiton about a single map
-		
-		Returns:
-		    Map: a Map containing information parsed from html
+			map_ (db.Map): the Map object to place data in
 		"""
 		# build Map
 		game_id = int(html['data-game-id'])
-		map_ = Map(game_id)
+		if game_id != map_.game_id:
+			raise ValueError(f"parsed game_id {game_id} does not match destination game_id {map_.game_id}")
 
 		# build teams
 		table = getNthDiv(html, 1).table
 
-		team1 = Team("performance1")
-		team2 = Team("performance2")
+		if not map_.team1:
+			map_.team1 = db.Team()
+		if not map_.team2:
+			map_.team2 = db.Team()
 
 		# parse players
 		i = 0
@@ -188,84 +192,101 @@ class Scraper:
 			if i == 0:
 				pass
 			elif i < 6:
-				team1.add_player(Scraper._parse_player_performance(row))
+				items = row.find_all('td')
+				name = " ".join(items[0].get_text().split()[:-1])
+				player = map_.team1.get_player(name)
+				if not player:
+					player = db.Player(name=name)
+					map_.team1.append(player)
+				Scraper._parse_player_performance(row, player)
 			else:
-				team2.add_player(Scraper._parse_player_performance(row))
+				items = row.find_all('td')
+				name = " ".join(items[0].get_text().split()[:-1])
+				player = map_.team2.get_player(name)
+				if not player:
+					player = db.Player(name=name)
+					map_.team2.append(player)
+				Scraper._parse_player_performance(row, player)
 			i += 1
-
-		map_.set_team(team1)
-		map_.set_team(team2)
 
 		return map_
 
 	@staticmethod
-	def _parse_match_summary(game_id: int) -> Match:
+	def _parse_match_summary(match: db.Match):
 		"""Parse a vlr.gg match page's summary tab.
 		
 		Args:
-		    game_id (int): id of the vlr.gg match to parse
-		
-		Returns:
-		    Match: summary tab match data parsed
+		    match (db.Match): db.Match object to place data in
 		"""
-		soup = Scraper.scrape_url(vlr_summary.format(game_id))
+		soup = Scraper.scrape_url(vlr_summary.format(match.match_id))
 		maps = soup.find_all("div", {"class": "vm-stats-game"})
-		match_summary = Match(game_id, Tab.SUMMARY)
 
 		for map_div in maps:
 			if map_div['data-game-id'] == 'all':
 				continue
 			elif "not available" in map_div.get_text():
 				continue
-			match_summary.add_map(Scraper._parse_map_summary(map_div))
-
-		return match_summary
+			game_id = int(map_div['data-game-id'])
+			map_ = match.get_map(game_id)
+			if not map_:
+				map_ = db.Map(game_id=game_id)
+				match.maps.append(map_)
+			Scraper._parse_map_summary(map_div, map_)
 
 	@staticmethod
-	def _parse_match_performance(game_id: int) -> Match:
+	def _parse_match_performance(match: db.Match):
 		"""Parse a vlr.gg match page's performance tab.
 		
 		Args:
-		    game_id (int): id of the vlr.gg match to parse
-		
-		Returns:
-		    Match: performance tab match data parsed
+			match (db.Match): db.Match object to place data in
 		"""
-		soup = Scraper.scrape_url(vlr_performance.format(game_id))
+		soup = Scraper.scrape_url(vlr_performance.format(match.match_id))
 		maps = soup.find_all('div', {'class': 'vm-stats-game'})
-		match_performance = Match(game_id, Tab.PERFORMANCE)
 
 		for map_div in maps:
 			if map_div['data-game-id'] == 'all':
 				continue
 			elif "not available" in map_div.get_text():
 				continue
-			match_performance.add_map(Scraper._parse_map_performance(map_div))
+			game_id = int(map_div['data-game-id'])
+			map_ = match.get_map(game_id)
+			if not map_:
+				map_ = db.Map(game_id=game_id)
+				match.maps.append(map_)
+			Scraper._parse_map_performance(map_div, map_)
+			for player in map_.team1.players:
+				player.results[0].match_id = match.match_id
+				player.results[0].game_id = game_id
+				player.results[0].map = map_.name
+			for player in map_.team2.players:
+				player.results[0].match_id = match.match_id
+				player.results[0].game_id = game_id
+				player.results[0].map = map_.name
 
-		return match_performance
 		
 	@staticmethod
-	def parse_match(game_id: str) -> Match:
+	def parse_match(match_id: str) -> db.Match:
 		"""Parse a vlr.gg match.
 		
 		Args:
-		    game_id (str): id of the vlr.gg match to parse
+		    match_id (str): id of the vlr.gg match to parse
 		
 		Returns:
-		    Match: all match data parsed
+		    db.Match: all match data parsed
 		
 		Raises:
-		    ValueError: game_id is not parseable as an int
+		    ValueError: match_id is not parseable as an int
 		"""
 		# sanitize input
 		try:
-			game_id_int = int(game_id)
+			match_id_int = int(match_id)
 		except:
-			raise ValueError("Game ID must be parseable as an int")
+			raise ValueError("Match ID must be parseable as an int")
 
-		match_summary = Scraper._parse_match_summary(game_id_int)
-		match_performance = Scraper._parse_match_performance(game_id_int)
-		return match_summary.combine(match_performance)
+		match = db.Match(match_id=match_id)
+		Scraper._parse_match_summary(match)
+		Scraper._parse_match_performance(match)
+		return match
 
 	@staticmethod
 	def parse_team(url: str):
