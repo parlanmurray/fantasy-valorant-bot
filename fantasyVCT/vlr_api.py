@@ -73,6 +73,7 @@ class FetchCog(commands.Cog, name="Results"):
 		
 			# verify teams and players exist in database
 			for map_scraped in results_scraped.maps:
+
 				await ctx.send("```\n" + str(map_scraped) + "\n```")
 				
 				for team_scraped in (map_scraped.team1, map_scraped.team2):
@@ -92,6 +93,7 @@ class FetchCog(commands.Cog, name="Results"):
 							player = db.Player(name=player_scraped.name)
 							session.add(player)
 							session.flush()
+
 						if not player.team:
 							# player is not assigned to a team
 							player.team = team

@@ -10,12 +10,6 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 
-class Tab(Enum):
-	SUMMARY = 1
-	PERFORMANCE = 2
-	COMBINED = 3
-
-
 class Base(DeclarativeBase):
 	pass
 
@@ -41,6 +35,7 @@ class DatabaseManager:
 		"""
 		Caller is responsible for Session object.
 		"""
+
 		return Session(self._engine, autoflush=autoflush)
 
 
@@ -264,7 +259,6 @@ class FantasyPlayer(Base):
 
 	def __repr__(self) -> str:
 		return f"FantasyPlayer(id={self.id!r}, player_id={self.player_id!r}, fantasy_team_id={self.fantasy_team_id!r}, position={self.position!r})"
-
 
 ######################################
 ## Non-Mapped Classes
