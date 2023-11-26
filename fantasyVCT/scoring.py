@@ -1,5 +1,4 @@
-from fantasyVCT.valorant import add_spaces
-from fantasyVCT.database import Result
+from fantasyVCT.database import Result, add_spaces
 
 ACS = 0.05
 KILLS = 2
