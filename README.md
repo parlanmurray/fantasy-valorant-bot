@@ -23,7 +23,10 @@ DATABASE_USER="database_user_here"
 DATABASE_PASSWORD="database_password_here"
 DATABASE_DEV='development_database_name_here'
 DATABASE_PROD='production_database_name_here'
+DATABASE_TYPE='database_type'
 ```
+
+DATABASE_TYPE field is optional, only tested with mysql.
 
 ### Database
 

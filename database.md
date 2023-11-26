@@ -14,6 +14,7 @@ Production database.
 
 ### Stats tables
 
+```sql
 CREATE TABLE teams 
 (
 	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -105,4 +106,5 @@ CREATE TABLE fantasy_players
 	FOREIGN KEY (fantasy_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
 	FOREIGN KEY (position) REFERENCES positions(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
+```
 

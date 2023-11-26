@@ -2,22 +2,30 @@ import datetime
 import re
 import asyncio
 
+import fantasyVCT.database as db
+
 import requests
 from discord.ext import tasks, commands
+from sqlalchemy import select
 
 vlr_api = "https://vlrggapi.vercel.app/{}"
 
 class FetchCog(commands.Cog, name="Results"):
 	def __init__(self, bot):
 		self.bot = bot
-		self.get_results.start()
+		# self.get_results.start()
 
 	def cog_unload(self):
 		self.get_results.cancel()
 
-	@commands.command()
+	# Cog error handler
+	async def cog_command_error(self, ctx, error):
+		await ctx.send(f"An error occurred in the Fetch cog: {error}")
+
+	# @commands.command()
 	async def update(self, ctx):
 		"""Get new match results early"""
+		# TODO out of date, vlr_api does not work, needs updating to sqlalchemy, uncomment command()
 		r = requests.get(vlr_api.format("match/results"))
 		# verify request
 		if r.status_code != 200:
@@ -54,45 +62,50 @@ class FetchCog(commands.Cog, name="Results"):
 		# check that the input is valid
 		if not re.match("^[0-9]{5,6}$", vlr_id):
 			return await ctx.send("Not a valid vlr match number.")
-
-		# check that match does not exist in database
-		if self.bot.db_manager.query_results_all_from_match_id(vlr_id):
-			return await ctx.send("This match has already been uploaded.")
 		
-		# parse link
-		results = self.bot.scraper.parse_match(vlr_id)
+		with self.bot.db_manager.create_session() as session:
+			# check that match does not exist in database
+			if session.scalars(select(db.Result).filter_by(match_id=vlr_id)).first():
+				return await ctx.send("This match has already been uploaded.")
 
-		# verify teams and players exist in database
-		for _map in results.maps:
-			for team in (_map.team1, _map.team2):
-				# check that teams exist in database
-				team_info = self.bot.db_manager.query_team_all_from_name(team.name)
-				if not team_info:
-					# team does not exist in database
-					self.bot.db_manager.insert_team_to_teams(team.name, team.abbrev, "TEST")
-					self.bot.db_manager.commit()
-					team_info = self.bot.db_manager.query_team_all_from_name(team.name)
+			# parse link
+			results_scraped = self.bot.scraper.parse_match(vlr_id)
+		
+			# verify teams and players exist in database
+			for map_scraped in results_scraped.maps:
+				for team_scraped in (map_scraped.team1, map_scraped.team2):
+					# check that teams exist in database
+					team = session.execute(select(db.Team).filter_by(name=team_scraped.name)).scalar_one_or_none()
+					if not team:
+						# team does not exist in database
+						team = db.Team(name=team_scraped.name, abbrev=team_scraped.abbrev)
+						session.add(team)
+					
+					for player_scraped in team_scraped.players:
+						# check that player exists in database
+						player = session.execute(select(db.Player).filter_by(name=player_scraped.name)).scalar_one_or_none()
+						if not player:
+							# player does not exist in database
+							player = db.Player(name=player_scraped.name)
+							session.add(player)
+						if not player.team:
+							# player is not assigned to a team
+							player.team = team
 
-				team_id = team_info[0]
+						# add result to results table
+						# TODO missing actual stats here
+						# TODO i want to parse directly into our db.Result class instead of the valorant.py Player class
+						# for now we are ok with no stats, this is temporary
+						result = db.Result(map=map_scraped.name, game_id=map_scraped.game_id, match_id=vlr_id, player_id=player.id)
+						session.add(result)
 
-				for player in team.players:
-					# check that players exist in database
-					player_info = self.bot.db_manager.query_players_all_from_name(player.name)
-					if not player_info:
-						# player does not exist in database
-						self.bot.db_manager.insert_player_to_players(player.name, team_id)
-						player_info = self.bot.db_manager.query_players_all_from_name(player.name)
-					elif not player_info[2] or player_info[2] != team_id:
-						# player is not assigned to a team
-						self.bot.db_manager.update_players_team_id(player_info[0], team_id)
+			# commmit and send response
+			self.bot.cache.invalidate()
+			session.flush()
+			session.commit()
+			for map_scraped in results_scraped.maps:
+				await ctx.send("```\n" + str(map_scraped) + "\n```")
 
-					# upload data
-					self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, vlr_id, player_info[0], player, None)
-					self.bot.db_manager.commit()
-
-		self.bot.cache.invalidate()
-		for _map in results.maps:
-			await ctx.send("```\n" + str(_map) + "\n```")
 
 	@tasks.loop(hours=1.0)
 	async def get_results(self):
@@ -161,3 +174,7 @@ class FetchCog(commands.Cog, name="Results"):
 	@get_results.before_loop
 	async def before_get_results(self):
 		await self.bot.wait_until_ready()
+
+
+async def fetch_setup(bot):
+	await bot.add_cog(FetchCog(bot))
