@@ -73,6 +73,9 @@ class FetchCog(commands.Cog, name="Results"):
 		
 			# verify teams and players exist in database
 			for map_scraped in results_scraped.maps:
+
+				await ctx.send("```\n" + str(map_scraped) + "\n```")
+				
 				for team_scraped in (map_scraped.team1, map_scraped.team2):
 					# check that teams exist in database
 					team = session.execute(select(db.Team).filter_by(name=team_scraped.name)).scalar_one_or_none()
@@ -80,6 +83,7 @@ class FetchCog(commands.Cog, name="Results"):
 						# team does not exist in database
 						team = db.Team(name=team_scraped.name, abbrev=team_scraped.abbrev)
 						session.add(team)
+						session.flush()
 					
 					for player_scraped in team_scraped.players:
 						# check that player exists in database
@@ -88,23 +92,21 @@ class FetchCog(commands.Cog, name="Results"):
 							# player does not exist in database
 							player = db.Player(name=player_scraped.name)
 							session.add(player)
+							session.flush()
+
 						if not player.team:
 							# player is not assigned to a team
 							player.team = team
 
 						# add result to results table
-						# TODO missing actual stats here
-						# TODO i want to parse directly into our db.Result class instead of the valorant.py Player class
-						# for now we are ok with no stats, this is temporary
-						result = db.Result(map=map_scraped.name, game_id=map_scraped.game_id, match_id=vlr_id, player_id=player.id)
+						result = player_scraped.results[0]
+						result.player = player
 						session.add(result)
+					session.flush()
 
 			# commmit and send response
 			self.bot.cache.invalidate()
-			session.flush()
 			session.commit()
-			for map_scraped in results_scraped.maps:
-				await ctx.send("```\n" + str(map_scraped) + "\n```")
 
 
 	@tasks.loop(hours=1.0)
