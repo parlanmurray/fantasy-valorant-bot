@@ -452,7 +452,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasy_team_id, position=dest_pos)).scalar_one_or_none()
 			if dest_player:
 				# swap positions
-				dest_player.position = set_player.position
+				dest_player.position = set_player.fantasyplayer.position
 				set_player.fantasyplayer.position = dest_pos
 			else:
 				# update source player position
