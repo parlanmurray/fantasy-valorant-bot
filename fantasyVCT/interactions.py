@@ -542,7 +542,7 @@ class StatsCog(commands.Cog, name="Stats"):
 						# game is not in cache, so perform calculation
 						fantasy_points = PointCalculator.score(row)
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
-					total = self.bot.cache.retrieve_total(player.id)
+				total = self.bot.cache.retrieve_total(player.id)
 
 				# format output
 				buf = f"```\n{player.name} - {str(total)}\n"
