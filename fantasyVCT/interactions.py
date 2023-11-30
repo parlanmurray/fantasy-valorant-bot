@@ -591,7 +591,7 @@ class StatsCog(commands.Cog, name="Stats"):
 		with self.bot.db_manager.create_session() as session:
 			# get all players
 			players = list(session.scalars(select(db.Player)))
-			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player))
+			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player), reverse=True)
 			for player in players:
 				line = f"    {player.team.abbrev} {player.name}"
 				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
