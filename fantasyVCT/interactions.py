@@ -565,6 +565,44 @@ class StatsCog(commands.Cog, name="Stats"):
 
 		await ctx.send("A team or player was not found for {}.".format(query_string))
 
+	@commands.command()
+	async def rankplayers(self, ctx):
+		"""List all players by fantasy points in descending order"""
+
+		def get_fantasy_points(cache, player):
+			"""Retrieve the fantasy points value of the given db.Player"""
+			total = cache.retrieve_total(player.id)
+			if total <= 0:
+				for row in player.results:
+					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
+					if not fantasy_points:
+						# game is not in cache, so perform calculation
+						fantasy_points = PointCalculator.score(row)
+						cache.store(player.id, row.game_id, fantasy_points)
+				total = cache.retrieve_total(player.id)
+			return total
+
+		buf = "```Player Rankings\n"
+		buf += add_spaces(buf, 4) + "Player"
+		buf += add_spaces(buf, 30) + "Points"
+		buf += add_spaces(buf, 40) + "Fantasy Team\n"
+
+		with self.bot.db_manager.create_session() as session:
+			# get all players
+			players = list(session.scalars(select(db.Player)))
+			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player))
+			line = ""
+			for player in players:
+				line += f"    {player.team.abbrev} {player.name}"
+				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
+				if player.fantasyplayer:
+					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
+				line += "\n"
+				buf += line
+
+		buf += "```"
+		return await ctx.send(buf)
+
 
 async def setup(bot):
 	await bot.add_cog(StatsCog(bot))
