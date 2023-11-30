@@ -582,7 +582,7 @@ class StatsCog(commands.Cog, name="Stats"):
 				total = cache.retrieve_total(player.id)
 			return total
 
-		buf = "```Player Rankings\n"
+		buf = "```Player Rankings\n\n"
 		buf += add_spaces(buf, 4) + "Player"
 		buf += add_spaces(buf, 30) + "Points"
 		buf += add_spaces(buf, 40) + "Fantasy Team\n"
@@ -597,8 +597,17 @@ class StatsCog(commands.Cog, name="Stats"):
 				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
 				if player.fantasyplayer:
 					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
-				line += "\n"
-				buf += line
+
+				# check to ensure that the message has not exceeded discord's character limit
+				if len(buf + line) > 1900:
+					buf += "```"
+					await ctx.send(buf)
+					buf = "```\nPlayer Rankings (page 2)\n"
+					line2 = add_spaces(buf, 4) + "Player"
+					line2 += add_spaces(buf, 30) + "Points"
+					line2 += add_spaces(buf, 40) + "Fantasy Team\n"
+					buf += line2 + "\n\n"
+				buf += line + "\n"
 
 		buf += "```"
 		return await ctx.send(buf)
