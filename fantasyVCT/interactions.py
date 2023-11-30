@@ -583,15 +583,15 @@ class StatsCog(commands.Cog, name="Stats"):
 			return total
 
 		buf = "```Player Rankings\n\n"
-		buf += add_spaces(buf, 4) + "Player"
-		buf += add_spaces(buf, 30) + "Points"
-		buf += add_spaces(buf, 40) + "Fantasy Team\n"
+		line = add_spaces(buf, 4) + "Player"
+		line += add_spaces(buf, 30) + "Points"
+		line += add_spaces(buf, 40) + "Fantasy Team\n"
+		buf += line
 
 		with self.bot.db_manager.create_session() as session:
 			# get all players
 			players = list(session.scalars(select(db.Player)))
 			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player))
-			line = ""
 			for player in players:
 				line = f"    {player.team.abbrev} {player.name}"
 				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
