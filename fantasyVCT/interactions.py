@@ -582,10 +582,10 @@ class StatsCog(commands.Cog, name="Stats"):
 				total = cache.retrieve_total(player.id)
 			return total
 
-		buf = "```Player Rankings\n\n"
+		buf = "```Player Rankings\n"
 		line = add_spaces("", 4) + "Player"
 		line += add_spaces(line, 30) + "Points"
-		line += add_spaces(line, 40) + "Fantasy Team\n"
+		line += add_spaces(line, 40) + "Fantasy Team\n\n"
 		buf += line
 
 		with self.bot.db_manager.create_session() as session:
