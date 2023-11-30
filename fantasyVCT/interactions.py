@@ -593,7 +593,7 @@ class StatsCog(commands.Cog, name="Stats"):
 			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player))
 			line = ""
 			for player in players:
-				line += f"    {player.team.abbrev} {player.name}"
+				line = f"    {player.team.abbrev} {player.name}"
 				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
 				if player.fantasyplayer:
 					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
