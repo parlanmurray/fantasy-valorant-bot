@@ -572,7 +572,7 @@ class StatsCog(commands.Cog, name="Stats"):
 		def get_fantasy_points(cache, player):
 			"""Retrieve the fantasy points value of the given db.Player"""
 			total = cache.retrieve_total(player.id)
-			if total <= 0:
+			if not total:
 				for row in player.results:
 					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
 					if not fantasy_points:
