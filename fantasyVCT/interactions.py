@@ -1,5 +1,4 @@
 from enum import Enum
-import re
 import typing
 
 from fantasyVCT.scoring import PointCalculator
@@ -453,7 +452,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			dest_player = session.execute(select(db.FantasyPlayer).filter_by(fantasy_team_id=user.fantasy_team_id, position=dest_pos)).scalar_one_or_none()
 			if dest_player:
 				# swap positions
-				dest_player.position = set_player.position
+				dest_player.position = set_player.fantasyplayer.position
 				set_player.fantasyplayer.position = dest_pos
 			else:
 				# update source player position
@@ -543,7 +542,7 @@ class StatsCog(commands.Cog, name="Stats"):
 						# game is not in cache, so perform calculation
 						fantasy_points = PointCalculator.score(row)
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
-					total = self.bot.cache.retrieve_total(player.id)
+				total = self.bot.cache.retrieve_total(player.id)
 
 				# format output
 				buf = f"```\n{player.name} - {str(total)}\n"
@@ -565,6 +564,53 @@ class StatsCog(commands.Cog, name="Stats"):
 				return await ctx.send(buf)
 
 		await ctx.send("A team or player was not found for {}.".format(query_string))
+
+	@commands.command()
+	async def rankplayers(self, ctx):
+		"""List all players by fantasy points in descending order"""
+
+		def get_fantasy_points(cache, player):
+			"""Retrieve the fantasy points value of the given db.Player"""
+			total = cache.retrieve_total(player.id)
+			if not total:
+				for row in player.results:
+					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
+					if not fantasy_points:
+						# game is not in cache, so perform calculation
+						fantasy_points = PointCalculator.score(row)
+						cache.store(player.id, row.game_id, fantasy_points)
+				total = cache.retrieve_total(player.id)
+			return total
+
+		buf = "```Player Rankings\n"
+		line = add_spaces("", 4) + "Player"
+		line += add_spaces(line, 30) + "Points"
+		line += add_spaces(line, 40) + "Fantasy Team\n\n"
+		buf += line
+
+		with self.bot.db_manager.create_session() as session:
+			# get all players
+			players = list(session.scalars(select(db.Player)))
+			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player), reverse=True)
+			for player in players:
+				line = f"    {player.team.abbrev} {player.name}"
+				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
+				if player.fantasyplayer:
+					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
+
+				# check to ensure that the message has not exceeded discord's character limit
+				if len(buf + line) > 1900:
+					buf += "```"
+					await ctx.send(buf)
+					buf = "```\nPlayer Rankings (page 2)\n"
+					line2 = add_spaces(buf, 4) + "Player"
+					line2 += add_spaces(buf, 30) + "Points"
+					line2 += add_spaces(buf, 40) + "Fantasy Team\n"
+					buf += line2 + "\n\n"
+				buf += line + "\n"
+
+		buf += "```"
+		return await ctx.send(buf)
 
 
 async def setup(bot):

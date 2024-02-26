@@ -23,7 +23,7 @@ class DatabaseManager:
 		self.type = type
 		self.uri_string = f"{self.type}://{self.user}:{self.password}@localhost/{self.database}"
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
-		self._engine = create_engine(self.uri_string)
+		self._engine = create_engine(self.uri_string, pool_pre_ping=True)
 
 	def connect(self):
 		"""
