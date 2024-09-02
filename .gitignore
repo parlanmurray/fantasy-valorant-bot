@@ -1,4 +1,6 @@
-.env
 */__pycache__/
 *.egg-info/
 .pytest_cache/
+db/password.txt
+backend/discord_token.txt
+

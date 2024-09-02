@@ -1,9 +1,16 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-bookworm AS build
 
 WORKDIR /code
 COPY requirements.txt /code
 RUN pip3 install -r requirements.txt
 
+CMD [ "/bin/bash" ]
+
+FROM python:3.12-slim-bookworm
+
+COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+
 COPY . .
 
-ENTRYPOINT [ "python3", "main.py" ]
+CMD [ "python3", "main.py" ]
+
