@@ -24,6 +24,8 @@ services:
       - 33060
 
   backend:
+    build:
+      context: backend
     restart: unless-stopped
     secrets:
       - db-password
