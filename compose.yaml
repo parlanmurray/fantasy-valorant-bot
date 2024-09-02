@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mariadb:10-focal
+    command: '--default-authentication-plugin=mysql_native_password'
+    restart: always
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/db-password)" --silent']
+      interval: 30s
+      retries: 5
+      start_period: 30s
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - fvnet
+    environment:
+      - MYSQL_DATABASE_DEV=FantasyValDev
+      - MYSQL_DATABASE_PROD=FantasyValProd
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+      - MYSQL_USER=discord
+    expose:
+      - 3306
+      - 33060
+
+  backend:
+    restart: unless-stopped
+    secrets:
+      - db-password
+      - discord-token
+    ports:
+      - 8000:8000
+    networks:
+      - fvnet
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+volumes:
+  db-data:
+
+secrets:
+  db-password:
+    file: db/password.txt
+  discord-token:
+    file: backend/discord_token.txt
+
+networks:
+  fvnet:
+
+# https://github.com/docker/awesome-compose/tree/master/nginx-flask-mysql
