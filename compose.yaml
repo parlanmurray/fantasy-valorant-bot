@@ -15,10 +15,7 @@ services:
     networks:
       - fvnet
     environment:
-      - MYSQL_DATABASE_DEV=FantasyValDev
-      - MYSQL_DATABASE_PROD=FantasyValProd
       - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
-      - MYSQL_USER=discord
     expose:
       - 3306
       - 33060
@@ -34,6 +31,13 @@ services:
       - 8000:8000
     networks:
       - fvnet
+    environment:
+      - DATABASE_USER=discord
+      - DATABASE_DEV=FantasyValDev
+      - DATABASE_PROD=FantasyValProd
+      - DISCORD_TOKEN_FILE=/run/secrets/discord-token
+      - DATABASE_PASSWORD_FILE=/run/secrets/db-password
+      - DATABASE_TYPE=mysql
     depends_on:
       db:
         condition: service_healthy

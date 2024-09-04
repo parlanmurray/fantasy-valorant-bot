@@ -1,22 +1,52 @@
-
+import os
 
 from fantasyVCT.database import DatabaseManager, Player
 
-from dotenv import dotenv_values
 from sqlalchemy import select
 
 # unit testing for database
 # requires database on host machine
 # run with pytest
 
-config = dotenv_values("../.env")
+TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
+DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
+DB_USER = os.getenv('DATABASE_USER')
+DB_TYPE = os.getenv('DATABASE_TYPE')
+DB_DEV = os.getenv('DATABASE_DEV')
+DB_PROD = os.getenv('DATABASE_PROD')
+DB_PASSWORD = None
+TOKEN = None
 
-db_manager = DatabaseManager(
-    config["DATABASE_TYPE"],
-    config["DATABASE_USER"],
-    config["DATABASE_PASSWORD"],
-    config["DATABASE_DEV"]
-)
+if not TOKEN_FILE:
+	print("No discord token file specified.")
+	exit(1)
+elif not DB_PASSWORD_FILE:
+	print("No database password file specified.")
+	exit(1)
+
+with open(DB_PASSWORD_FILE, 'r') as f:
+	DB_PASSWORD_FILE = f.read()
+
+with open(TOKEN_FILE, 'r') as f:
+	TOKEN = f.read()
+
+if not DB_USER:
+	print("No database user specified.")
+	exit(1)
+elif not DB_PASSWORD:
+	print("No database password specified. Did you create db/password.txt?")
+	exit(1)
+elif not TOKEN:
+	print("No discord token specified. Did you create backend/discord_token.txt?")
+	exit(1)
+elif not DB_DEV:
+	print("No development database specified.")
+	exit(1)
+elif not DB_PROD:
+	print("No production database specified.")
+	exit(1)
+
+db_manager = DatabaseManager(DB_TYPE, DB_USER, DB_PASSWORD, DB_DEV)
 
 
 def test_connect():
