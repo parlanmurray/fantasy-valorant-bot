@@ -4,18 +4,18 @@ services:
     command: '--default-authentication-plugin=mysql_native_password'
     restart: always
     healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/db-password)" --silent']
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/db-root-password)" --silent']
       interval: 30s
       retries: 5
       start_period: 30s
     secrets:
-      - db-password
+      - db-root-password
     volumes:
       - db-data:/var/lib/mysql
     networks:
       - fvnet
     environment:
-      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-root-password
     expose:
       - 3306
       - 33060
@@ -25,7 +25,7 @@ services:
       context: backend
     restart: unless-stopped
     secrets:
-      - db-password
+      - db-disc-password
       - discord-token
     ports:
       - 8000:8000
@@ -36,7 +36,7 @@ services:
       - DATABASE_DEV=FantasyValDev
       - DATABASE_PROD=FantasyValProd
       - DISCORD_TOKEN_FILE=/run/secrets/discord-token
-      - DATABASE_PASSWORD_FILE=/run/secrets/db-password
+      - DATABASE_PASSWORD_FILE=/run/secrets/db-discord-password
       - DATABASE_TYPE=mysql
     depends_on:
       db:
@@ -47,8 +47,10 @@ volumes:
   db-data:
 
 secrets:
-  db-password:
-    file: db/password.txt
+  db-root-password:
+    file: db/root_password.txt
+  db-disc-password:
+    file: db/disc_password.txt
   discord-token:
     file: backend/discord_token.txt
 
