@@ -36,7 +36,7 @@ services:
       - DATABASE_DEV=FantasyValDev
       - DATABASE_PROD=FantasyValProd
       - DISCORD_TOKEN_FILE=/run/secrets/discord-token
-      - DATABASE_PASSWORD_FILE=/run/secrets/db-discord-password
+      - DATABASE_PASSWORD_FILE=/run/secrets/db-disc-password
       - DATABASE_TYPE=mysql
     depends_on:
       db:
@@ -50,7 +50,7 @@ secrets:
   db-root-password:
     file: db/root_password.txt
   db-disc-password:
-    file: db/disc_password.txt
+    file: db/password.txt
   discord-token:
     file: backend/discord_token.txt
 
