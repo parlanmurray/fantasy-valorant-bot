@@ -10,8 +10,9 @@ services:
       start_period: 30s
     secrets:
       - db-root-password
+      - db-disc-password
     volumes:
-      - db-data:/var/lib/mysql
+      - ./db/scripts:/docker-entrypoint-initdb.d
     networks:
       - fvnet
     environment:
@@ -38,13 +39,11 @@ services:
       - DISCORD_TOKEN_FILE=/run/secrets/discord-token
       - DATABASE_PASSWORD_FILE=/run/secrets/db-disc-password
       - DATABASE_TYPE=mysql
+      - DATABASE_HOST=db
+      - DATABASE_PORT=3306
     depends_on:
       db:
         condition: service_healthy
-
-
-volumes:
-  db-data:
 
 secrets:
   db-root-password:

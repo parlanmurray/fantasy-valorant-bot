@@ -8,6 +8,8 @@ CMD [ "/bin/bash" ]
 
 FROM python:3.12-slim-bookworm
 
+RUN apt-get update && apt-get -qq -y install libmariadb-dev
+
 COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 COPY . .
