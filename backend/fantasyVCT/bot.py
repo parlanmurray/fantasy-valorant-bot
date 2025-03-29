@@ -20,11 +20,11 @@ class FantasyValBot(commands.Bot):
 		# sub_slots
 		# prod
 
-	def configure_db(self, db_user, db_password, db_dev, db_prod, db_type="mysql"):
+	def configure_db(self, db_user, db_password, db_dev, db_prod, db_host, db_port, db_type="mysql"):
 		if self.prod:
-			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_prod)
+			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_prod, host=db_host, port=db_port)
 		else:
-			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_dev)
+			self.db_manager = DatabaseManager(db_type, db_user, db_password, db_dev, host=db_host, port=db_port)
 		
 
 	async def on_ready(self):

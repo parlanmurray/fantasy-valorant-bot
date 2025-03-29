@@ -1,4 +1,0 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-description = "Fantasy Valorant as a Discord bot"

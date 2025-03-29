@@ -6,32 +6,52 @@ from fantasyVCT.bot import FantasyValBot
 from fantasyVCT.interactions import setup
 from fantasyVCT.vlr_api import fetch_setup
 
-from dotenv import load_dotenv
 
-
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
+DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
 DB_USER = os.getenv('DATABASE_USER')
-DB_PASSWORD = os.getenv('DATABASE_PASSWORD')
 DB_TYPE = os.getenv('DATABASE_TYPE')
 DB_DEV = os.getenv('DATABASE_DEV')
 DB_PROD = os.getenv('DATABASE_PROD')
+DB_HOST = os.getenv('DATABASE_HOST')
+DB_PORT = os.getenv('DATABASE_PORT')
+DB_PASSWORD = None
+TOKEN = None
+
+if not TOKEN_FILE:
+	print("No discord token file specified.")
+	exit(1)
+elif not DB_PASSWORD_FILE:
+	print("No database password file specified.")
+	exit(1)
+
+with open(DB_PASSWORD_FILE, 'r') as f:
+	DB_PASSWORD = f.read()
+
+with open(TOKEN_FILE, 'r') as f:
+	TOKEN = f.read()
 
 if not DB_USER:
-	print("No database user specified. Check .env file.")
+	print("No database user specified.")
 	exit(1)
 elif not DB_PASSWORD:
-	print("No database password specified. Check .env file.")
+	print("No database password specified. Did you create db/password.txt?")
 	exit(1)
 elif not TOKEN:
-	print("No discord token specified. Check .env file.")
+	print("No discord token specified. Did you create backend/discord_token.txt?")
 	exit(1)
 elif not DB_DEV:
-	print("No development database specified. Check .env file.")
+	print("No development database specified.")
 	exit(1)
 elif not DB_PROD:
-	print("No production database specified. Check .env file.")
+	print("No production database specified.")
 	exit(1)
+
+if not DB_HOST:
+	DB_HOST = "localhost"
+
+if not DB_PORT:
+	DB_PORT = 3306
 
 # parse args
 # these arguments get automatically added to the bot as variables
@@ -45,7 +65,7 @@ bot = FantasyValBot("!")
 
 parser.parse_args(namespace=bot)
 
-bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE)
+bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, DB_HOST, DB_PORT, db_type=DB_TYPE)
 
 async def main():
 	async with bot:

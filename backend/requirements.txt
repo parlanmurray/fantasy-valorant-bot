@@ -1,0 +1,6 @@
+discord
+requests
+bs4
+sqlalchemy
+mysqlclient
+pytest
