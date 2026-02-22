@@ -10,9 +10,10 @@ services:
       start_period: 30s
     secrets:
       - db-root-password
-      - db-disc-password
+      - db-discord-password
     volumes:
-      - ./db/scripts:/docker-entrypoint-initdb.d
+      - db-data:/var/lib/mysql
+      - ./db/scripts:/docker-entrypoint-initdb.d:ro
     networks:
       - fvnet
     environment:
@@ -26,7 +27,7 @@ services:
       context: backend
     restart: unless-stopped
     secrets:
-      - db-disc-password
+      - db-discord-password
       - discord-token
     ports:
       - 8000:8000
@@ -37,19 +38,22 @@ services:
       - DATABASE_DEV=FantasyValDev
       - DATABASE_PROD=FantasyValProd
       - DISCORD_TOKEN_FILE=/run/secrets/discord-token
-      - DATABASE_PASSWORD_FILE=/run/secrets/db-disc-password
+      - DATABASE_PASSWORD_FILE=/run/secrets/db-discord-password
       - DATABASE_TYPE=mysql
       - DATABASE_HOST=db
-      - DATABASE_PORT=3306
     depends_on:
       db:
         condition: service_healthy
 
+
+volumes:
+  db-data:
+
 secrets:
   db-root-password:
     file: db/root_password.txt
-  db-disc-password:
-    file: db/password.txt
+  db-discord-password:
+    file: db/disc_password.txt
   discord-token:
     file: backend/discord_token.txt
 

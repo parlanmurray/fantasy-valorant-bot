@@ -5,3 +5,10 @@ db/disc_password.txt
 db/root_password.txt
 backend/discord_token.txt
 
+### VSCode
+
+.vscode/
+
+### Claude
+.claude/
+scratch/

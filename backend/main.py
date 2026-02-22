@@ -11,10 +11,9 @@ TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
 DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
 DB_USER = os.getenv('DATABASE_USER')
 DB_TYPE = os.getenv('DATABASE_TYPE')
+DB_HOST = os.getenv('DATABASE_HOST', '127.0.0.1')
 DB_DEV = os.getenv('DATABASE_DEV')
 DB_PROD = os.getenv('DATABASE_PROD')
-DB_HOST = os.getenv('DATABASE_HOST')
-DB_PORT = os.getenv('DATABASE_PORT')
 DB_PASSWORD = None
 TOKEN = None
 
@@ -47,12 +46,6 @@ elif not DB_PROD:
 	print("No production database specified.")
 	exit(1)
 
-if not DB_HOST:
-	DB_HOST = "localhost"
-
-if not DB_PORT:
-	DB_PORT = 3306
-
 # parse args
 # these arguments get automatically added to the bot as variables
 parser = argparse.ArgumentParser()
@@ -65,7 +58,7 @@ bot = FantasyValBot("!")
 
 parser.parse_args(namespace=bot)
 
-bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, DB_HOST, DB_PORT, db_type=DB_TYPE)
+bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE, db_host=DB_HOST)
 
 async def main():
 	async with bot:

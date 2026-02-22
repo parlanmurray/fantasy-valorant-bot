@@ -7,6 +7,14 @@ import requests
 vlr_performance = "https://vlr.gg/{}/?game=all&tab=performance"
 vlr_summary = "https://vlr.gg/{}/?game=all"
 
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
+
 
 def getNthDiv(soup, n):
 	"""Return the nth child div tag of soup.
@@ -36,7 +44,8 @@ class Scraper:
 		Returns:
 			BeautifulSoup: Match information scraped from url
 		"""
-		req =  requests.get(url)
+		req = requests.get(url, headers=_HEADERS)
+		req.raise_for_status()
 		soup = BeautifulSoup(req.text, "html.parser")
 
 		return soup
@@ -60,12 +69,14 @@ class Scraper:
 
 		player.results[0].agent = html.find('td', class_="mod-agents").img['alt']
 
+		# ACS has no unique class; it's the second mod-stat column (after Rating)
 		player_stats = html.find_all('td', class_="mod-stat")
-
 		player.results[0].player_acs = int(player_stats[1].find('span', class_="mod-both").get_text(strip=True))
-		player.results[0].player_kills = int(player_stats[2].find('span', class_="mod-both").get_text(strip=True))
-		player.results[0].player_deaths = int(player_stats[3].find('span', class_="mod-both").get_text(strip=True).strip('/'))
-		player.results[0].player_assists = int(player_stats[4].find('span', class_="mod-both").get_text(strip=True))
+
+		# Use specific classes for K/D/A — robust to new columns being added
+		player.results[0].player_kills = int(html.find('td', class_="mod-vlr-kills").find('span', class_="mod-both").get_text(strip=True))
+		player.results[0].player_deaths = int(html.find('td', class_="mod-vlr-deaths").find('span', class_="mod-both").get_text(strip=True))
+		player.results[0].player_assists = int(html.find('td', class_="mod-vlr-assists").find('span', class_="mod-both").get_text(strip=True))
 
 	@staticmethod
 	def _parse_player_performance(html, player: db.Player):

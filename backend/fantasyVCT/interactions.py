@@ -97,7 +97,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			session.commit()
 
 		# reply
-		await ctx.send(f"{team_abbrev} / {team_name} has been registered for {ctx.message.author.mention}")
+		await ctx.send(f"{team_abbrev} {team_name} has been registered for {ctx.message.author.mention}")
 
 	@commands.command()
 	async def skipdraft(self, ctx):

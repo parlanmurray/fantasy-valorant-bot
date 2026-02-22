@@ -1,6 +1,5 @@
 from enum import Enum
 from typing import List
-import urllib
 
 from sqlalchemy import create_engine
 from sqlalchemy import String, ForeignKey
@@ -16,14 +15,13 @@ class Base(DeclarativeBase):
 
 
 class DatabaseManager:
-	def __init__(self, _type, user, password, database, host = "localhost", port = 3306):
+	def __init__(self, type, user, password, database, host = "127.0.0.1"):
 		self.user = user
-		self.password = urllib.parse.quote(password)
+		self.password = password
 		self.database = database
 		self.host = host
-		self.port = port
-		self.type = _type
-		self.uri_string = f"{self.type}://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+		self.type = type
+		self.uri_string = f"{self.type}://{self.user}:{self.password}@{self.host}/{self.database}"
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string, pool_pre_ping=True)
 
