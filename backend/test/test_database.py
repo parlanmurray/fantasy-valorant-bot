@@ -25,7 +25,7 @@ elif not DB_PASSWORD_FILE:
 	exit(1)
 
 with open(DB_PASSWORD_FILE, 'r') as f:
-	DB_PASSWORD_FILE = f.read()
+	DB_PASSWORD = f.read()
 
 with open(TOKEN_FILE, 'r') as f:
 	TOKEN = f.read()
