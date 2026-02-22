@@ -11,6 +11,7 @@ TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
 DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
 DB_USER = os.getenv('DATABASE_USER')
 DB_TYPE = os.getenv('DATABASE_TYPE')
+DB_HOST = os.getenv('DATABASE_HOST', '127.0.0.1')
 DB_DEV = os.getenv('DATABASE_DEV')
 DB_PROD = os.getenv('DATABASE_PROD')
 DB_PASSWORD = None
@@ -57,7 +58,7 @@ bot = FantasyValBot("!")
 
 parser.parse_args(namespace=bot)
 
-bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE)
+bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE, db_host=DB_HOST)
 
 async def main():
 	async with bot:
