@@ -1,5 +1,5 @@
-CREATE DATABASE 'FantasyValDev';
-CREATE DATABASE 'FantasyValProd';
+CREATE DATABASE FantasyValDev;
+CREATE DATABASE FantasyValProd;
 
 CREATE TABLE IF NOT EXISTS FantasyValDev.teams
 (
