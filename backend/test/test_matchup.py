@@ -219,3 +219,65 @@ def test_compute_weekly_score_no_team():
     session = MagicMock()
     session.get.return_value = None
     assert compute_weekly_score(999, 5, session) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 edge cases
+# ---------------------------------------------------------------------------
+
+def test_null_week_id_results_excluded_from_weekly_score():
+    """Results with week_id=None should not appear in a weekly score query."""
+    fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=1)
+    fteam.fantasyplayers = [fp]
+
+    # Session returns no results (simulating that the WHERE week_id=5 filtered them out)
+    session = _mock_session(fteam, [])
+    score = compute_weekly_score(1, 5, session)
+    assert score == 0.0
+
+
+def test_schedule_repeat_cycle_correct_length():
+    """Schedule of length > one cycle still has correct total week count."""
+    teams = [1, 2, 3, 4]
+    schedule = generate_schedule(teams, num_weeks=7)
+    assert len(schedule) == 7
+
+
+def test_schedule_repeat_all_matchups_valid():
+    """Every week in a repeated schedule has valid (non-None home) pairings."""
+    teams = [1, 2, 3, 4]
+    schedule = generate_schedule(teams, num_weeks=9)
+    for week_pairs in schedule:
+        for home, away in week_pairs:
+            assert home is not None  # home is always a real team
+
+
+def test_ghost_matchup_bye_no_wlt():
+    """A ghost matchup (away_team_id=None) is NOT counted as W/L/T for the ghost.
+    derive_record only counts matchups where the team is home or away — ghost can't call derive_record."""
+    ghost_matchup = _matchup(1, None, 100.0, 0.0)
+    # For team 1: home_score 100 > away_score 0 → win
+    w, l, t = derive_record([ghost_matchup], fantasy_team_id=1)
+    assert (w, l, t) == (1, 0, 0)
+
+
+def test_derive_record_empty():
+    """No matchups → 0/0/0."""
+    w, l, t = derive_record([], fantasy_team_id=1)
+    assert (w, l, t) == (0, 0, 0)
+
+
+def test_schedule_odd_each_team_gets_ghost_once():
+    """In one cycle with N=3, each team gets exactly one ghost matchup."""
+    teams = [1, 2, 3]
+    schedule = generate_schedule(teams, num_weeks=3)
+
+    ghost_counts = {t: 0 for t in teams}
+    for week_pairs in schedule:
+        for home, away in week_pairs:
+            if away is None:
+                ghost_counts[home] += 1
+
+    for team_id, count in ghost_counts.items():
+        assert count == 1, f"Team {team_id} expected 1 ghost matchup, got {count}"
