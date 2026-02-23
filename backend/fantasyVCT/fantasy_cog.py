@@ -7,6 +7,7 @@ import discord
 from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
+from fantasyVCT.matchup import compute_weekly_score, derive_record
 from fantasyVCT.utils import add_spaces, POSITIONS
 
 
@@ -246,6 +247,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		with self.bot.db_manager.create_session() as session:
 			fteams = list(session.scalars(select(db.FantasyTeam)))
+
+			# Compute season points
 			for fteam in fteams:
 				total = 0
 				for fp in fteam.fantasyplayers:
@@ -261,11 +264,37 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						total = round(total + player_points, 1)
 				fteam.points = total
 
-			sorted_teams = sorted(fteams, key=lambda k: k.points, reverse=True)
+			# Compute W/L/T if there's an active season
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			team_records = {}
+			if season:
+				season_week_ids = [w.id for w in season.weeks]
+				for fteam in fteams:
+					matchups = list(session.scalars(
+						select(db.Matchup).where(
+							(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
+							db.Matchup.week_id.in_(season_week_ids)
+						)
+					))
+					closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
+					team_records[fteam.id] = derive_record(closed, fteam.id)
 
-			buf = "```\n" + "Standings\n\n"
-			for fteam in sorted_teams:
-				buf += f"\t{fteam.abbrev} / {fteam.name} - {str(fteam.points)}\n"
+			# Sort by wins (if H2H active), then total points
+			if team_records:
+				sorted_teams = sorted(fteams, key=lambda k: (-team_records[k.id][0], -k.points))
+			else:
+				sorted_teams = sorted(fteams, key=lambda k: k.points, reverse=True)
+
+			buf = "```\nStandings\n\n"
+			if team_records:
+				buf += f"  {'Team':<18} {'W':<4}{'L':<4}{'T':<4}{'Pts'}\n\n"
+				for fteam in sorted_teams:
+					w, l, t = team_records[fteam.id]
+					name = f"{fteam.abbrev} / {fteam.name}"
+					buf += f"  {name:<18} {w:<4}{l:<4}{t:<4}{fteam.points}\n"
+			else:
+				for fteam in sorted_teams:
+					buf += f"\t{fteam.abbrev} / {fteam.name} - {str(fteam.points)}\n"
 			buf += "```"
 			await ctx.send(buf)
 
