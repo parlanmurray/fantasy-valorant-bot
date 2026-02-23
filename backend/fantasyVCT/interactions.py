@@ -53,10 +53,9 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	async def cog_command_error(self, ctx, error):
 		await ctx.send(f"An error occurred in the Config cog: {error}")
 
-	@commands.command()
-	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
+	@commands.hybrid_command()
+	async def register(self, ctx, team_abbrev: str, team_name: str):
 		"""Register a team"""
-		team_name = " ".join(team_name_list)
 
 		# get author's unique id
 		author_id = ctx.message.author.id
@@ -99,12 +98,12 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		# reply
 		await ctx.send(f"{team_abbrev} {team_name} has been registered for {ctx.message.author.mention}")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def skipdraft(self, ctx):
 		"""Skip past the draft step."""
 		self.bot.draft_state.skip_draft()
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def trackevent(self, ctx, event_name: str):
 		"""Start tracking matches from an event"""
 		with self.bot.db_manager.create_session() as session:
@@ -119,7 +118,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 		await ctx.send(f"Started tracking {event_name}.")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def untrackevent(self, ctx, event_name: str):
 		"""Stop tracking new matches from an event"""
 		with self.bot.db_manager.create_session() as session:
@@ -133,7 +132,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 		await ctx.send(f"Stopped tracking {event_name}.")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def startdraft(self, ctx):
 		"""Begin the draft"""
 		if self.bot.draft_state.is_draft_complete():
@@ -149,7 +148,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			next_drafter = self.bot.draft_state.start_draft(users_list)
 			await ctx.send(f"It is <@!{next_drafter}>'s turn!")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def newteam(self, ctx, url: str):
 		"""Upload a team and players to the database using a vlr.gg team url"""
 		if self.bot.draft_state.is_draft_started():
@@ -176,7 +175,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			session.commit()
 			return await ctx.invoke(self.bot.get_command('info'), team_name)
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def rules(self, ctx):
 		"""Display rules"""
 		buf = "```\n"
@@ -200,7 +199,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		return await ctx.send(buf)
 
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def scoring(self, ctx):
 		"""Display scoring information"""
 		buf = "```\n"
@@ -218,7 +217,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 	async def cog_command_error(self, ctx, error):
 		await ctx.send(f"An error occurred in the Fantasy cog: {error}")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def draft(self, ctx, player_name: str):
 		"""Pick up a free agent"""
 		author_id = ctx.message.author.id
@@ -290,7 +289,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 		return await ctx.send("You do not have a spot for this player on your roster. Use `!drop` if you want to make space. Type `!help` for more information.")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def drop(self, ctx, player_name: str):
 		"""Drop a player from your team"""
 		author_id = ctx.message.author.id
@@ -317,7 +316,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			await ctx.send(f"{dropped_player.name} is now a free agent!")
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
 		"""Display a fantasy roster"""
 
@@ -388,7 +387,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			buf += buf2 + "```"
 			await ctx.send(buf)
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def freeagents(self, ctx):
 		"""Show all available free agents"""
 
@@ -426,7 +425,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			buf += "```"
 			await ctx.send(buf)
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def set(self, ctx, player: str, position: str):
 		"""Set a player's position in your team"""
 
@@ -473,7 +472,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			session.commit()
 			await ctx.invoke(self.bot.get_command('roster'))
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def standings(self, ctx):
 		"""Show the current fantasy league standings"""
 
@@ -518,10 +517,10 @@ class StatsCog(commands.Cog, name="Stats"):
 	async def cog_command_error(self, ctx, error):
 		await ctx.send(f"An error occurred in the Stats cog: {error}")
 
-	@commands.command()
-	async def info(self, ctx, *args: str):
+	@commands.hybrid_command()
+	async def info(self, ctx, query: str):
 		"""Get information about a player or team"""
-		query_string = " ".join(args)
+		query_string = query
 
 		with self.bot.db_manager.create_session() as session:
 			# check if query_string is a team
@@ -565,7 +564,7 @@ class StatsCog(commands.Cog, name="Stats"):
 
 		await ctx.send("A team or player was not found for {}.".format(query_string))
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def rankplayers(self, ctx):
 		"""List all players by fantasy points in descending order"""
 
