@@ -2,7 +2,8 @@
 import pytest
 from unittest.mock import MagicMock
 
-from fantasyVCT.matchup import generate_schedule, derive_record
+from fantasyVCT.matchup import generate_schedule, compute_weekly_score, derive_record
+from fantasyVCT.scoring import PointCalculator
 import fantasyVCT.database as db
 
 
@@ -138,3 +139,83 @@ def test_derive_record_sort_order():
     wb, lb, tb = derive_record(team_b_matchups, fantasy_team_id=2)
 
     assert wa > wb  # team A has more wins
+
+
+# ---------------------------------------------------------------------------
+# compute_weekly_score (mocked session)
+# ---------------------------------------------------------------------------
+
+def _make_result(player_id, week_id, kills=10, deaths=5, assists=3,
+                 acs=200, k2=1, k3=0, k4=0, k5=0, cv2=0, cv3=0, cv4=0, cv5=0):
+    return db.Result(
+        map="Haven", game_id=1, match_id=1, event_id=1,
+        player_id=player_id, week_id=week_id,
+        player_kills=kills, player_deaths=deaths, player_assists=assists,
+        player_acs=acs, player_2k=k2, player_3k=k3, player_4k=k4, player_5k=k5,
+        player_clutch_v2=cv2, player_clutch_v3=cv3, player_clutch_v4=cv4, player_clutch_v5=cv5,
+        agent="jett"
+    )
+
+
+def _mock_session(fteam, results):
+    session = MagicMock()
+    session.get.return_value = fteam
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = results
+    session.scalars.return_value = mock_scalars
+    return session
+
+
+def test_compute_weekly_score_basic():
+    fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp1 = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=1)
+    fp2 = db.FantasyPlayer(id=2, player_id=20, fantasy_team_id=1, position=2)
+    fteam.fantasyplayers = [fp1, fp2]
+
+    r1 = _make_result(player_id=10, week_id=5, kills=10, deaths=5, assists=3, acs=200)
+    r2 = _make_result(player_id=20, week_id=5, kills=8, deaths=4, assists=2, acs=180)
+
+    session = _mock_session(fteam, [r1, r2])
+    score = compute_weekly_score(1, 5, session)
+    assert score > 0
+
+
+def test_compute_weekly_score_captain_multiplier():
+    """Captain (position=0) should score 1.2× vs same player at position=1."""
+    fteam_cap = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp_cap = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=0)
+    fteam_cap.fantasyplayers = [fp_cap]
+
+    fteam_reg = db.FantasyTeam(id=2, name="Beta", abbrev="BET")
+    fp_reg = db.FantasyPlayer(id=2, player_id=10, fantasy_team_id=2, position=1)
+    fteam_reg.fantasyplayers = [fp_reg]
+
+    result = _make_result(player_id=10, week_id=5)
+
+    session_cap = _mock_session(fteam_cap, [result])
+    session_reg = _mock_session(fteam_reg, [result])
+
+    score_cap = compute_weekly_score(1, 5, session_cap)
+    score_reg = compute_weekly_score(2, 5, session_reg)
+
+    base = PointCalculator.score(result)
+    assert round(score_cap, 4) == round(base * 1.2, 4)
+    assert round(score_reg, 4) == round(base, 4)
+
+
+def test_compute_weekly_score_subs_excluded():
+    """Sub positions (6+) should not count toward weekly score."""
+    fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp_sub = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=6)
+    fteam.fantasyplayers = [fp_sub]
+
+    session = _mock_session(fteam, [])
+    score = compute_weekly_score(1, 5, session)
+    assert score == 0.0
+
+
+def test_compute_weekly_score_no_team():
+    """Returns 0.0 when team not found."""
+    session = MagicMock()
+    session.get.return_value = None
+    assert compute_weekly_score(999, 5, session) == 0.0
