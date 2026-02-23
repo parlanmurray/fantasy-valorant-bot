@@ -1,4 +1,9 @@
+import fantasyVCT.database as db
+from fantasyVCT.scraper import Scraper
+from fantasyVCT.matchup import generate_schedule, compute_weekly_score, derive_record
+
 from discord.ext import commands
+from sqlalchemy import select
 
 
 class MatchupCog(commands.Cog, name="Matchup"):
@@ -11,38 +16,226 @@ class MatchupCog(commands.Cog, name="Matchup"):
 	@commands.command()
 	async def newseason(self, ctx, event_url: str):
 		"""Create a new season from a vlr.gg event URL"""
-		# Phase 2: scrape event page, create Season + Week records
-		await ctx.send("newseason: not yet implemented")
+		try:
+			event_name, num_weeks = Scraper.parse_event_page(event_url)
+		except Exception as e:
+			return await ctx.send(f"Failed to parse event page: {e}")
+
+		with self.bot.db_manager.create_session() as session:
+			# Deactivate any existing active season
+			existing = session.scalars(select(db.Season).where(db.Season.is_active == True)).all()
+			for s in existing:
+				s.is_active = False
+
+			season = db.Season(name=event_name, event_url=event_url, num_weeks=num_weeks, is_active=True)
+			session.add(season)
+			session.flush()
+
+			for i in range(1, num_weeks + 1):
+				session.add(db.Week(season_id=season.id, week_number=i))
+
+			session.commit()
+
+		await ctx.send(f"Season created: **{event_name}** ({num_weeks} weeks). Use `!generateschedule` to build matchups.")
 
 	@commands.command()
 	async def generateschedule(self, ctx):
 		"""Generate a round-robin matchup schedule for the active season"""
-		# Phase 2: round-robin schedule generator
-		await ctx.send("generateschedule: not yet implemented")
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season. Use `!newseason <event_url>` first.")
+
+			fteams = list(session.scalars(select(db.FantasyTeam)))
+			if len(fteams) < 2:
+				return await ctx.send("Need at least 2 registered fantasy teams to generate a schedule.")
+
+			# Clear any existing matchups for this season
+			weeks = list(session.scalars(select(db.Week).where(db.Week.season_id == season.id)))
+			week_map = {w.week_number: w.id for w in weeks}
+
+			for week in weeks:
+				existing = session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)).all()
+				for m in existing:
+					session.delete(m)
+			session.flush()
+
+			team_ids = [t.id for t in fteams]
+			schedule = generate_schedule(team_ids, season.num_weeks)
+
+			for week_idx, pairs in enumerate(schedule):
+				week_number = week_idx + 1
+				week_id = week_map.get(week_number)
+				if not week_id:
+					continue
+				for home_id, away_id in pairs:
+					session.add(db.Matchup(
+						week_id=week_id,
+						home_team_id=home_id,
+						away_team_id=away_id,
+						home_score=0.0,
+						away_score=0.0
+					))
+
+			session.commit()
+
+		team_count = len(fteams)
+		await ctx.send(f"Schedule generated for {team_count} teams across {season.num_weeks} weeks.")
 
 	@commands.command()
 	async def closeweek(self, ctx, week_number: int):
-		"""Finalize scores for a given week"""
-		# Phase 2: persist home_score/away_score to matchups rows
-		await ctx.send("closeweek: not yet implemented")
+		"""Finalize scores for a given week (locks home_score/away_score)"""
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			week = session.scalars(
+				select(db.Week).where(db.Week.season_id == season.id, db.Week.week_number == week_number)
+			).first()
+			if not week:
+				return await ctx.send(f"Week {week_number} not found in active season.")
+
+			matchups = list(session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)))
+			if not matchups:
+				return await ctx.send(f"No matchups found for week {week_number}.")
+
+			for matchup in matchups:
+				matchup.home_score = compute_weekly_score(matchup.home_team_id, week.id, session)
+				if matchup.away_team_id is not None:
+					matchup.away_score = compute_weekly_score(matchup.away_team_id, week.id, session)
+				else:
+					# Ghost: mirror the home team's score (home always beats ghost)
+					matchup.away_score = 0.0
+
+			session.commit()
+
+		await ctx.send(f"Week {week_number} scores locked.")
 
 	@commands.command()
 	async def matchup(self, ctx, week: int = None):
 		"""Show your matchup for the current (or specified) week"""
-		# Phase 4
-		await ctx.send("matchup: not yet implemented")
+		author_id = ctx.message.author.id
+
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			user = session.scalars(select(db.User).where(db.User.discord_id == author_id)).first()
+			if not user or not user.fantasyteam:
+				return await ctx.send("You don't have a registered fantasy team.")
+
+			# Determine week
+			if week is None:
+				# Find the most recent week with uploaded results
+				weeks = sorted(season.weeks, key=lambda w: w.week_number)
+				target_week = weeks[0] if weeks else None
+				for w in weeks:
+					results_exist = session.scalars(
+						select(db.Result).where(db.Result.week_id == w.id)
+					).first()
+					if results_exist:
+						target_week = w
+			else:
+				target_week = session.scalars(
+					select(db.Week).where(db.Week.season_id == season.id, db.Week.week_number == week)
+				).first()
+
+			if not target_week:
+				return await ctx.send("No week data found.")
+
+			my_team = user.fantasyteam
+			matchup_row = session.scalars(
+				select(db.Matchup).where(
+					db.Matchup.week_id == target_week.id,
+					(db.Matchup.home_team_id == my_team.id) | (db.Matchup.away_team_id == my_team.id)
+				)
+			).first()
+
+			if not matchup_row:
+				return await ctx.send(f"No matchup found for week {target_week.week_number}.")
+
+			home_team = matchup_row.home_team
+			away_team = matchup_row.away_team
+
+			home_score = compute_weekly_score(home_team.id, target_week.id, session)
+			away_score = compute_weekly_score(away_team.id, target_week.id, session) if away_team else 0.0
+
+			buf = f"```\nWeek {target_week.week_number} Matchup — {season.name}\n"
+			buf += f"{home_team.abbrev} / {home_team.name}: {home_score} pts\n"
+			if away_team:
+				buf += f"{away_team.abbrev} / {away_team.name}: {away_score} pts\n"
+			else:
+				buf += f"Ghost: {away_score} pts\n"
+			buf += "```"
+			await ctx.send(buf)
 
 	@commands.command()
 	async def schedule(self, ctx):
 		"""Show the full season matchup schedule"""
-		# Phase 4
-		await ctx.send("schedule: not yet implemented")
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			weeks = sorted(season.weeks, key=lambda w: w.week_number)
+			if not weeks:
+				return await ctx.send("No weeks found. Use `!generateschedule`.")
+
+			buf = f"```\n{season.name} — Schedule\n\n"
+			for week in weeks:
+				matchups = list(session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)))
+				buf += f"Week {week.week_number}:\n"
+				for m in matchups:
+					away_label = m.away_team.abbrev if m.away_team else "Ghost"
+					buf += f"  {m.home_team.abbrev} vs {away_label}\n"
+				buf += "\n"
+				if len(buf) > 1800:
+					buf += "```"
+					await ctx.send(buf)
+					buf = "```\n"
+
+			buf += "```"
+			await ctx.send(buf)
 
 	@commands.command()
 	async def record(self, ctx):
 		"""Show W/L/T standings for the active season"""
-		# Phase 4
-		await ctx.send("record: not yet implemented")
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			fteams = list(session.scalars(select(db.FantasyTeam)))
+			records = []
+			for fteam in fteams:
+				matchups = list(session.scalars(
+					select(db.Matchup).where(
+						(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
+						db.Matchup.week_id.in_(select(db.Week.id).where(db.Week.season_id == season.id))
+					)
+				))
+				# Only count closed matchups (where scores have been set)
+				closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
+				w, l, t = derive_record(closed, fteam.id)
+
+				# Total season points for tiebreaking
+				total_pts = sum(
+					compute_weekly_score(fteam.id, wk.id, session)
+					for wk in season.weeks
+				)
+				records.append((fteam, w, l, t, round(total_pts, 1)))
+
+			records.sort(key=lambda r: (-r[1], -r[4]))
+
+			buf = "```\nSeason Standings — " + season.name + "\n\n"
+			buf += "  Team             W   L   T   Pts\n"
+			for fteam, w, l, t, pts in records:
+				name = f"{fteam.abbrev} / {fteam.name}"
+				buf += f"  {name:<16} {w:<4}{l:<4}{t:<4}{pts}\n"
+			buf += "```"
+			await ctx.send(buf)
 
 
 async def setup(bot):
