@@ -1,6 +1,9 @@
 import fantasyVCT.database as db
 from fantasyVCT.scraper import Scraper
-from fantasyVCT.matchup import generate_schedule, compute_weekly_score, derive_record
+from fantasyVCT.matchup import (
+	generate_schedule, compute_weekly_score, derive_record,
+	get_season_chain, compute_round_offset,
+)
 
 from discord.ext import commands
 from sqlalchemy import select
@@ -61,7 +64,13 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			session.flush()
 
 			team_ids = [t.id for t in fteams]
-			schedule = generate_schedule(team_ids, season.num_weeks)
+			# Compute round offset for stage continuation
+			round_offset = 0
+			if season.previous_season_id is not None:
+				chain = get_season_chain(season)
+				total_prev_weeks = sum(s.num_weeks for s in chain[:-1])
+				round_offset = compute_round_offset(total_prev_weeks, len(team_ids))
+			schedule = generate_schedule(team_ids, season.num_weeks, round_offset)
 
 			for week_idx, pairs in enumerate(schedule):
 				week_number = week_idx + 1
@@ -201,11 +210,15 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def record(self, ctx):
-		"""Show W/L/T standings for the active season"""
+		"""Show W/L/T standings across all stages of the active season"""
 		with self.bot.db_manager.create_session() as session:
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 			if not season:
 				return await ctx.send("No active season.")
+
+			# Walk chain to collect all season ids (all stages)
+			chain = get_season_chain(season)
+			all_season_ids = [s.id for s in chain]
 
 			fteams = list(session.scalars(select(db.FantasyTeam)))
 			records = []
@@ -213,29 +226,87 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				matchups = list(session.scalars(
 					select(db.Matchup).where(
 						(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
-						db.Matchup.week_id.in_(select(db.Week.id).where(db.Week.season_id == season.id))
+						db.Matchup.week_id.in_(
+							select(db.Week.id).where(db.Week.season_id.in_(all_season_ids))
+						)
 					)
 				))
-				# Only count closed matchups (where scores have been set)
 				closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
 				w, l, t = derive_record(closed, fteam.id)
 
-				# Total season points for tiebreaking
-				total_pts = sum(
-					compute_weekly_score(fteam.id, wk.id, session)
-					for wk in season.weeks
-				)
+				# Total points across all stages
+				all_weeks = [wk for s in chain for wk in s.weeks]
+				total_pts = sum(compute_weekly_score(fteam.id, wk.id, session) for wk in all_weeks)
 				records.append((fteam, w, l, t, round(total_pts, 1)))
 
 			records.sort(key=lambda r: (-r[1], -r[4]))
 
-			buf = "```\nSeason Standings — " + season.name + "\n\n"
+			header = "Season Standings (all stages)" if len(chain) > 1 else f"Season Standings — {season.name}"
+			buf = f"```\n{header}\n\n"
 			buf += "  Team             W   L   T   Pts\n"
 			for fteam, w, l, t, pts in records:
 				name = f"{fteam.abbrev} / {fteam.name}"
 				buf += f"  {name:<16} {w:<4}{l:<4}{t:<4}{pts}\n"
 			buf += "```"
 			await ctx.send(buf)
+
+
+	@commands.command()
+	async def continueseason(self, ctx, event_url: str):
+		"""Start Stage 2 continuing from the active season (same teams, cumulative record)"""
+		try:
+			event_name, num_weeks = Scraper.parse_event_page(event_url)
+		except Exception as e:
+			return await ctx.send(f"Failed to parse event page: {e}")
+
+		with self.bot.db_manager.create_session() as session:
+			prev_season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not prev_season:
+				return await ctx.send("No active season to continue from.")
+
+			prev_id = prev_season.id
+			prev_season.is_active = False
+
+			new_season = db.Season(
+				name=event_name,
+				event_url=event_url,
+				num_weeks=num_weeks,
+				is_active=True,
+				previous_season_id=prev_id,
+			)
+			session.add(new_season)
+			session.flush()
+
+			for i in range(1, num_weeks + 1):
+				session.add(db.Week(season_id=new_season.id, week_number=i))
+
+			# Track the primary event URL in season_events as well
+			session.add(db.SeasonEvent(season_id=new_season.id, event_url=event_url))
+			session.commit()
+
+		await ctx.send(
+			f"Season continued: **{event_name}** ({num_weeks} weeks). "
+			f"Run `!generateschedule` to build matchups (round offset applied automatically)."
+		)
+
+	@commands.command()
+	async def addevent(self, ctx, event_url: str):
+		"""Add a regional event URL to the active season"""
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			# Try to get the event name for confirmation display
+			try:
+				event_name, _ = Scraper.parse_event_page(event_url)
+			except Exception:
+				event_name = event_url
+
+			session.add(db.SeasonEvent(season_id=season.id, event_url=event_url))
+			session.commit()
+
+		await ctx.send(f"Added event **{event_name}** to active season.")
 
 
 async def setup(bot):

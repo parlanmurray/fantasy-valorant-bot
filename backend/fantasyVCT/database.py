@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy import String, ForeignKey, Boolean
@@ -269,11 +269,29 @@ class Season(Base):
 	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
 	num_weeks: Mapped[int] = mapped_column(nullable=False)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+	previous_season_id: Mapped[Optional[int]] = mapped_column(ForeignKey("seasons.id"), nullable=True)
 
 	weeks: Mapped[List["Week"]] = relationship(back_populates="season")
+	previous_season: Mapped[Optional["Season"]] = relationship(
+		"Season", foreign_keys=[previous_season_id], remote_side="Season.id"
+	)
+	season_event_urls: Mapped[List["SeasonEvent"]] = relationship(back_populates="season")
 
 	def __repr__(self) -> str:
 		return f"Season(id={self.id!r}, name={self.name!r}, num_weeks={self.num_weeks!r}, is_active={self.is_active!r})"
+
+
+class SeasonEvent(Base):
+	__tablename__ = "season_events"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
+	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
+
+	season: Mapped[Season] = relationship(back_populates="season_event_urls")
+
+	def __repr__(self) -> str:
+		return f"SeasonEvent(id={self.id!r}, season_id={self.season_id!r}, event_url={self.event_url!r})"
 
 
 class Week(Base):

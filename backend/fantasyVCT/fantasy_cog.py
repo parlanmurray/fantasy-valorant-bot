@@ -7,7 +7,7 @@ import discord
 from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
-from fantasyVCT.matchup import compute_weekly_score, derive_record
+from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain
 from fantasyVCT.utils import add_spaces, POSITIONS
 
 
@@ -264,16 +264,18 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						total = round(total + player_points, 1)
 				fteam.points = total
 
-			# Compute W/L/T if there's an active season
+			# Compute W/L/T if there's an active season (walk all stages)
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 			team_records = {}
 			if season:
-				season_week_ids = [w.id for w in season.weeks]
+				chain = get_season_chain(season)
+				all_season_ids = [s.id for s in chain]
+				chain_week_ids = select(db.Week.id).where(db.Week.season_id.in_(all_season_ids))
 				for fteam in fteams:
 					matchups = list(session.scalars(
 						select(db.Matchup).where(
 							(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
-							db.Matchup.week_id.in_(season_week_ids)
+							db.Matchup.week_id.in_(chain_week_ids)
 						)
 					))
 					closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]

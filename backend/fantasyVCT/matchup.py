@@ -9,7 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 
-def generate_schedule(team_ids: list[int], num_weeks: int) -> list[list[tuple[int, int | None]]]:
+def generate_schedule(
+    team_ids: list[int], num_weeks: int, round_offset: int = 0
+) -> list[list[tuple[int, int | None]]]:
     """Generate a round-robin matchup schedule.
 
     Returns a list of length num_weeks. Each entry is a list of (home_id, away_id) pairs
@@ -21,6 +23,7 @@ def generate_schedule(team_ids: list[int], num_weeks: int) -> list[list[tuple[in
     Args:
         team_ids: list of fantasy_team ids to schedule
         num_weeks: total number of weeks to schedule
+        round_offset: which round index to start from (for stage continuation)
 
     Returns:
         list[list[tuple[int, int | None]]]: schedule[week_index] = [(home, away), ...]
@@ -29,12 +32,10 @@ def generate_schedule(team_ids: list[int], num_weeks: int) -> list[list[tuple[in
         raise ValueError("Need at least 2 teams to generate a schedule")
 
     teams = list(team_ids)
-    ghost = None
 
     # Pad to even count with a ghost (None) for bye/ghost matchups
     if len(teams) % 2 != 0:
         teams.append(None)  # ghost slot
-        ghost = None
 
     n = len(teams)
     num_rounds = n - 1  # one full round-robin cycle
@@ -63,12 +64,49 @@ def generate_schedule(team_ids: list[int], num_weeks: int) -> list[list[tuple[in
         # Rotate: move last element of rotation to front
         rotation = [rotation[-1]] + rotation[:-1]
 
-    # Build the full schedule, repeating the cycle if needed
+    # Build the full schedule, repeating the cycle if needed, starting at round_offset
     schedule = []
     for week_idx in range(num_weeks):
-        schedule.append(rounds[week_idx % num_rounds])
+        schedule.append(rounds[(round_offset + week_idx) % num_rounds])
 
     return schedule
+
+
+def get_season_chain(season: "db.Season") -> list["db.Season"]:
+    """Walk previous_season_id links back to the root stage.
+
+    Returns list from oldest→newest season.
+
+    Args:
+        season: the current (latest) Season object
+
+    Returns:
+        list[Season]: [root, ..., season]
+    """
+    chain = [season]
+    current = season
+    while current.previous_season is not None:
+        current = current.previous_season
+        chain.append(current)
+    chain.reverse()
+    return chain
+
+
+def compute_round_offset(total_prev_weeks: int, num_teams: int) -> int:
+    """Compute which round to start from for stage continuation.
+
+    Pads odd team counts to even before computing cycle length.
+
+    Args:
+        total_prev_weeks: total weeks played across all previous stages
+        num_teams: number of fantasy teams
+
+    Returns:
+        int: starting round index for the new stage
+    """
+    padded = num_teams if num_teams % 2 == 0 else num_teams + 1
+    num_rounds = padded - 1
+    return total_prev_weeks % num_rounds
 
 
 def compute_weekly_score(fantasy_team_id: int, week_id: int, session: Session) -> float:
