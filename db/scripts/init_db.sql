@@ -251,3 +251,27 @@ ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
 ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
 	ADD CONSTRAINT fk_results_week FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- Multi-stage: link Stage 2 back to Stage 1
+ALTER TABLE FantasyValDev.seasons
+	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,
+	ADD CONSTRAINT fk_prev_season_dev FOREIGN KEY (previous_season_id) REFERENCES seasons(id);
+
+ALTER TABLE FantasyValProd.seasons
+	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,
+	ADD CONSTRAINT fk_prev_season_prod FOREIGN KEY (previous_season_id) REFERENCES seasons(id);
+
+-- Multi-region: map a season to one or more VCT event URLs
+CREATE TABLE IF NOT EXISTS FantasyValDev.season_events (
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.season_events (
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
