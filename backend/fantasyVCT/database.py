@@ -50,7 +50,7 @@ class Team(Base):
 	id: Mapped[int] = mapped_column(primary_key=True)
 	name: Mapped[str] = mapped_column(String(50), nullable=False)
 	abbrev: Mapped[str] = mapped_column(String(10), nullable=False)
-	region: Mapped[str] = mapped_column(String[10])
+	region: Mapped[str] = mapped_column(String(10))
 
 	# relationship fields
 	players: Mapped[List["Player"]] = relationship(back_populates="team")
@@ -171,7 +171,7 @@ class Result(Base):
 	player_clutch_v3: Mapped[int]
 	player_clutch_v4: Mapped[int]
 	player_clutch_v5: Mapped[int]
-	agent: Mapped[str] = mapped_column(String[20])
+	agent: Mapped[str] = mapped_column(String(20))
 
 	# relationship fields
 	player: Mapped[Player] = relationship(back_populates="results")
