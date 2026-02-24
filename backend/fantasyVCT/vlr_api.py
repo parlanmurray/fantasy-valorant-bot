@@ -56,7 +56,7 @@ class FetchCog(commands.Cog, name="Results"):
 
 				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def upload(self, ctx, vlr_id: str):
 		"""Upload a vlr.gg match"""
 		# check that the input is valid

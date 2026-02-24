@@ -31,6 +31,8 @@ class FantasyValBot(commands.Bot):
 		"""perform startup procedure
 		"""
 		print(f'{self.user} has connected to Discord!')
+		await self.tree.sync()
+		print("Slash commands synced.")
 		# skip the draft if argument was supplied
 		if self.skip_draft:
 			self.draft_state.skip_draft()
