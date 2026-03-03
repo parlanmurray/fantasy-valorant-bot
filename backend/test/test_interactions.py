@@ -104,7 +104,7 @@ async def test_register_already_registered(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "NEW", "New", "Team")
+	await cog.register.callback(cog, ctx, "NEW", "New Team")
 	ctx.send.assert_awaited_once_with("You have already registered a team.")
 
 
@@ -114,7 +114,7 @@ async def test_register_name_taken(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "Team", "Alpha")
+	await cog.register.callback(cog, ctx, "TST", "Team Alpha")
 	sent = ctx.send.call_args[0][0]
 	assert "Team Alpha" in sent
 	assert "taken" in sent
@@ -126,7 +126,7 @@ async def test_register_abbrev_taken(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "My", "Team")
+	await cog.register.callback(cog, ctx, "TST", "My Team")
 	sent = ctx.send.call_args[0][0]
 	assert "TST" in sent
 	assert "taken" in sent
@@ -134,7 +134,7 @@ async def test_register_abbrev_taken(mock_bot, ctx, engine):
 
 async def test_register_success(mock_bot, ctx):
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "Test", "Team")
+	await cog.register.callback(cog, ctx, "TST", "Test Team")
 	ctx.send.assert_awaited_once()
 	sent = ctx.send.call_args[0][0]
 	assert "TST" in sent
