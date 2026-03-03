@@ -498,15 +498,45 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						total = round(total + player_points, 1)
 				fteam.points = total
 
-			sorted_teams = sorted(fteams, key=lambda k: k.points, reverse=True)
+			# compute optimal scores
+			optimal_scores = {fteam.id: _optimal_score(fteam, self.bot.cache) for fteam in fteams}
+
+			sorted_teams = sorted(fteams, key=lambda k: optimal_scores[k.id], reverse=True)
 
 			# format output
+			any_suboptimal = any(optimal_scores[t.id] != t.points for t in sorted_teams)
 			buf = "```\n" + "Standings\n\n"
 			for fteam in sorted_teams:
-				# team: (id, name, abbrev, score)
-				buf += f"\t{fteam.abbrev} / {fteam.name} - {str(fteam.points)}\n"
+				optimal = optimal_scores[fteam.id]
+				marker = "*" if optimal != fteam.points else ""
+				buf += f"\t{fteam.abbrev} / {fteam.name} - {optimal}{marker}\n"
+			if any_suboptimal:
+				buf += "\n* Lineup not yet optimized. Use !set to change captain/active players."
 			buf += "```"
 			await ctx.send(buf)
+
+
+def _optimal_score(fteam, cache) -> float:
+	"""Optimal score: try each player as captain, greedily pick best 5 active with distinct pro teams."""
+	players = [(cache.retrieve_total(fp.player.id), fp.player.team_id) for fp in fteam.fantasyplayers]
+	if not players:
+		return 0.0
+	players.sort(reverse=True)
+	best = 0.0
+	for i, (cap_score, _) in enumerate(players):
+		# pick best 5 active from remaining with distinct pro teams
+		active, used_teams = [], set()
+		for j, (score, team_id) in enumerate(players):
+			if j == i or team_id in used_teams:
+				continue
+			active.append(score)
+			used_teams.add(team_id)
+			if len(active) == 5:
+				break
+		total = round(cap_score * 1.2 + sum(active), 1)
+		if total > best:
+			best = total
+	return best
 
 
 class StatsCog(commands.Cog, name="Stats"):
