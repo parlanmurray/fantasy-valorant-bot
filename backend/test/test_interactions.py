@@ -210,6 +210,55 @@ async def test_standings_shows_team(mock_bot, ctx, engine):
 	assert "MyTeam" in sent
 
 
+# ── StatsCog.rankplayers() ────────────────────────────────────────────────────
+
+async def test_rankplayers_picks_up_new_games_after_stale_total(mock_bot, ctx, engine):
+	# Regression: get_fantasy_points used `if not total` guard, so new games
+	# added after a stale total was cached were never fetched from the DB.
+	from fantasyVCT.scoring import Cache
+	from fantasyVCT.database import Result
+
+	def _result(pid, eid, game_id, kills):
+		return Result(player_id=pid, game_id=game_id, match_id="m1",
+			map="Haven", event_id=eid, agent="Jett",
+			player_acs=0, player_kills=kills, player_deaths=0, player_assists=0,
+			player_2k=0, player_3k=0, player_4k=0, player_5k=0,
+			player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0)
+
+	with SASession(engine) as s:
+		event = db.Event(name="TestEvent")
+		team = db.Team(name="ProTeam", abbrev="PRO", region="na")
+		s.add_all([event, team])
+		s.flush()
+		player = db.Player(name="TestPlayer", team_id=team.id)
+		s.add(player)
+		s.flush()
+		s.add(_result(player.id, event.id, game_id=1, kills=10))
+		s.add(_result(player.id, event.id, game_id=2, kills=5))
+		s.commit()
+		pid, eid = player.id, event.id
+
+	# Simulate stale cache state: old games cached, total rebuilt to stale value
+	cache = Cache()
+	cache.store(pid, 1, 20.0)
+	cache.store(pid, 2, 10.0)
+	cache.retrieve_total(pid)   # caches 30.0
+	cache.invalidate()
+	cache.retrieve_total(pid)   # rebuilds stale 30.0 from old entries
+
+	# New game added to DB (simulating an upload)
+	with SASession(engine) as s:
+		s.add(_result(pid, eid, game_id=3, kills=20))
+		s.commit()
+
+	mock_bot.cache = cache
+	cog = StatsCog(mock_bot)
+	await cog.rankplayers.callback(cog, ctx)
+	sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+	# game 3: 20 kills * 2 = 40.0; total should be 20+10+40 = 70.0, not stale 30.0
+	assert "70.0" in sent
+
+
 # ── _optimal_score ────────────────────────────────────────────────────────────
 
 def _make_fp(player_id, team_id):

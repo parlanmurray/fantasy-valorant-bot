@@ -126,3 +126,30 @@ class TestCache:
         cache.store(2, 101, 99.0)
         assert cache.retrieve_total(1) == 10.0
         assert cache.retrieve_total(2) == 99.0
+
+    def test_store_invalidates_cached_total(self):
+        # Bug fix: store() must reset the cached total so retrieve_total
+        # recalculates after new games are added.
+        cache = Cache()
+        cache.store(1, 101, 10.0)
+        cache.store(1, 102, 8.0)
+        assert cache.retrieve_total(1) == 18.0  # total cached as 18.0
+        # new game arrives
+        cache.store(1, 103, 42.0)
+        # total must reflect all three games, not the stale 18.0
+        assert cache.retrieve_total(1) == 60.0
+
+    def test_stale_total_not_returned_after_new_game(self):
+        # Simulates the upload → retrieve_total → store new game → retrieve_total
+        # sequence that triggered the !info and !standings stale total bug.
+        cache = Cache()
+        cache.store(1, 101, 11.2)
+        cache.store(1, 102, 8.1)
+        cache.retrieve_total(1)   # caches 19.3 at key -1
+        cache.invalidate()        # clears -1 back to None
+        cache.retrieve_total(1)   # rebuilds from old entries → 19.3 stored at -1
+        # new games added (as !info / !standings loop would do)
+        cache.store(1, 103, 42.4)
+        cache.store(1, 104, 23.9)
+        # must return full total, not the stale 19.3
+        assert cache.retrieve_total(1) == 85.6

@@ -599,16 +599,10 @@ class StatsCog(commands.Cog, name="Stats"):
 
 		def get_fantasy_points(cache, player):
 			"""Retrieve the fantasy points value of the given db.Player"""
-			total = cache.retrieve_total(player.id)
-			if not total:
-				for row in player.results:
-					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
-					if not fantasy_points:
-						# game is not in cache, so perform calculation
-						fantasy_points = PointCalculator.score(row)
-						cache.store(player.id, row.game_id, fantasy_points)
-				total = cache.retrieve_total(player.id)
-			return total
+			for row in player.results:
+				if not cache.retrieve(player.id, row.game_id):
+					cache.store(player.id, row.game_id, PointCalculator.score(row))
+			return cache.retrieve_total(player.id)
 
 		buf = "```Player Rankings\n"
 		line = add_spaces("", 4) + "Player"
