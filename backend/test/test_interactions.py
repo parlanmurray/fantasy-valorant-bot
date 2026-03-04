@@ -291,3 +291,23 @@ class TestOptimalScore:
 		# total = 1000×1.2 + 270 = 1200+270 = 1470
 		result = _optimal_score(_make_fteam(fps), cache)
 		assert result == 1470.0
+
+	def test_sub_considered_for_optimal(self):
+		# A sub (high scorer) should displace a weaker active player in the optimal lineup
+		# Active roster: positions 0-5 (captain + 5 players)
+		# Sub: position 6 with a higher score than one of the active players
+		fps = [
+			_make_fp(0, 1),  # score 100, T1 — captain
+			_make_fp(1, 2),  # score 80
+			_make_fp(2, 3),  # score 70
+			_make_fp(3, 4),  # score 60
+			_make_fp(4, 5),  # score 50
+			_make_fp(5, 6),  # score 10 — weak active player
+			_make_fp(6, 7),  # score 90 — strong sub, should replace player 5
+		]
+		scores = {0: 100, 1: 80, 2: 70, 3: 60, 4: 50, 5: 10, 6: 90}
+		cache = _make_cache(scores)
+		# Without sub: captain=0(100), active=[80,70,60,50,10]=270, total=120+270=390
+		# With sub:    captain=0(100), active=[90,80,70,60,50]=350, total=120+350=470
+		result = _optimal_score(_make_fteam(fps), cache)
+		assert result == 470.0

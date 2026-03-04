@@ -482,16 +482,15 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			for fteam in fteams:
 				total = 0
 				for fp in fteam.fantasyplayers:
-					# don't count subs
+					# populate cache for all players including subs (needed for optimal score)
+					# TODO optimize this out
+					for row in fp.player.results:
+						fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
+						if not fantasy_points:
+							fantasy_points = PointCalculator.score(row)
+							self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
+					# don't count subs in actual score
 					if fp.position < 6:
-						# update player information from results
-						# TODO optimize this out
-						for row in fp.player.results:
-							fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
-							if not fantasy_points:
-								# game is not in cache, so perform calculation
-								fantasy_points = PointCalculator.score(row)
-								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
 						player_points = self.bot.cache.retrieve_total(fp.player.id)
 						if fp.position == 0:
 							player_points = player_points * 1.2
