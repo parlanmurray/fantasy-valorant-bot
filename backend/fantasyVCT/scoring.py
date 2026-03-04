@@ -45,6 +45,7 @@ class Cache:
 		if not player_id in self._store:
 			self._store[player_id] = {-1 : None}
 		self._store[player_id][key] = value
+		self._store[player_id][-1] = None
 
 	def retrieve(self, player_id: int, key: int = None):
 		"""Retrieve a specific value or all values associated with a player id.
