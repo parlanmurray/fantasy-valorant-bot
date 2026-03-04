@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session as SASession
 import fantasyVCT.database as db
 from fantasyVCT.database import Base
 from fantasyVCT.interactions import (
-	ConfigCog, FantasyCog, StatsCog, Category, add_spaces, POSITIONS,
+	ConfigCog, FantasyCog, StatsCog, Category, add_spaces, POSITIONS, _optimal_score,
 )
 
 
@@ -104,7 +104,7 @@ async def test_register_already_registered(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "NEW", "New", "Team")
+	await cog.register.callback(cog, ctx, "NEW", "New Team")
 	ctx.send.assert_awaited_once_with("You have already registered a team.")
 
 
@@ -114,7 +114,7 @@ async def test_register_name_taken(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "Team", "Alpha")
+	await cog.register.callback(cog, ctx, "TST", "Team Alpha")
 	sent = ctx.send.call_args[0][0]
 	assert "Team Alpha" in sent
 	assert "taken" in sent
@@ -126,7 +126,7 @@ async def test_register_abbrev_taken(mock_bot, ctx, engine):
 		s.commit()
 
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "My", "Team")
+	await cog.register.callback(cog, ctx, "TST", "My Team")
 	sent = ctx.send.call_args[0][0]
 	assert "TST" in sent
 	assert "taken" in sent
@@ -134,7 +134,7 @@ async def test_register_abbrev_taken(mock_bot, ctx, engine):
 
 async def test_register_success(mock_bot, ctx):
 	cog = ConfigCog(mock_bot)
-	await cog.register.callback(cog, ctx, "TST", "Test", "Team")
+	await cog.register.callback(cog, ctx, "TST", "Test Team")
 	ctx.send.assert_awaited_once()
 	sent = ctx.send.call_args[0][0]
 	assert "TST" in sent
@@ -208,3 +208,106 @@ async def test_standings_shows_team(mock_bot, ctx, engine):
 	sent = ctx.send.call_args[0][0]
 	assert "MYT" in sent
 	assert "MyTeam" in sent
+
+
+# ── _optimal_score ────────────────────────────────────────────────────────────
+
+def _make_fp(player_id, team_id):
+	"""Build a mock FantasyPlayer with a player stub."""
+	fp = MagicMock()
+	fp.player.id = player_id
+	fp.player.team_id = team_id
+	return fp
+
+
+def _make_fteam(fps):
+	ft = MagicMock()
+	ft.fantasyplayers = fps
+	return ft
+
+
+def _make_cache(scores: dict):
+	cache = MagicMock()
+	cache.retrieve_total.side_effect = lambda pid: scores.get(pid, 0)
+	return cache
+
+
+class TestOptimalScore:
+	def test_empty_team(self):
+		ft = _make_fteam([])
+		assert _optimal_score(ft, _make_cache({})) == 0.0
+
+	def test_all_distinct_teams_best_captain(self):
+		# 6 players, each on different pro teams; best scorer should become captain
+		fps = [_make_fp(i, i) for i in range(6)]
+		scores = {0: 100, 1: 80, 2: 60, 3: 40, 4: 20, 5: 10}
+		cache = _make_cache(scores)
+		result = _optimal_score(_make_fteam(fps), cache)
+		# captain=100×1.2 + 80+60+40+20+10 = 120+210 = 330
+		assert result == 330.0
+
+	def test_suboptimal_captain_triggers_asterisk(self):
+		# 6 players distinct teams; captain is worst scorer → optimal > actual
+		fps = [_make_fp(i, i) for i in range(6)]
+		scores = {0: 10, 1: 80, 2: 60, 3: 40, 4: 20, 5: 100}
+		# optimal: captain=player5(100) → 100×1.2 + 80+60+40+20+10 = 120+210 = 330
+		cache = _make_cache(scores)
+		result = _optimal_score(_make_fteam(fps), cache)
+		assert result == 330.0
+
+	def test_captain_can_share_team_with_active(self):
+		# Captain (pos 0) is exempt from team restriction; captain and one active can share team 99
+		fps = [
+			_make_fp(0, 99),  # score 100, team 99 → captain
+			_make_fp(1, 99),  # score 90, team 99 → allowed as active (captain exempt)
+			_make_fp(2, 2),   # score 80
+			_make_fp(3, 3),   # score 70
+			_make_fp(4, 4),   # score 60
+			_make_fp(5, 5),   # score 50
+			_make_fp(6, 6),   # score 40
+		]
+		scores = {0: 100, 1: 90, 2: 80, 3: 70, 4: 60, 5: 50, 6: 40}
+		cache = _make_cache(scores)
+		# captain=0(100,T99), active: 1(90,T99)✓, 2(80,T2)✓, 3(70,T3)✓, 4(60,T4)✓, 5(50,T5)✓
+		# total = 100×1.2 + 90+80+70+60+50 = 120+350 = 470
+		result = _optimal_score(_make_fteam(fps), cache)
+		assert result == 470.0
+
+	def test_two_same_team_active_not_both_chosen(self):
+		# Players 4 and 5 share team 99; player 0 dominates as captain (large gap)
+		# so both T99 players compete for active slots — only the better one is chosen
+		fps = [
+			_make_fp(0, 1),   # score 1000, T1 — dominant captain
+			_make_fp(1, 2),   # score 80
+			_make_fp(2, 3),   # score 70
+			_make_fp(3, 4),   # score 60
+			_make_fp(4, 99),  # score 50, T99
+			_make_fp(5, 99),  # score 40, T99 — same team, cannot both be active
+			_make_fp(6, 5),   # score 10
+		]
+		scores = {0: 1000, 1: 80, 2: 70, 3: 60, 4: 50, 5: 40, 6: 10}
+		cache = _make_cache(scores)
+		# captain=0(1000): active=[80,70,60,50(T99),skip 40(T99),10]=[80,70,60,50,10]=270
+		# total = 1000×1.2 + 270 = 1200+270 = 1470
+		result = _optimal_score(_make_fteam(fps), cache)
+		assert result == 1470.0
+
+	def test_sub_considered_for_optimal(self):
+		# A sub (high scorer) should displace a weaker active player in the optimal lineup
+		# Active roster: positions 0-5 (captain + 5 players)
+		# Sub: position 6 with a higher score than one of the active players
+		fps = [
+			_make_fp(0, 1),  # score 100, T1 — captain
+			_make_fp(1, 2),  # score 80
+			_make_fp(2, 3),  # score 70
+			_make_fp(3, 4),  # score 60
+			_make_fp(4, 5),  # score 50
+			_make_fp(5, 6),  # score 10 — weak active player
+			_make_fp(6, 7),  # score 90 — strong sub, should replace player 5
+		]
+		scores = {0: 100, 1: 80, 2: 70, 3: 60, 4: 50, 5: 10, 6: 90}
+		cache = _make_cache(scores)
+		# Without sub: captain=0(100), active=[80,70,60,50,10]=270, total=120+270=390
+		# With sub:    captain=0(100), active=[90,80,70,60,50]=350, total=120+350=470
+		result = _optimal_score(_make_fteam(fps), cache)
+		assert result == 470.0
