@@ -360,3 +360,95 @@ class TestOptimalScore:
 		# With sub:    captain=0(100), active=[90,80,70,60,50]=350, total=120+350=470
 		result = _optimal_score(_make_fteam(fps), cache)
 		assert result == 470.0
+
+
+# ── Unicode / non-ASCII handling ──────────────────────────────────────────────
+
+def _seed_unicode_player(engine):
+	"""Insert a BBL team with Rosé as a player. Returns (team_id, player_id)."""
+	with SASession(engine) as s:
+		team = db.Team(name="BBL Esports", abbrev="BBL", region="EMEA")
+		s.add(team)
+		s.flush()
+		player = db.Player(name="Rosé", team_id=team.id)
+		s.add(player)
+		s.commit()
+		return team.id, player.id
+
+
+class TestUnicodeHandling:
+	"""Regression tests: non-ASCII player names must survive the full
+	store → retrieve → display round-trip without garbling."""
+
+	async def test_freeagents_displays_non_ascii_name(self, mock_bot, ctx, engine):
+		"""Rosé appears correctly in !freeagents output when undrafted."""
+		_seed_unicode_player(engine)
+		mock_bot.cache.retrieve_total.return_value = 0
+		mock_bot.cache.retrieve.return_value = None
+
+		cog = FantasyCog(mock_bot)
+		await cog.freeagents.callback(cog, ctx)
+
+		sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+		assert "Rosé" in sent
+		assert "RosÃ©" not in sent
+
+	async def test_freeagents_does_not_display_garbled_encoding(self, mock_bot, ctx, engine):
+		"""The double-encoded form RosÃ© must never appear in output."""
+		_seed_unicode_player(engine)
+		mock_bot.cache.retrieve_total.return_value = 0
+		mock_bot.cache.retrieve.return_value = None
+
+		cog = FantasyCog(mock_bot)
+		await cog.freeagents.callback(cog, ctx)
+
+		sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+		assert "RosÃ©" not in sent
+
+	async def test_info_finds_player_by_non_ascii_name(self, mock_bot, ctx, engine):
+		"""!info Rosé resolves the player and displays their name correctly."""
+		_seed_unicode_player(engine)
+		mock_bot.cache.retrieve_total.return_value = 0
+		mock_bot.cache.retrieve.return_value = None
+
+		cog = StatsCog(mock_bot)
+		await cog.info.callback(cog, ctx, "Rosé")
+
+		sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+		assert "Rosé" in sent
+		assert "not found" not in sent
+
+	async def test_info_not_found_for_garbled_name(self, mock_bot, ctx, engine):
+		"""!info RosÃ© (garbled) must not match the correctly stored player."""
+		_seed_unicode_player(engine)
+
+		cog = StatsCog(mock_bot)
+		await cog.info.callback(cog, ctx, "RosÃ©")
+
+		sent = ctx.send.call_args[0][0]
+		assert "not found" in sent
+
+	async def test_draft_with_non_ascii_player_name(self, mock_bot, ctx, engine):
+		"""!draft Rosé picks up the player correctly when it is their turn."""
+		_seed_unicode_player(engine)
+
+		with SASession(engine) as s:
+			ft = db.FantasyTeam(name="TestTeam", abbrev="TST")
+			s.add(ft)
+			s.flush()
+			s.add(db.User(discord_id=AUTHOR_ID, fantasy_team_id=ft.id))
+			s.commit()
+
+		mock_bot.draft_state.is_draft_started.return_value = True
+		mock_bot.draft_state.can_draft.return_value = True
+		mock_bot.draft_state.is_draft_complete.return_value = False
+		mock_bot.draft_state.next.return_value = None
+		mock_bot.sub_slots = 2
+
+		cog = FantasyCog(mock_bot)
+		await cog.draft.callback(cog, ctx, "Rosé")
+
+		sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+		# draft succeeded: completion message sent, no error about player not found
+		assert "Initial draft is complete!" in sent
+		assert "No player was found" not in sent
