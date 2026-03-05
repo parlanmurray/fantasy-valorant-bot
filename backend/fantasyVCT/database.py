@@ -21,7 +21,7 @@ class DatabaseManager:
 		self.database = database
 		self.host = host
 		self.type = type
-		self.uri_string = f"{self.type}://{self.user}:{self.password}@{self.host}/{self.database}"
+		self.uri_string = f"{self.type}://{self.user}:{self.password}@{self.host}/{self.database}?charset=utf8mb4"
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string, pool_pre_ping=True)
 
