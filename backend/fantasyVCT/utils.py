@@ -12,6 +12,14 @@ POSITIONS = {
 }
 
 
+def is_roster_locked(session) -> bool:
+	"""Return True if the active season has rosters locked, False otherwise."""
+	from sqlalchemy import select
+	import fantasyVCT.database as db
+	season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+	return bool(season and season.roster_locked)
+
+
 def add_spaces(buff, length):
 	"""Add spaces until the buffer is at least the provided length."""
 	rv = ""

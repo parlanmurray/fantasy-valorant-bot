@@ -117,9 +117,21 @@ class MatchupCog(commands.Cog, name="Matchup"):
 					# Ghost: mirror the home team's score (home always beats ghost)
 					matchup.away_score = 0.0
 
+			season.roster_locked = False
 			session.commit()
 
-		await ctx.send(f"Week {week_number} scores locked.")
+		await ctx.send(f"Week {week_number} scores locked. Rosters are now unlocked.")
+
+	@commands.command()
+	async def lockroster(self, ctx):
+		"""Lock all rosters for the active season. Use !closeweek to unlock."""
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+			season.roster_locked = True
+			session.commit()
+		await ctx.send("Rosters are now locked. No drops, adds, or position changes until !closeweek is run.")
 
 	@commands.command()
 	async def matchup(self, ctx, week: int = None):

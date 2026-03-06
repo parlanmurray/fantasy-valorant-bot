@@ -269,6 +269,7 @@ class Season(Base):
 	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
 	num_weeks: Mapped[int] = mapped_column(nullable=False)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+	roster_locked: Mapped[bool] = mapped_column(Boolean, default=False)
 	previous_season_id: Mapped[Optional[int]] = mapped_column(ForeignKey("seasons.id"), nullable=True)
 
 	weeks: Mapped[List["Week"]] = relationship(back_populates="season")

@@ -8,7 +8,7 @@ from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
 from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain
-from fantasyVCT.utils import add_spaces, POSITIONS
+from fantasyVCT.utils import add_spaces, POSITIONS, is_roster_locked
 
 
 class FantasyCog(commands.Cog, name="Fantasy"):
@@ -35,6 +35,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			return await ctx.send("It is not your turn yet!")
 
 		with self.bot.db_manager.create_session() as session:
+			if self.bot.draft_state.is_draft_complete() and is_roster_locked(session):
+				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
+
 			drafted_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not drafted_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
@@ -102,6 +105,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			return await ctx.send("Cannot drop players until initial draft is complete.")
 
 		with self.bot.db_manager.create_session() as session:
+			if is_roster_locked(session):
+				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
 			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not dropped_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
@@ -227,6 +232,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		player: Player's exact IGN (case-sensitive).
 		position: Target position (captain, player1–player5, sub1–sub4).
 		"""
+
+		with self.bot.db_manager.create_session() as session:
+			if is_roster_locked(session):
+				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
 
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
