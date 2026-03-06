@@ -16,7 +16,12 @@ class StatsCog(commands.Cog, name="Stats"):
 
 	@commands.command()
 	async def info(self, ctx, *args: str):
-		"""Get information about a player or team"""
+		"""Look up a pro player or team's stats and fantasy points.
+
+		Parameters:
+		-----------
+		query: Player IGN or team name/abbreviation.
+		"""
 		query_string = " ".join(args)
 
 		with self.bot.db_manager.create_session() as session:
@@ -59,7 +64,7 @@ class StatsCog(commands.Cog, name="Stats"):
 
 	@commands.command()
 	async def rankplayers(self, ctx):
-		"""List all players by fantasy points in descending order"""
+		"""Rank all pro players by fantasy points, highest to lowest."""
 
 		def get_fantasy_points(cache, player):
 			total = cache.retrieve_total(player.id)

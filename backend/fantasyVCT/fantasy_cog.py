@@ -21,7 +21,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def draft(self, ctx, player_name: str):
-		"""Pick up a free agent"""
+		"""Pick a player during the draft or add a free agent to your roster.
+
+		Parameters:
+		-----------
+		player_name: Player's exact IGN (case-sensitive). Use !freeagents to see available players.
+		"""
 		author_id = ctx.message.author.id
 
 		if not self.bot.draft_state.is_draft_started():
@@ -85,7 +90,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def drop(self, ctx, player_name: str):
-		"""Drop a player from your team"""
+		"""Release a player from your roster back to free agency.
+
+		Parameters:
+		-----------
+		player_name: Player's exact IGN (case-sensitive). Use !roster to see your current players.
+		"""
 		author_id = ctx.message.author.id
 
 		if not self.bot.draft_state.is_draft_complete():
@@ -108,7 +118,13 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
-		"""Display a fantasy roster"""
+		"""Display a fantasy team's roster and points. Defaults to your own team.
+
+		Parameters:
+		-----------
+		member: @mention a Discord user to view their roster (optional).
+		team: Team abbreviation or name to view (optional).
+		"""
 
 		with self.bot.db_manager.create_session() as session:
 			fantasy_team = None
@@ -171,7 +187,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def freeagents(self, ctx):
-		"""Show all available free agents"""
+		"""List all undrafted players and their fantasy points."""
 
 		with self.bot.db_manager.create_session() as session:
 			stmt = select(db.Player).where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
@@ -204,7 +220,13 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def set(self, ctx, player: str, position: str):
-		"""Set a player's position in your team"""
+		"""Move a player to a different position on your roster.
+
+		Parameters:
+		-----------
+		player: Player's exact IGN (case-sensitive).
+		position: Target position (captain, player1–player5, sub1–sub4).
+		"""
 
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
@@ -243,7 +265,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def standings(self, ctx):
-		"""Show the current fantasy league standings"""
+		"""Show current fantasy league standings sorted by optimized score."""
 
 		with self.bot.db_manager.create_session() as session:
 			fteams = list(session.scalars(select(db.FantasyTeam)))

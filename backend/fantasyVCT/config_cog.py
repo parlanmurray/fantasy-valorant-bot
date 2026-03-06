@@ -16,7 +16,13 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def register(self, ctx, team_abbrev: str, *team_name_list: str):
-		"""Register a team"""
+		"""Register a fantasy team.
+
+		Parameters:
+		-----------
+		team_abbrev: Short abbreviation for your team (e.g. TSM).
+		team_name: Full name of your team (e.g. Team SoloMid).
+		"""
 		team_name = " ".join(team_name_list)
 		author_id = ctx.message.author.id
 
@@ -52,12 +58,17 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def skipdraft(self, ctx):
-		"""Skip past the draft step."""
+		"""Skip the draft phase and go straight to free agency."""
 		self.bot.draft_state.skip_draft()
 
 	@commands.command()
 	async def trackevent(self, ctx, event_name: str):
-		"""Start tracking matches from an event"""
+		"""Start tracking matches from a VCT event.
+
+		Parameters:
+		-----------
+		event_name: Exact event name as it appears on vlr.gg (e.g. "VCT 2025 Americas Stage 1").
+		"""
 		with self.bot.db_manager.create_session() as session:
 			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if event:
@@ -72,7 +83,12 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def untrackevent(self, ctx, event_name: str):
-		"""Stop tracking new matches from an event"""
+		"""Stop tracking new matches from a VCT event.
+
+		Parameters:
+		-----------
+		event_name: Exact event name as it appears on vlr.gg (e.g. "VCT 2025 Americas Stage 1").
+		"""
 		with self.bot.db_manager.create_session() as session:
 			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if not event:
@@ -86,7 +102,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def startdraft(self, ctx):
-		"""Begin the draft"""
+		"""Begin the snake draft. All teams must be registered first."""
 		if self.bot.draft_state.is_draft_complete():
 			return await ctx.send("Draft is already complete.")
 		elif self.bot.draft_state.is_draft_started():
@@ -101,7 +117,12 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def newteam(self, ctx, url: str):
-		"""Upload a team and players to the database using a vlr.gg team url"""
+		"""Add a pro team and its players from vlr.gg.
+
+		Parameters:
+		-----------
+		url: vlr.gg team URL (e.g. https://www.vlr.gg/team/2404/100-thieves).
+		"""
 		if self.bot.draft_state.is_draft_started():
 			return await ctx.send("Cannot add additional teams/players once draft has started.")
 		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
@@ -124,7 +145,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def rules(self, ctx):
-		"""Display rules"""
+		"""Display league rules and how scoring works."""
 		buf = "```\n"
 		buf += "How to play:\n"
 		buf += "- Draft a team of valorant players, and compete to see who whose players have the best performance over the course of the event\n"
@@ -147,7 +168,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.command()
 	async def scoring(self, ctx):
-		"""Display scoring information"""
+		"""Display the stat weights used to calculate fantasy points."""
 		buf = "```\n"
 		buf += PointCalculator.get_scoring_info()
 		buf += "```"
