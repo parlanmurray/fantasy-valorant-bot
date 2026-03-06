@@ -55,7 +55,13 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def register(self, ctx, team_abbrev: str, team_name: str):
-		"""Register a team"""
+		"""Register a fantasy team.
+
+		Parameters:
+		-----------
+		team_abbrev: Short abbreviation for your team (e.g. TSM).
+		team_name: Full name of your team (e.g. "Team SoloMid").
+		"""
 
 		# get author's unique id
 		author_id = ctx.message.author.id
@@ -100,12 +106,17 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def skipdraft(self, ctx):
-		"""Skip past the draft step."""
+		"""Skip the draft phase and go straight to free agency."""
 		self.bot.draft_state.skip_draft()
 
 	@commands.hybrid_command()
 	async def trackevent(self, ctx, event_name: str):
-		"""Start tracking matches from an event"""
+		"""Start tracking matches from a VCT event.
+
+		Parameters:
+		-----------
+		event_name: Exact event name as it appears on vlr.gg (e.g. "VCT 2025 Americas Stage 1").
+		"""
 		with self.bot.db_manager.create_session() as session:
 			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if event:
@@ -120,7 +131,12 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def untrackevent(self, ctx, event_name: str):
-		"""Stop tracking new matches from an event"""
+		"""Stop tracking new matches from a VCT event.
+
+		Parameters:
+		-----------
+		event_name: Exact event name as it appears on vlr.gg (e.g. "VCT 2025 Americas Stage 1").
+		"""
 		with self.bot.db_manager.create_session() as session:
 			event = session.execute(select(db.Event).filter_by(name=event_name)).scalar_one_or_none()
 			if not event:
@@ -134,7 +150,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def startdraft(self, ctx):
-		"""Begin the draft"""
+		"""Begin the snake draft. All teams must be registered first."""
 		if self.bot.draft_state.is_draft_complete():
 			return await ctx.send("Draft is already complete.")
 		elif self.bot.draft_state.is_draft_started():
@@ -150,7 +166,12 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def newteam(self, ctx, url: str):
-		"""Upload a team and players to the database using a vlr.gg team url"""
+		"""Add a pro team and its players from vlr.gg.
+
+		Parameters:
+		-----------
+		url: vlr.gg team URL (e.g. https://www.vlr.gg/team/2404/100-thieves).
+		"""
 		if self.bot.draft_state.is_draft_started():
 			return await ctx.send("Cannot add additional teams/players once draft has started.")
 		team_name, team_abbrev, player_names = self.bot.scraper.parse_team(url)
@@ -177,7 +198,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def rules(self, ctx):
-		"""Display rules"""
+		"""Display league rules and how scoring works."""
 		buf = "```\n"
 		buf += "How to play:\n"
 		buf += "- Draft a team of valorant players, and compete to see who whose players have the best performance over the course of the event\n"
@@ -201,7 +222,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 
 	@commands.hybrid_command()
 	async def scoring(self, ctx):
-		"""Display scoring information"""
+		"""Display the stat weights used to calculate fantasy points."""
 		buf = "```\n"
 		buf += PointCalculator.get_scoring_info()
 		buf += "```"
@@ -219,7 +240,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def draft(self, ctx, player_name: str):
-		"""Pick up a free agent"""
+		"""Pick a player during the draft or add a free agent to your roster.
+
+		Parameters:
+		-----------
+		player_name: Player's exact IGN (case-sensitive). Use !freeagents to see available players.
+		"""
 		author_id = ctx.message.author.id
 
 		# check draft state
@@ -291,7 +317,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def drop(self, ctx, player_name: str):
-		"""Drop a player from your team"""
+		"""Release a player from your roster back to free agency.
+
+		Parameters:
+		-----------
+		player_name: Player's exact IGN (case-sensitive). Use !roster to see your current players.
+		"""
 		author_id = ctx.message.author.id
 
 		# check draft state
@@ -318,7 +349,13 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def roster(self, ctx, member: typing.Optional[discord.Member] = None, team: typing.Optional[str] = None):
-		"""Display a fantasy roster"""
+		"""Display a fantasy team's roster and points. Defaults to your own team.
+
+		Parameters:
+		-----------
+		member: @mention a Discord user to view their roster (optional).
+		team: Team abbreviation or name to view (optional).
+		"""
 
 		with self.bot.db_manager.create_session() as session:
 			fantasy_team = None
@@ -389,7 +426,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def freeagents(self, ctx):
-		"""Show all available free agents"""
+		"""List all undrafted players and their fantasy points."""
 
 		with self.bot.db_manager.create_session() as session:
 			# get all remaining players that are not drafted
@@ -427,7 +464,13 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def set(self, ctx, player: str, position: str):
-		"""Set a player's position in your team"""
+		"""Move a player to a different position on your roster.
+
+		Parameters:
+		-----------
+		player: Player's exact IGN (case-sensitive).
+		position: Target position (captain, player1–player5, sub1–sub4).
+		"""
 
 		# check position is valid
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
@@ -474,7 +517,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def standings(self, ctx):
-		"""Show the current fantasy league standings"""
+		"""Show current fantasy league standings sorted by optimized score."""
 
 		with self.bot.db_manager.create_session() as session:
 			# get curret scores
@@ -548,7 +591,12 @@ class StatsCog(commands.Cog, name="Stats"):
 
 	@commands.hybrid_command()
 	async def info(self, ctx, query: str):
-		"""Get information about a player or team"""
+		"""Look up a pro player or team's stats and fantasy points.
+
+		Parameters:
+		-----------
+		query: Player IGN or team name/abbreviation.
+		"""
 		query_string = query
 
 		with self.bot.db_manager.create_session() as session:
@@ -595,7 +643,7 @@ class StatsCog(commands.Cog, name="Stats"):
 
 	@commands.hybrid_command()
 	async def rankplayers(self, ctx):
-		"""List all players by fantasy points in descending order"""
+		"""Rank all pro players by fantasy points, highest to lowest."""
 
 		def get_fantasy_points(cache, player):
 			"""Retrieve the fantasy points value of the given db.Player"""

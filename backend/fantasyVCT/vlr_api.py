@@ -58,7 +58,12 @@ class FetchCog(commands.Cog, name="Results"):
 
 	@commands.hybrid_command()
 	async def upload(self, ctx, vlr_id: str):
-		"""Upload a vlr.gg match"""
+		"""Upload match results from vlr.gg into the database.
+
+		Parameters:
+		-----------
+		vlr_id: Numeric match ID from the vlr.gg URL (e.g. 459518 from vlr.gg/459518/...).
+		"""
 		# check that the input is valid
 		if not re.match("^[0-9]{5,6}$", vlr_id):
 			return await ctx.send("Not a valid vlr match number.")
