@@ -510,7 +510,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				marker = "*" if optimal != fteam.points else ""
 				buf += f"\t{fteam.abbrev} / {fteam.name} - {optimal}{marker}\n"
 			if any_suboptimal:
-				buf += "\n* Lineup not yet optimized. Use !set to change captain/active players."
+				buf += "\n* Optimized score shown. Use !set to improve your lineup."
 			buf += "```"
 			await ctx.send(buf)
 

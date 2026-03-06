@@ -51,7 +51,7 @@ elif not DB_PROD:
 parser = argparse.ArgumentParser()
 parser.add_argument('--skip-draft', action='store_true', help='skip the draft step')
 parser.add_argument('-r', '--rounds', dest='num_rounds', action='store', default=7, type=int, help="number of draft rounds")
-parser.add_argument('-s', '--subs', dest='sub_slots', action='store', default=2, type=int, help="number of sub slots allowed per team")
+parser.add_argument('-s', '--subs', dest='sub_slots', action='store', default=0, type=int, help="number of sub slots allowed per team")
 parser.add_argument('--prod', action='store_true', help='use production database instead of development database')
 
 bot = FantasyValBot("!")
