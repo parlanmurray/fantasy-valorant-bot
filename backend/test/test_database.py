@@ -1,12 +1,10 @@
 import os
 
+import pytest
 from fantasyVCT.database import DatabaseManager, Player
-
 from sqlalchemy import select
 
-# unit testing for database
-# requires database on host machine
-# run with pytest
+# Requires a live DB + env vars — skips cleanly when not available.
 
 TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
 DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
@@ -14,39 +12,34 @@ DB_USER = os.getenv('DATABASE_USER')
 DB_TYPE = os.getenv('DATABASE_TYPE')
 DB_DEV = os.getenv('DATABASE_DEV')
 DB_PROD = os.getenv('DATABASE_PROD')
+
+_missing = [
+    v for v, name in [
+        (TOKEN_FILE, 'DISCORD_TOKEN_FILE'),
+        (DB_PASSWORD_FILE, 'DATABASE_PASSWORD_FILE'),
+        (DB_USER, 'DATABASE_USER'),
+        (DB_TYPE, 'DATABASE_TYPE'),
+        (DB_DEV, 'DATABASE_DEV'),
+        (DB_PROD, 'DATABASE_PROD'),
+    ] if not v
+]
+
+pytestmark = pytest.mark.skipif(
+    bool(_missing),
+    reason=f"DB env vars not set: {_missing}"
+)
+
 DB_PASSWORD = None
 TOKEN = None
 
-if not TOKEN_FILE:
-	print("No discord token file specified.")
-	exit(1)
-elif not DB_PASSWORD_FILE:
-	print("No database password file specified.")
-	exit(1)
-
-with open(DB_PASSWORD_FILE, 'r') as f:
-	DB_PASSWORD = f.read()
-
-with open(TOKEN_FILE, 'r') as f:
-	TOKEN = f.read()
-
-if not DB_USER:
-	print("No database user specified.")
-	exit(1)
-elif not DB_PASSWORD:
-	print("No database password specified. Did you create db/password.txt?")
-	exit(1)
-elif not TOKEN:
-	print("No discord token specified. Did you create backend/discord_token.txt?")
-	exit(1)
-elif not DB_DEV:
-	print("No development database specified.")
-	exit(1)
-elif not DB_PROD:
-	print("No production database specified.")
-	exit(1)
-
-db_manager = DatabaseManager(DB_TYPE, DB_USER, DB_PASSWORD, DB_DEV)
+if not _missing:
+    with open(DB_PASSWORD_FILE, 'r') as f:
+        DB_PASSWORD = f.read()
+    with open(TOKEN_FILE, 'r') as f:
+        TOKEN = f.read()
+    db_manager = DatabaseManager(DB_TYPE, DB_USER, DB_PASSWORD, DB_DEV)
+else:
+    db_manager = None
 
 
 def test_connect():

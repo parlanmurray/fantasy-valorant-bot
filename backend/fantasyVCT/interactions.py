@@ -1,3 +1,5 @@
+# interactions.py — deprecated; cogs split into config_cog.py, fantasy_cog.py, stats_cog.py
+
 from enum import Enum
 import typing
 

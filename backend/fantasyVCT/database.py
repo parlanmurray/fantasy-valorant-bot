@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import create_engine
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, Boolean
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -172,6 +172,7 @@ class Result(Base):
 	player_clutch_v4: Mapped[int]
 	player_clutch_v5: Mapped[int]
 	agent: Mapped[str] = mapped_column(String(20))
+	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=True, default=None)
 
 	# relationship fields
 	player: Mapped[Player] = relationship(back_populates="results")
@@ -259,6 +260,74 @@ class FantasyPlayer(Base):
 
 	def __repr__(self) -> str:
 		return f"FantasyPlayer(id={self.id!r}, player_id={self.player_id!r}, fantasy_team_id={self.fantasy_team_id!r}, position={self.position!r})"
+
+class Season(Base):
+	__tablename__ = "seasons"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	name: Mapped[str] = mapped_column(String(100), nullable=False)
+	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
+	num_weeks: Mapped[int] = mapped_column(nullable=False)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+	previous_season_id: Mapped[Optional[int]] = mapped_column(ForeignKey("seasons.id"), nullable=True)
+
+	weeks: Mapped[List["Week"]] = relationship(back_populates="season")
+	previous_season: Mapped[Optional["Season"]] = relationship(
+		"Season", foreign_keys=[previous_season_id], remote_side="Season.id"
+	)
+	season_event_urls: Mapped[List["SeasonEvent"]] = relationship(back_populates="season")
+
+	def __repr__(self) -> str:
+		return f"Season(id={self.id!r}, name={self.name!r}, num_weeks={self.num_weeks!r}, is_active={self.is_active!r})"
+
+
+class SeasonEvent(Base):
+	__tablename__ = "season_events"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
+	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
+
+	season: Mapped[Season] = relationship(back_populates="season_event_urls")
+
+	def __repr__(self) -> str:
+		return f"SeasonEvent(id={self.id!r}, season_id={self.season_id!r}, event_url={self.event_url!r})"
+
+
+class Week(Base):
+	__tablename__ = "weeks"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
+	week_number: Mapped[int] = mapped_column(nullable=False)
+
+	season: Mapped[Season] = relationship(back_populates="weeks")
+	matchups: Mapped[List["Matchup"]] = relationship(back_populates="week")
+
+	def __repr__(self) -> str:
+		return f"Week(id={self.id!r}, season_id={self.season_id!r}, week_number={self.week_number!r})"
+
+
+class Matchup(Base):
+	__tablename__ = "matchups"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=False)
+	home_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=False)
+	away_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=True)
+	home_score: Mapped[float] = mapped_column(default=0.0)
+	away_score: Mapped[float] = mapped_column(default=0.0)
+
+	week: Mapped[Week] = relationship(back_populates="matchups")
+	home_team: Mapped[FantasyTeam] = relationship(foreign_keys=[home_team_id])
+	away_team: Mapped[FantasyTeam] = relationship(foreign_keys=[away_team_id])
+
+	def __repr__(self) -> str:
+		return (
+			f"Matchup(id={self.id!r}, week_id={self.week_id!r}, "
+			f"home_team_id={self.home_team_id!r}, away_team_id={self.away_team_id!r})"
+		)
+
 
 ######################################
 ## Non-Mapped Classes

@@ -183,3 +183,95 @@ CREATE TABLE IF NOT EXISTS FantasyValProd.fantasy_players
 	FOREIGN KEY (position) REFERENCES positions(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+-- H2H: seasons, weeks, matchups; week_id on results
+
+CREATE TABLE IF NOT EXISTS FantasyValDev.seasons
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	num_weeks INT NOT NULL,
+	is_active BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.seasons
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	name VARCHAR(100) NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	num_weeks INT NOT NULL,
+	is_active BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValDev.weeks
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	week_number INT NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.weeks
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	week_number INT NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValDev.matchups
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	week_id INT NOT NULL,
+	home_team_id INT NOT NULL,
+	away_team_id INT NULL,
+	home_score FLOAT NOT NULL DEFAULT 0.0,
+	away_score FLOAT NOT NULL DEFAULT 0.0,
+	FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (home_team_id) REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.matchups
+(
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	week_id INT NOT NULL,
+	home_team_id INT NOT NULL,
+	away_team_id INT NULL,
+	home_score FLOAT NOT NULL DEFAULT 0.0,
+	away_score FLOAT NOT NULL DEFAULT 0.0,
+	FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (home_team_id) REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
+	ADD CONSTRAINT fk_results_week FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
+	ADD CONSTRAINT fk_results_week FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- Multi-stage: link Stage 2 back to Stage 1
+ALTER TABLE FantasyValDev.seasons
+	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,
+	ADD CONSTRAINT fk_prev_season_dev FOREIGN KEY (previous_season_id) REFERENCES seasons(id);
+
+ALTER TABLE FantasyValProd.seasons
+	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,
+	ADD CONSTRAINT fk_prev_season_prod FOREIGN KEY (previous_season_id) REFERENCES seasons(id);
+
+-- Multi-region: map a season to one or more VCT event URLs
+CREATE TABLE IF NOT EXISTS FantasyValDev.season_events (
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.season_events (
+	id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	season_id INT NOT NULL,
+	event_url VARCHAR(255) NOT NULL,
+	FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE
+);
+

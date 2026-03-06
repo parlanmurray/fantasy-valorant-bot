@@ -300,6 +300,63 @@ class Scraper:
 		return match
 
 	@staticmethod
+	def parse_event_page(url: str) -> tuple[str, int]:
+		"""Scrape a vlr.gg event page for its name and week count.
+
+		Args:
+		    url (str): vlr.gg event URL (e.g. https://www.vlr.gg/event/2347/vct-2025-americas-stage-1/group-stage)
+
+		Returns:
+		    tuple[str, int]: (event_name, num_weeks)
+
+		Raises:
+		    ValueError: if week count cannot be determined from the page
+		"""
+		soup = Scraper.scrape_url(url)
+
+		# Event name
+		name_tag = soup.find('h1', class_='wf-title')
+		if not name_tag:
+			name_tag = soup.find('div', class_='event-header-title')
+		event_name = name_tag.get_text(strip=True) if name_tag else "Unknown Event"
+
+		# Week count: count distinct week tabs in the event nav
+		# vlr.gg event pages have week filter buttons like "W1", "W2", etc.
+		week_tabs = soup.find_all('a', class_='wf-nav-item', string=lambda t: t and t.strip().upper().startswith('W') and t.strip()[1:].isdigit())
+		if not week_tabs:
+			# fallback: look for filter items with week labels
+			week_tabs = [tag for tag in soup.find_all(string=True)
+						 if tag.strip().upper().startswith('W') and len(tag.strip()) <= 3 and tag.strip()[1:].isdigit()]
+		num_weeks = len(week_tabs) if week_tabs else 0
+		if num_weeks == 0:
+			raise ValueError(f"Could not determine week count from event page: {url}")
+
+		return event_name, num_weeks
+
+	@staticmethod
+	def parse_week_number(match_page_html) -> int | None:
+		"""Extract the VCT week number from a match page's canonical URL.
+
+		Looks for <link rel="canonical"> whose href ends in /wN.
+
+		Args:
+		    match_page_html (BeautifulSoup): parsed match page
+
+		Returns:
+		    int | None: week number (1-based) or None if not found
+		"""
+		canonical = match_page_html.find('link', rel='canonical')
+		if not canonical:
+			return None
+		href = canonical.get('href', '')
+		# Match URL pattern: .../<slug>/wN  (e.g. /w1, /w2, /w12)
+		import re
+		m = re.search(r'/w(\d+)$', href)
+		if m:
+			return int(m.group(1))
+		return None
+
+	@staticmethod
 	def parse_team(url: str):
 		"""Parse a vlr.gg team page.
 		"""
