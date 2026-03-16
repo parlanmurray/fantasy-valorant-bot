@@ -73,10 +73,12 @@ class Scraper:
 		player_stats = html.find_all('td', class_="mod-stat")
 		player.results[0].player_acs = int(player_stats[1].find('span', class_="mod-both").get_text(strip=True))
 
-		# Use specific classes for K/D/A — robust to new columns being added
+		# Use specific classes for K/D/A/FK — robust to new columns being added
 		player.results[0].player_kills = int(html.find('td', class_="mod-vlr-kills").find('span', class_="mod-both").get_text(strip=True))
 		player.results[0].player_deaths = int(html.find('td', class_="mod-vlr-deaths").find('span', class_="mod-both").get_text(strip=True))
 		player.results[0].player_assists = int(html.find('td', class_="mod-vlr-assists").find('span', class_="mod-both").get_text(strip=True))
+		fk_td = html.find('td', class_="mod-fb")
+		player.results[0].player_fk = int(fk_td.find('span', class_="mod-both").get_text(strip=True)) if fk_td else None
 
 	@staticmethod
 	def _parse_player_performance(html, player: db.Player):

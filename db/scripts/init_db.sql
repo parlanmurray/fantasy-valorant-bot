@@ -253,6 +253,9 @@ ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
 ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
 	ADD CONSTRAINT fk_results_week FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE SET NULL ON UPDATE CASCADE;
 
+ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS player_fk INT NULL;
+ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS player_fk INT NULL;
+
 -- Multi-stage: link Stage 2 back to Stage 1
 ALTER TABLE FantasyValDev.seasons
 	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,

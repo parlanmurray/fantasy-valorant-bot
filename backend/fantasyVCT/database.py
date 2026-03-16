@@ -171,6 +171,7 @@ class Result(Base):
 	player_clutch_v3: Mapped[int]
 	player_clutch_v4: Mapped[int]
 	player_clutch_v5: Mapped[int]
+	player_fk: Mapped[Optional[int]]
 	agent: Mapped[str] = mapped_column(String(20))
 	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=True, default=None)
 

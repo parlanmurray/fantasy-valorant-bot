@@ -4,6 +4,7 @@ ACS = 0.03
 KILLS = 1.5
 DEATHS = -1
 ASSISTS = 0.5
+FK = 1.0
 KILLS2 = 2
 KILLS3 = 4
 KILLS4 = 7
@@ -124,7 +125,9 @@ class PointCalculator:
 		line = "CLUTCH_V4"
 		rv += line + add_spaces(line, 20) + str(CLUTCH_V4) + "\n"
 		line = "CLUTCH_V5"
-		rv += line + add_spaces(line, 20) + str(CLUTCH_V5)
+		rv += line + add_spaces(line, 20) + str(CLUTCH_V5) + "\n"
+		line = "FK"
+		rv += line + add_spaces(line, 20) + str(FK)
 		return rv
 
 	@staticmethod
@@ -133,7 +136,7 @@ class PointCalculator:
 		player_stats retrieved from results table:
 		(id, map, game_id, match_id, event_id, player_id, player_acs, player_kills, player_deaths, player_assists,
 		player_2k, player_3k, player_4k, player_5k,
-		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5)
+		player_clutch_v2, player_clutch_v3, player_clutch_v4, player_clutch_v5, player_fk)
 		"""
 		rv = player_stats.player_acs * ACS
 		rv += player_stats.player_kills * KILLS
@@ -147,4 +150,5 @@ class PointCalculator:
 		rv += player_stats.player_clutch_v3 * CLUTCH_V3
 		rv += player_stats.player_clutch_v4 * CLUTCH_V4
 		rv += player_stats.player_clutch_v5 * CLUTCH_V5
+		rv += (player_stats.player_fk or 0) * FK
 		return round(rv, 1)
