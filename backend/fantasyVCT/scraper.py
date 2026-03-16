@@ -78,7 +78,8 @@ class Scraper:
 		player.results[0].player_deaths = int(html.find('td', class_="mod-vlr-deaths").find('span', class_="mod-both").get_text(strip=True))
 		player.results[0].player_assists = int(html.find('td', class_="mod-vlr-assists").find('span', class_="mod-both").get_text(strip=True))
 		fk_td = html.find('td', class_="mod-fb")
-		player.results[0].player_fk = int(fk_td.find('span', class_="mod-both").get_text(strip=True)) if fk_td else None
+		fk_text = fk_td.find('span', class_="mod-both").get_text(strip=True) if fk_td else ""
+		player.results[0].player_fk = int(fk_text) if fk_text else None
 
 	@staticmethod
 	def _parse_player_performance(html, player: db.Player):
@@ -139,7 +140,7 @@ class Scraper:
 	def _parse_map_summary(html, map_: db.Map):
 		"""Parse an html object for summary information about a map, assuming
 		summary tab.
-		
+
 		Args:
 		    html (BeautifulSoup): a div containing information about a single map
 			map_ (db.Map): db.Map object to place map information in
@@ -177,6 +178,15 @@ class Scraper:
 			map_.team1.map_pick = True
 		elif 'mod-2' in map_header.find('span', class_="picked")['class']:
 			map_.team2.map_pick = True
+
+		# wire rounds data into each player's result
+		rounds_played = map_.team1.score + map_.team2.score
+		for team in (map_.team1, map_.team2):
+			for player in team.players:
+				if player.results:
+					player.results[0].rounds_played = rounds_played
+					player.results[0].rounds_won = team.score
+					player.results[0].team_won = team.won
 
 	@staticmethod
 	def _parse_map_performance(html, map_: db.Map):
