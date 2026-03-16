@@ -91,6 +91,28 @@ def test_populated_results_fields():
             assert full.maps[1].name == result.map
 
 
+# --- rounds data ---
+
+def test_rounds_played():
+    # Haven: 13+15=28, Breeze: 8+13=21
+    assert full.maps[0].team1.players[0].results[0].rounds_played == 28
+    assert full.maps[0].team2.players[0].results[0].rounds_played == 28
+    assert full.maps[1].team1.players[0].results[0].rounds_played == 21
+    assert full.maps[1].team2.players[0].results[0].rounds_played == 21
+
+def test_rounds_won():
+    # Haven: team1=13, team2=15
+    assert full.maps[0].team1.players[0].results[0].rounds_won == 13
+    assert full.maps[0].team2.players[0].results[0].rounds_won == 15
+
+def test_team_won_on_result():
+    # team2 won both maps
+    assert full.maps[0].team1.players[0].results[0].team_won == False
+    assert full.maps[0].team2.players[0].results[0].team_won == True
+    assert full.maps[1].team1.players[0].results[0].team_won == False
+    assert full.maps[1].team2.players[0].results[0].team_won == True
+
+
 # --- parse_team smoke test ---
 
 def test_parse_team():

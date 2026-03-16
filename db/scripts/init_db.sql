@@ -256,6 +256,14 @@ ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS week_id INT NULL,
 ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS player_fk INT NULL;
 ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS player_fk INT NULL;
 
+ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS rounds_played INT NULL;
+ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS rounds_won INT NULL;
+ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS team_won BOOLEAN NULL;
+
+ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS rounds_played INT NULL;
+ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS rounds_won INT NULL;
+ALTER TABLE FantasyValProd.results ADD COLUMN IF NOT EXISTS team_won BOOLEAN NULL;
+
 -- Multi-stage: link Stage 2 back to Stage 1
 ALTER TABLE FantasyValDev.seasons
 	ADD COLUMN IF NOT EXISTS previous_season_id INT NULL,
