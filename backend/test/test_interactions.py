@@ -255,8 +255,8 @@ async def test_rankplayers_picks_up_new_games_after_stale_total(mock_bot, ctx, e
 	cog = StatsCog(mock_bot)
 	await cog.rankplayers.callback(cog, ctx)
 	sent = "".join(call[0][0] for call in ctx.send.call_args_list)
-	# game 3: 20 kills * 2 = 40.0; total should be 20+10+40 = 70.0, not stale 30.0
-	assert "70.0" in sent
+	# game 3: 20 kills * 1.5 = 30.0; total should be 20+10+30 = 60.0, not stale 30.0
+	assert "60.0" in sent
 
 
 # ── _optimal_score ────────────────────────────────────────────────────────────
