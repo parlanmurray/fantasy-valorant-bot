@@ -9,6 +9,7 @@ def make_result(**kwargs):
         player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
         player_2k=0, player_3k=0, player_4k=0, player_5k=0,
         player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+        player_fk=0,
     )
     defaults.update(kwargs)
     return Result(**defaults)
@@ -61,6 +62,14 @@ class TestPointCalculator:
         base = PointCalculator.score(r)  # 6+15-5+1 = 17.0
         assert base == 17.0
         assert round(base * 1.2, 1) == 20.4
+
+    def test_fk_weight(self):
+        # 3 FK * 1.0 = 3.0
+        assert PointCalculator.score(make_result(player_fk=3)) == 3.0
+
+    def test_fk_none_scores_zero(self):
+        # player_fk=None (pre-migration rows) should not raise and score 0
+        assert PointCalculator.score(make_result(player_fk=None)) == 0.0
 
     def test_score_rounds_to_one_decimal(self):
         # 1 assist = 0.5, ensures rounding is applied
