@@ -22,12 +22,12 @@ class TestPointCalculator:
         assert PointCalculator.score(make_result()) == 0.0
 
     def test_acs_weight(self):
-        # 200 * 0.05 = 10.0
-        assert PointCalculator.score(make_result(player_acs=200)) == 10.0
+        # 200 * 0.03 = 6.0
+        assert PointCalculator.score(make_result(player_acs=200)) == 6.0
 
     def test_kills_weight(self):
-        # 10 * 2 = 20.0
-        assert PointCalculator.score(make_result(player_kills=10)) == 20.0
+        # 10 * 1.5 = 15.0
+        assert PointCalculator.score(make_result(player_kills=10)) == 15.0
 
     def test_deaths_are_negative(self):
         # 5 * -1 = -5.0
@@ -38,29 +38,29 @@ class TestPointCalculator:
         assert PointCalculator.score(make_result(player_assists=4)) == 2.0
 
     def test_multikill_weights(self):
-        # 2k*1 + 3k*1.5 + 4k*2 + 5k*2.5 = 1 + 1.5 + 2 + 2.5 = 7.0
+        # 2k*2 + 3k*4 + 4k*7 + 5k*10 = 2 + 4 + 7 + 10 = 23.0
         r = make_result(player_2k=1, player_3k=1, player_4k=1, player_5k=1)
-        assert PointCalculator.score(r) == 7.0
+        assert PointCalculator.score(r) == 23.0
 
     def test_clutch_weights(self):
-        # v2*3 + v3*4 + v4*5 + v5*6 = 3 + 4 + 5 + 6 = 18.0
+        # v2*8 + v3*12 + v4*16 + v5*20 = 8 + 12 + 16 + 20 = 56.0
         r = make_result(player_clutch_v2=1, player_clutch_v3=1, player_clutch_v4=1, player_clutch_v5=1)
-        assert PointCalculator.score(r) == 18.0
+        assert PointCalculator.score(r) == 56.0
 
     def test_full_formula(self):
-        # 200*0.05 + 10*2 + 5*(-1) + 2*0.5 + 1*1 + 0 + 0 + 0 + 1*3 = 10+20-5+1+1+3 = 30.0
+        # 200*0.03 + 10*1.5 + 5*(-1) + 2*0.5 + 1*2 + 1*8 = 6+15-5+1+2+8 = 27.0
         r = make_result(
             player_acs=200, player_kills=10, player_deaths=5, player_assists=2,
             player_2k=1, player_clutch_v2=1,
         )
-        assert PointCalculator.score(r) == 30.0
+        assert PointCalculator.score(r) == 27.0
 
     def test_captain_multiplier_is_1_2x(self):
         # Captain bonus is applied externally; validate expected math
         r = make_result(player_acs=200, player_kills=10, player_deaths=5, player_assists=2)
-        base = PointCalculator.score(r)  # 10+20-5+1 = 26.0
-        assert base == 26.0
-        assert round(base * 1.2, 1) == 31.2
+        base = PointCalculator.score(r)  # 6+15-5+1 = 17.0
+        assert base == 17.0
+        assert round(base * 1.2, 1) == 20.4
 
     def test_score_rounds_to_one_decimal(self):
         # 1 assist = 0.5, ensures rounding is applied

@@ -1,17 +1,17 @@
 from fantasyVCT.database import Result, add_spaces
 
-ACS = 0.05
-KILLS = 2
+ACS = 0.03
+KILLS = 1.5
 DEATHS = -1
 ASSISTS = 0.5
-KILLS2 = 1
-KILLS3 = 1.5
-KILLS4 = 2
-KILLS5 = 2.5
-CLUTCH_V2 = 3
-CLUTCH_V3 = 4
-CLUTCH_V4 = 5
-CLUTCH_V5 = 6
+KILLS2 = 2
+KILLS3 = 4
+KILLS4 = 7
+KILLS5 = 10
+CLUTCH_V2 = 8
+CLUTCH_V3 = 12
+CLUTCH_V4 = 16
+CLUTCH_V5 = 20
 
 class Cache:
 
