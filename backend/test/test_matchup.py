@@ -146,14 +146,15 @@ def test_derive_record_sort_order():
 # ---------------------------------------------------------------------------
 
 def _make_result(player_id, week_id, kills=10, deaths=5, assists=3,
-                 acs=200, k2=1, k3=0, k4=0, k5=0, cv2=0, cv3=0, cv4=0, cv5=0):
+                 acs=200, k2=1, k3=0, k4=0, k5=0, cv2=0, cv3=0, cv4=0, cv5=0,
+                 player_fk=None, rounds_played=None, team_won=None):
     return db.Result(
         map="Haven", game_id=1, match_id=1, event_id=1,
         player_id=player_id, week_id=week_id,
         player_kills=kills, player_deaths=deaths, player_assists=assists,
         player_acs=acs, player_2k=k2, player_3k=k3, player_4k=k4, player_5k=k5,
         player_clutch_v2=cv2, player_clutch_v3=cv3, player_clutch_v4=cv4, player_clutch_v5=cv5,
-        agent="jett"
+        agent="jett", player_fk=player_fk, rounds_played=rounds_played, team_won=team_won
     )
 
 
@@ -180,27 +181,70 @@ def test_compute_weekly_score_basic():
     assert score > 0
 
 
-def test_compute_weekly_score_captain_multiplier():
-    """Captain (position=0) should score 1.2× vs same player at position=1."""
-    fteam_cap = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
-    fp_cap = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=0)
-    fteam_cap.fantasyplayers = [fp_cap]
+def test_compute_weekly_score_role_bonus_igl():
+    """IGL (position=0) with a map win gets +8.5 bonus; Duelist (position=1) does not."""
+    result_win = _make_result(player_id=10, week_id=5, team_won=True)
+    result_no_bonus = _make_result(player_id=10, week_id=5, team_won=False)
 
-    fteam_reg = db.FantasyTeam(id=2, name="Beta", abbrev="BET")
-    fp_reg = db.FantasyPlayer(id=2, player_id=10, fantasy_team_id=2, position=1)
-    fteam_reg.fantasyplayers = [fp_reg]
+    fteam_igl = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp_igl = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=0)
+    fteam_igl.fantasyplayers = [fp_igl]
 
-    result = _make_result(player_id=10, week_id=5)
+    fteam_flex = db.FantasyTeam(id=2, name="Beta", abbrev="BET")
+    fp_flex = db.FantasyPlayer(id=2, player_id=10, fantasy_team_id=2, position=5)
+    fteam_flex.fantasyplayers = [fp_flex]
 
-    session_cap = _mock_session(fteam_cap, [result])
-    session_reg = _mock_session(fteam_reg, [result])
+    session_igl = _mock_session(fteam_igl, [result_win])
+    session_flex = _mock_session(fteam_flex, [result_no_bonus])
 
-    score_cap = compute_weekly_score(1, 5, session_cap)
-    score_reg = compute_weekly_score(2, 5, session_reg)
+    score_igl = compute_weekly_score(1, 5, session_igl)
+    score_flex = compute_weekly_score(2, 5, session_flex)
 
-    base = PointCalculator.score(result)
-    assert round(score_cap, 4) == round(base * 1.2, 4)
-    assert round(score_reg, 4) == round(base, 4)
+    base = PointCalculator.score(result_win)
+    assert round(score_igl, 4) == round(base + 8.5, 4)
+    assert round(score_flex, 4) == round(base, 4)
+
+
+def test_compute_weekly_score_best2_maps():
+    """Player with 3 map results: only top 2 count toward weekly score."""
+    fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=5)  # Flex, no bonus
+    fteam.fantasyplayers = [fp]
+
+    r1 = _make_result(player_id=10, week_id=5, kills=15, acs=250)  # best
+    r2 = _make_result(player_id=10, week_id=5, kills=10, acs=200)  # mid
+    r3 = _make_result(player_id=10, week_id=5, kills=5, acs=150)   # worst
+
+    session = _mock_session(fteam, [r1, r2, r3])
+    score = compute_weekly_score(1, 5, session)
+
+    top2 = sorted([PointCalculator.score(r1), PointCalculator.score(r2), PointCalculator.score(r3)], reverse=True)[:2]
+    assert round(score, 4) == round(sum(top2), 4)
+
+
+def test_compute_weekly_score_igl_win_selected_over_higher_base():
+    """IGL with map win (lower base) should be selected over map loss (higher base) when win bonus flips the total."""
+    fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+    fp = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=0)  # IGL
+    fteam.fantasyplayers = [fp]
+
+    # Map 1: higher base score but no win — total = base_loss
+    map_loss = _make_result(player_id=10, week_id=5, kills=10, acs=200, team_won=False)
+    # Map 2: lower base score but win — total = base_win + 8.5
+    map_win = _make_result(player_id=10, week_id=5, kills=8, acs=180, team_won=True)
+
+    base_loss = PointCalculator.score(map_loss)
+    base_win = PointCalculator.score(map_win)
+    # Ensure the setup is valid: base_loss > base_win, but base_win + 8.5 > base_loss
+    assert base_loss > base_win
+    assert base_win + 8.5 > base_loss
+
+    # With only these 2 maps, both count (no cap triggered). Verify role bonus is included.
+    session = _mock_session(fteam, [map_loss, map_win])
+    score = compute_weekly_score(1, 5, session)
+
+    expected = base_loss + (base_win + 8.5)
+    assert round(score, 4) == round(expected, 4)
 
 
 def test_compute_weekly_score_subs_excluded():
