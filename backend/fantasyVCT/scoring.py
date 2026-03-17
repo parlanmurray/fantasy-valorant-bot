@@ -135,7 +135,21 @@ class PointCalculator:
 		line = "CLUTCH_V5"
 		rv += line + add_spaces(line, 20) + str(CLUTCH_V5) + "\n"
 		line = "FK"
-		rv += line + add_spaces(line, 20) + str(FK)
+		rv += line + add_spaces(line, 20) + str(FK) + "\n"
+		rv += "\n"
+		rv += "Role Bonuses (use !roles for details):\n"
+		line = "IGL"
+		rv += line + add_spaces(line, 20) + "+8.5/win\n"
+		line = "Duelist"
+		rv += line + add_spaces(line, 20) + "+2.0/FK\n"
+		line = "Initiator"
+		rv += line + add_spaces(line, 20) + "+1.0/assist\n"
+		line = "Controller"
+		rv += line + add_spaces(line, 20) + "+0.65/assist  +0.35/survived round\n"
+		line = "Sentinel"
+		rv += line + add_spaces(line, 20) + "+0.40/death (penalty -0.60)\n"
+		line = "Flex"
+		rv += line + add_spaces(line, 20) + "no bonus"
 		return rv
 
 	@staticmethod

@@ -231,6 +231,37 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf += "```"
 		return await ctx.send(buf)
 
+	@commands.hybrid_command()
+	async def roles(self, ctx):
+		"""Display each role's mechanic and bonus weights."""
+		buf = "```\n"
+		buf += "Role-Based Scoring\n\n"
+		col_r, col_m = 18, 60
+		header = add_spaces("", 4) + "Role"
+		header += add_spaces(header, col_r) + "Mechanic"
+		header += add_spaces(header, col_m) + "Weights"
+		buf += header + "\n"
+		buf += "    " + "-" * 76 + "\n"
+		rows = [
+			("IGL",        "Bonus when their pro team wins the map",  "+8.5 per win"),
+			("Duelist",    "Bonus for first kills",                   "+2.0/FK  (3.0 total)"),
+			("Initiator",  "Bonus for assists",                       "+1.0/assist  (1.5 total)"),
+			("Controller", "Bonus for assists and rounds survived",   "+0.65/assist  +0.35/survived"),
+			("Sentinel",   "Reduced death penalty",                   "-0.60/death  (saves 0.40)"),
+			("Flex",       "No bonus -- bypasses team restriction",   "--"),
+		]
+		for role, mechanic, weights in rows:
+			line = add_spaces("", 4) + role
+			line += add_spaces(line, col_r) + mechanic
+			line += add_spaces(line, col_m) + weights
+			buf += line + "\n"
+		buf += "\n"
+		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"
+		buf += "like managing a real Valorant team. Choosing which role a player will fill each\n"
+		buf += "week will matter — choosing well could be the difference between a win and a loss.\n"
+		buf += "```"
+		return await ctx.send(buf)
+
 
 class FantasyCog(commands.Cog, name="Fantasy"):
 	def __init__(self, bot):
@@ -406,12 +437,15 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 								# game is not in cache, so perform calculation
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						role_pts = sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results)
-						player_points = round(player_points + role_pts, 1)
+						base_pts = self.bot.cache.retrieve_total(fp.player.id)
+						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
+						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
-							total += player_points
-						line += add_spaces(line, 36) + str(round(player_points, 1))
+							total += total_pts
+						line += add_spaces(line, 36) + str(round(base_pts, 1))
+						role_str = ("+" + str(role_pts)) if role_pts > 0 else ("" + str(role_pts)) if role_pts != 0 else "-"
+						line += add_spaces(line, 46) + role_str
+						line += add_spaces(line, 56) + str(total_pts)
 						break
 				buf2 += line + "\n"
 				if k == 5:
@@ -420,7 +454,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			line = ""
 			line += add_spaces(line, 4) + "Position"
 			line += add_spaces(line, 16) + "Name"
-			line += add_spaces(line, 36) + "Points"
+			line += add_spaces(line, 36) + "Base"
+			line += add_spaces(line, 46) + "Role"
+			line += add_spaces(line, 56) + "Total"
 			buf += line + "\n\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
@@ -470,7 +506,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		Parameters:
 		-----------
 		player: Player's exact IGN (case-sensitive).
-		position: Target position (captain, player1–player5, sub1–sub4).
+		position: Target role (igl, duelist, initiator, controller, sentinel, flex, sub1–sub4).
 		"""
 
 		# check position is valid
