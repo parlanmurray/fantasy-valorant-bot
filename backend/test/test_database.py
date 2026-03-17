@@ -1,56 +1,54 @@
-import os
-
+"""DatabaseManager unit tests using SQLite in-memory — no live DB required."""
 import pytest
-from fantasyVCT.database import DatabaseManager, Player
+from sqlalchemy import create_engine, event, inspect
+from sqlalchemy.orm import Session as SASession
+
+from fantasyVCT.database import Base, DatabaseManager, Team, Player
 from sqlalchemy import select
 
-# Requires a live DB + env vars — skips cleanly when not available.
 
-TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
-DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
-DB_USER = os.getenv('DATABASE_USER')
-DB_TYPE = os.getenv('DATABASE_TYPE')
-DB_DEV = os.getenv('DATABASE_DEV')
-DB_PROD = os.getenv('DATABASE_PROD')
+@pytest.fixture
+def engine():
+	eng = create_engine("sqlite:///:memory:")
 
-_missing = [
-    v for v, name in [
-        (TOKEN_FILE, 'DISCORD_TOKEN_FILE'),
-        (DB_PASSWORD_FILE, 'DATABASE_PASSWORD_FILE'),
-        (DB_USER, 'DATABASE_USER'),
-        (DB_TYPE, 'DATABASE_TYPE'),
-        (DB_DEV, 'DATABASE_DEV'),
-        (DB_PROD, 'DATABASE_PROD'),
-    ] if not v
-]
+	@event.listens_for(eng, "connect")
+	def set_fk(dbapi_conn, _):
+		cursor = dbapi_conn.cursor()
+		cursor.execute("PRAGMA foreign_keys = ON")
+		cursor.close()
 
-pytestmark = pytest.mark.skipif(
-    bool(_missing),
-    reason=f"DB env vars not set: {_missing}"
-)
-
-DB_PASSWORD = None
-TOKEN = None
-
-if not _missing:
-    with open(DB_PASSWORD_FILE, 'r') as f:
-        DB_PASSWORD = f.read()
-    with open(TOKEN_FILE, 'r') as f:
-        TOKEN = f.read()
-    db_manager = DatabaseManager(DB_TYPE, DB_USER, DB_PASSWORD, DB_DEV)
-else:
-    db_manager = None
+	Base.metadata.create_all(eng)
+	yield eng
+	eng.dispose()
 
 
-def test_connect():
-    with db_manager.connect():
-        assert True
+@pytest.fixture
+def db_manager(engine):
+	return DatabaseManager.from_engine(engine)
 
 
-def test_update():
-    with db_manager.create_session() as session:
-        sandy = Player(name="sandy", team_id=None)
-        session.add(sandy)
-        stmt = select(Player).where(Player.name.in_(["sandy"]))
-        assert session.scalars(stmt)
-        session.rollback()
+def test_connect(db_manager, engine):
+	"""Engine connects and all ORM tables are present."""
+	with db_manager.connect():
+		table_names = inspect(engine).get_table_names()
+	assert "players" in table_names
+	assert "teams" in table_names
+	assert "results" in table_names
+
+
+def test_create_session_add_and_query(db_manager):
+	"""Session can add a Player and query it back."""
+	with db_manager.create_session() as session:
+		team = Team(name="TestTeam", abbrev="TST", region="na")
+		session.add(team)
+		session.flush()
+
+		player = Player(name="TestPlayer", team_id=team.id)
+		session.add(player)
+		session.flush()
+
+		found = session.scalars(select(Player).where(Player.name == "TestPlayer")).one()
+		assert found.name == "TestPlayer"
+		assert found.team_id == team.id
+
+		session.rollback()
