@@ -350,3 +350,80 @@ class TestUnicodeHandling:
 		# draft succeeded: completion message sent, no error about player not found
 		assert "Initial draft is complete!" in sent
 		assert "No player was found" not in sent
+
+
+# ── Role bonus integration ─────────────────────────────────────────────────────
+
+class TestRoleBonusIntegration:
+	"""Integration: role assignment in DB → score compute → !standings output.
+
+	Verifies the full vertical slice: role stored as position int in DB,
+	looked up via POSITIONS dict, passed to role_bonus(), reflected in output.
+	"""
+
+	def _seed(self, engine, position, kills=0, fk=0, assists=0, deaths=0, team_won=None):
+		with SASession(engine) as s:
+			team = db.Team(name="ProTeam", abbrev="PRO", region="na")
+			s.add(team)
+			s.flush()
+			player = db.Player(name="TestPlayer", team_id=team.id)
+			s.add(player)
+			s.flush()
+			ft = db.FantasyTeam(name="MyTeam", abbrev="MYT")
+			s.add(ft)
+			s.flush()
+			s.add(db.User(discord_id=AUTHOR_ID, fantasy_team_id=ft.id))
+			s.add(db.FantasyPlayer(player_id=player.id, fantasy_team_id=ft.id, position=position))
+			s.add(db.Result(
+				player_id=player.id, game_id=1, match_id=1,
+				map="Haven", event_id=1, agent="Jett",
+				player_acs=0, player_kills=kills, player_deaths=deaths,
+				player_assists=assists,
+				player_2k=0, player_3k=0, player_4k=0, player_5k=0,
+				player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+				player_fk=fk, team_won=team_won,
+			))
+			s.commit()
+
+	async def test_duelist_fk_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""Duelist FK role bonus is included in standings total.
+
+		kills=10 → base 15.0; fk=5 → base 5.0; total base 20.0
+		Duelist bonus: fk=5 × 2.0 = 10.0 → standings total 30.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=1, kills=10, fk=5)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "30.0" in ctx.send.call_args[0][0]
+
+	async def test_igl_win_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""IGL win bonus (+8.5) is included in standings total.
+
+		kills=5 → base 7.5; IGL win → +8.5; standings total 16.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=0, kills=5, team_won=True)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "16.0" in ctx.send.call_args[0][0]
+
+	async def test_flex_earns_no_role_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""Flex (position 5) earns no role bonus despite having FKs.
+
+		kills=10 → base 15.0; fk=5 → base 5.0; Flex bonus = 0; standings total 20.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=5, kills=10, fk=5)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "20.0" in ctx.send.call_args[0][0]
