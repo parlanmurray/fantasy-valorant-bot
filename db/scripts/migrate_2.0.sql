@@ -110,3 +110,18 @@ CREATE TABLE IF NOT EXISTS FantasyValProd.season_events (
 	event_url VARCHAR(255) NOT NULL,
 	FOREIGN KEY (season_id) REFERENCES FantasyValProd.seasons(id) ON DELETE CASCADE
 );
+
+-- Role-based positions: rename captain/player1-5 → igl/duelist/initiator/controller/sentinel/flex
+UPDATE FantasyValDev.positions SET position = 'igl'        WHERE id = 0;
+UPDATE FantasyValDev.positions SET position = 'duelist'    WHERE id = 1;
+UPDATE FantasyValDev.positions SET position = 'initiator'  WHERE id = 2;
+UPDATE FantasyValDev.positions SET position = 'controller' WHERE id = 3;
+UPDATE FantasyValDev.positions SET position = 'sentinel'   WHERE id = 4;
+UPDATE FantasyValDev.positions SET position = 'flex'       WHERE id = 5;
+
+UPDATE FantasyValProd.positions SET position = 'igl'        WHERE id = 0;
+UPDATE FantasyValProd.positions SET position = 'duelist'    WHERE id = 1;
+UPDATE FantasyValProd.positions SET position = 'initiator'  WHERE id = 2;
+UPDATE FantasyValProd.positions SET position = 'controller' WHERE id = 3;
+UPDATE FantasyValProd.positions SET position = 'sentinel'   WHERE id = 4;
+UPDATE FantasyValProd.positions SET position = 'flex'       WHERE id = 5;

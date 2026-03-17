@@ -4,9 +4,11 @@ No Discord coupling; pure logic.
 """
 import fantasyVCT.database as db
 from fantasyVCT.scoring import PointCalculator
+from fantasyVCT.utils import POSITIONS
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from collections import defaultdict
 
 
 def generate_schedule(
@@ -112,9 +114,9 @@ def compute_round_offset(total_prev_weeks: int, num_teams: int) -> int:
 def compute_weekly_score(fantasy_team_id: int, week_id: int, session: Session) -> float:
     """Compute a fantasy team's score for a given week.
 
-    Sums PointCalculator.score() for all results tagged to week_id whose
-    player is on the team's active roster (positions 0–5). Captain (position 0)
-    gets the 1.2× multiplier.
+    For each active roster player (positions 0–5), computes base + role bonus for
+    each result tagged to week_id, sorts descending, and takes the top 2 maps.
+    Weekly score is the sum of each player's top-2 map totals.
 
     Args:
         fantasy_team_id: id of the FantasyTeam
@@ -144,12 +146,19 @@ def compute_weekly_score(fantasy_team_id: int, week_id: int, session: Session) -
         )
     ).all()
 
-    total = 0.0
+    # Group results by player
+    player_results = defaultdict(list)
     for result in results:
-        pts = PointCalculator.score(result)
-        if active_roster[result.player_id] == 0:
-            pts *= 1.2
-        total += pts
+        player_results[result.player_id].append(result)
+
+    total = 0.0
+    for player_id, maps in player_results.items():
+        role = POSITIONS[active_roster[player_id]]
+        map_totals = sorted(
+            (PointCalculator.score(r) + PointCalculator.role_bonus(r, role) for r in maps),
+            reverse=True
+        )
+        total += sum(map_totals[:2])
 
     return round(total, 1)
 

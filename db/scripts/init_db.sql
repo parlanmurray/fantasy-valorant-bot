@@ -103,12 +103,12 @@ CREATE TABLE IF NOT EXISTS FantasyValDev.positions
 
 INSERT IGNORE INTO FantasyValDev.positions (id, position)
 VALUES
-	(0, "captain"),
-	(1, "player1"),
-	(2, "player2"),
-	(3, "player3"),
-	(4, "player4"),
-	(5, "player5"),
+	(0, "igl"),
+	(1, "duelist"),
+	(2, "initiator"),
+	(3, "controller"),
+	(4, "sentinel"),
+	(5, "flex"),
 	(6, "sub1"),
 	(7, "sub2"),
 	(8, "sub3"),
@@ -122,12 +122,12 @@ CREATE TABLE IF NOT EXISTS FantasyValProd.positions
 
 INSERT IGNORE INTO FantasyValProd.positions (id, position)
 VALUES
-	(0, "captain"),
-	(1, "player1"),
-	(2, "player2"),
-	(3, "player3"),
-	(4, "player4"),
-	(5, "player5"),
+	(0, "igl"),
+	(1, "duelist"),
+	(2, "initiator"),
+	(3, "controller"),
+	(4, "sentinel"),
+	(5, "flex"),
 	(6, "sub1"),
 	(7, "sub2"),
 	(8, "sub3"),

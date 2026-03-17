@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session as SASession
 import fantasyVCT.database as db
 from fantasyVCT.database import Base
 from fantasyVCT.interactions import (
-	ConfigCog, FantasyCog, StatsCog, Category, add_spaces, POSITIONS, _optimal_score,
+	ConfigCog, FantasyCog, StatsCog, Category, add_spaces, POSITIONS,
 )
 
 
@@ -259,108 +259,6 @@ async def test_rankplayers_picks_up_new_games_after_stale_total(mock_bot, ctx, e
 	assert "60.0" in sent
 
 
-# ── _optimal_score ────────────────────────────────────────────────────────────
-
-def _make_fp(player_id, team_id):
-	"""Build a mock FantasyPlayer with a player stub."""
-	fp = MagicMock()
-	fp.player.id = player_id
-	fp.player.team_id = team_id
-	return fp
-
-
-def _make_fteam(fps):
-	ft = MagicMock()
-	ft.fantasyplayers = fps
-	return ft
-
-
-def _make_cache(scores: dict):
-	cache = MagicMock()
-	cache.retrieve_total.side_effect = lambda pid: scores.get(pid, 0)
-	return cache
-
-
-class TestOptimalScore:
-	def test_empty_team(self):
-		ft = _make_fteam([])
-		assert _optimal_score(ft, _make_cache({})) == 0.0
-
-	def test_all_distinct_teams_best_captain(self):
-		# 6 players, each on different pro teams; best scorer should become captain
-		fps = [_make_fp(i, i) for i in range(6)]
-		scores = {0: 100, 1: 80, 2: 60, 3: 40, 4: 20, 5: 10}
-		cache = _make_cache(scores)
-		result = _optimal_score(_make_fteam(fps), cache)
-		# captain=100×1.2 + 80+60+40+20+10 = 120+210 = 330
-		assert result == 330.0
-
-	def test_suboptimal_captain_triggers_asterisk(self):
-		# 6 players distinct teams; captain is worst scorer → optimal > actual
-		fps = [_make_fp(i, i) for i in range(6)]
-		scores = {0: 10, 1: 80, 2: 60, 3: 40, 4: 20, 5: 100}
-		# optimal: captain=player5(100) → 100×1.2 + 80+60+40+20+10 = 120+210 = 330
-		cache = _make_cache(scores)
-		result = _optimal_score(_make_fteam(fps), cache)
-		assert result == 330.0
-
-	def test_captain_can_share_team_with_active(self):
-		# Captain (pos 0) is exempt from team restriction; captain and one active can share team 99
-		fps = [
-			_make_fp(0, 99),  # score 100, team 99 → captain
-			_make_fp(1, 99),  # score 90, team 99 → allowed as active (captain exempt)
-			_make_fp(2, 2),   # score 80
-			_make_fp(3, 3),   # score 70
-			_make_fp(4, 4),   # score 60
-			_make_fp(5, 5),   # score 50
-			_make_fp(6, 6),   # score 40
-		]
-		scores = {0: 100, 1: 90, 2: 80, 3: 70, 4: 60, 5: 50, 6: 40}
-		cache = _make_cache(scores)
-		# captain=0(100,T99), active: 1(90,T99)✓, 2(80,T2)✓, 3(70,T3)✓, 4(60,T4)✓, 5(50,T5)✓
-		# total = 100×1.2 + 90+80+70+60+50 = 120+350 = 470
-		result = _optimal_score(_make_fteam(fps), cache)
-		assert result == 470.0
-
-	def test_two_same_team_active_not_both_chosen(self):
-		# Players 4 and 5 share team 99; player 0 dominates as captain (large gap)
-		# so both T99 players compete for active slots — only the better one is chosen
-		fps = [
-			_make_fp(0, 1),   # score 1000, T1 — dominant captain
-			_make_fp(1, 2),   # score 80
-			_make_fp(2, 3),   # score 70
-			_make_fp(3, 4),   # score 60
-			_make_fp(4, 99),  # score 50, T99
-			_make_fp(5, 99),  # score 40, T99 — same team, cannot both be active
-			_make_fp(6, 5),   # score 10
-		]
-		scores = {0: 1000, 1: 80, 2: 70, 3: 60, 4: 50, 5: 40, 6: 10}
-		cache = _make_cache(scores)
-		# captain=0(1000): active=[80,70,60,50(T99),skip 40(T99),10]=[80,70,60,50,10]=270
-		# total = 1000×1.2 + 270 = 1200+270 = 1470
-		result = _optimal_score(_make_fteam(fps), cache)
-		assert result == 1470.0
-
-	def test_sub_considered_for_optimal(self):
-		# A sub (high scorer) should displace a weaker active player in the optimal lineup
-		# Active roster: positions 0-5 (captain + 5 players)
-		# Sub: position 6 with a higher score than one of the active players
-		fps = [
-			_make_fp(0, 1),  # score 100, T1 — captain
-			_make_fp(1, 2),  # score 80
-			_make_fp(2, 3),  # score 70
-			_make_fp(3, 4),  # score 60
-			_make_fp(4, 5),  # score 50
-			_make_fp(5, 6),  # score 10 — weak active player
-			_make_fp(6, 7),  # score 90 — strong sub, should replace player 5
-		]
-		scores = {0: 100, 1: 80, 2: 70, 3: 60, 4: 50, 5: 10, 6: 90}
-		cache = _make_cache(scores)
-		# Without sub: captain=0(100), active=[80,70,60,50,10]=270, total=120+270=390
-		# With sub:    captain=0(100), active=[90,80,70,60,50]=350, total=120+350=470
-		result = _optimal_score(_make_fteam(fps), cache)
-		assert result == 470.0
-
 
 # ── Unicode / non-ASCII handling ──────────────────────────────────────────────
 
@@ -452,3 +350,80 @@ class TestUnicodeHandling:
 		# draft succeeded: completion message sent, no error about player not found
 		assert "Initial draft is complete!" in sent
 		assert "No player was found" not in sent
+
+
+# ── Role bonus integration ─────────────────────────────────────────────────────
+
+class TestRoleBonusIntegration:
+	"""Integration: role assignment in DB → score compute → !standings output.
+
+	Verifies the full vertical slice: role stored as position int in DB,
+	looked up via POSITIONS dict, passed to role_bonus(), reflected in output.
+	"""
+
+	def _seed(self, engine, position, kills=0, fk=0, assists=0, deaths=0, team_won=None):
+		with SASession(engine) as s:
+			team = db.Team(name="ProTeam", abbrev="PRO", region="na")
+			s.add(team)
+			s.flush()
+			player = db.Player(name="TestPlayer", team_id=team.id)
+			s.add(player)
+			s.flush()
+			ft = db.FantasyTeam(name="MyTeam", abbrev="MYT")
+			s.add(ft)
+			s.flush()
+			s.add(db.User(discord_id=AUTHOR_ID, fantasy_team_id=ft.id))
+			s.add(db.FantasyPlayer(player_id=player.id, fantasy_team_id=ft.id, position=position))
+			s.add(db.Result(
+				player_id=player.id, game_id=1, match_id=1,
+				map="Haven", event_id=1, agent="Jett",
+				player_acs=0, player_kills=kills, player_deaths=deaths,
+				player_assists=assists,
+				player_2k=0, player_3k=0, player_4k=0, player_5k=0,
+				player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+				player_fk=fk, team_won=team_won,
+			))
+			s.commit()
+
+	async def test_duelist_fk_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""Duelist FK role bonus is included in standings total.
+
+		kills=10 → base 15.0; fk=5 → base 5.0; total base 20.0
+		Duelist bonus: fk=5 × 2.0 = 10.0 → standings total 30.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=1, kills=10, fk=5)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "30.0" in ctx.send.call_args[0][0]
+
+	async def test_igl_win_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""IGL win bonus (+8.5) is included in standings total.
+
+		kills=5 → base 7.5; IGL win → +8.5; standings total 16.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=0, kills=5, team_won=True)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "16.0" in ctx.send.call_args[0][0]
+
+	async def test_flex_earns_no_role_bonus_in_standings(self, mock_bot, ctx, engine):
+		"""Flex (position 5) earns no role bonus despite having FKs.
+
+		kills=10 → base 15.0; fk=5 → base 5.0; Flex bonus = 0; standings total 20.0
+		"""
+		from fantasyVCT.scoring import Cache
+		self._seed(engine, position=5, kills=10, fk=5)
+		mock_bot.cache = Cache()
+
+		cog = FantasyCog(mock_bot)
+		await cog.standings.callback(cog, ctx)
+
+		assert "20.0" in ctx.send.call_args[0][0]

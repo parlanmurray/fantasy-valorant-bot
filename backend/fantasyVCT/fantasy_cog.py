@@ -60,7 +60,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				skip_flag = False
 				for fp in user.fantasyteam.fantasyplayers:
 					if fp.position == i:
-						if i > 0 and i < 6 and drafted_player.team and fp.player.team == drafted_player.team:
+						# IGL–Sentinel (0–4) are team-restricted; Flex (5) is not
+						if i < 5 and drafted_player.team and fp.player.team == drafted_player.team:
 							sub_flag = True
 						skip_flag = True
 						break
@@ -169,14 +170,15 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 							if not fantasy_points:
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if k == 0:
-							player_points = player_points * 1.2
+						base_pts = self.bot.cache.retrieve_total(fp.player.id)
+						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
+						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
-							total += player_points
-						line += add_spaces(line, 36) + str(round(player_points, 1))
-						if k == 0:
-							line += " (1.2x)"
+							total += total_pts
+						line += add_spaces(line, 36) + str(round(base_pts, 1))
+						role_str = ("+" + str(role_pts)) if role_pts > 0 else (str(role_pts) if role_pts != 0 else "-")
+						line += add_spaces(line, 46) + role_str
+						line += add_spaces(line, 56) + str(total_pts)
 						break
 				buf2 += line + "\n"
 				if k == 5:
@@ -185,7 +187,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			line = ""
 			line += add_spaces(line, 4) + "Position"
 			line += add_spaces(line, 16) + "Name"
-			line += add_spaces(line, 36) + "Points"
+			line += add_spaces(line, 36) + "Base"
+			line += add_spaces(line, 46) + "Role"
+			line += add_spaces(line, 56) + "Total"
 			buf += line + "\n\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
@@ -230,7 +234,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		Parameters:
 		-----------
 		player: Player's exact IGN (case-sensitive).
-		position: Target position (captain, player1–player5, sub1–sub4).
+		position: Target role (igl, duelist, initiator, controller, sentinel, flex, sub1–sub4).
 		"""
 
 		with self.bot.db_manager.create_session() as session:
@@ -259,9 +263,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			else:
 				set_player.fantasyplayer.position = dest_pos
 
+			# IGL–Sentinel (0–4) are team-restricted; Flex (5) is not
 			existing_teams = list()
 			for curr_player in user.fantasyteam.fantasyplayers:
-				if curr_player.position > 0 and curr_player.position < 6:
+				if curr_player.position < 5:
 					if curr_player.player.team in existing_teams:
 						session.rollback()
 						return await ctx.send("Cannot assign player to this position due to team restriction. See !rules.")
@@ -274,12 +279,12 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def standings(self, ctx):
-		"""Show current fantasy league standings sorted by optimized score."""
+		"""Show current fantasy league standings sorted by score."""
 
 		with self.bot.db_manager.create_session() as session:
 			fteams = list(session.scalars(select(db.FantasyTeam)))
 
-			# Compute season points
+			# Compute season points (base + role bonus)
 			for fteam in fteams:
 				total = 0
 				for fp in fteam.fantasyplayers:
@@ -290,9 +295,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
 						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if fp.position == 0:
-							player_points = player_points * 1.2
-						total = round(total + player_points, 1)
+						role_pts = sum(PointCalculator.role_bonus(row, POSITIONS[fp.position]) for row in fp.player.results)
+						total = round(total + player_points + role_pts, 1)
 				fteam.points = total
 
 			# Compute W/L/T if there's an active season (walk all stages)
