@@ -14,6 +14,14 @@ CLUTCH_V3 = 12
 CLUTCH_V4 = 16
 CLUTCH_V5 = 20
 
+# Role bonus weights (calibrated 2026-03-16, role_calibration_v3.py)
+ROLE_IGL_WIN = 8.5
+ROLE_DUELIST_FK = 2.0        # total FK weight = 1.0 (base) + 2.0
+ROLE_INITIATOR_ASSIST = 1.0  # total assist weight = 0.5 + 1.0
+ROLE_CONTROLLER_ASSIST = 0.65
+ROLE_CONTROLLER_SURVIVAL = 0.35
+ROLE_SENTINEL_DEATH_SAVE = 0.40  # penalty -0.60 instead of -1.0
+
 class Cache:
 
 	"""Caches scores to prevent the need for many database requests.
@@ -152,3 +160,26 @@ class PointCalculator:
 		rv += player_stats.player_clutch_v5 * CLUTCH_V5
 		rv += (player_stats.player_fk or 0) * FK
 		return round(rv, 1)
+
+	@staticmethod
+	def role_bonus(player_stats: Result, role: str) -> float:
+		"""Return the role-specific bonus points for a single result.
+
+		Role bonuses are additive on top of the base score and are only
+		applied when the player is assigned to that role slot.
+		Flex and Sub slots return 0.
+		"""
+		r = role.lower()
+		if r == 'igl':
+			return ROLE_IGL_WIN if player_stats.team_won else 0.0
+		elif r == 'duelist':
+			return (player_stats.player_fk or 0) * ROLE_DUELIST_FK
+		elif r == 'initiator':
+			return player_stats.player_assists * ROLE_INITIATOR_ASSIST
+		elif r == 'controller':
+			survived = (player_stats.rounds_played or 0) - player_stats.player_deaths
+			return (player_stats.player_assists * ROLE_CONTROLLER_ASSIST
+					+ max(0, survived) * ROLE_CONTROLLER_SURVIVAL)
+		elif r == 'sentinel':
+			return player_stats.player_deaths * ROLE_SENTINEL_DEATH_SAVE
+		return 0.0
