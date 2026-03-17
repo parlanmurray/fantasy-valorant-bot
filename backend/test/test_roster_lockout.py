@@ -194,7 +194,7 @@ async def test_set_blocked_when_locked(mock_bot, ctx, engine):
     _seed_locked_season(engine)
 
     cog = FantasyCog(mock_bot)
-    await cog.set.callback(cog, ctx, "TenZ", "captain")
+    await cog.set.callback(cog, ctx, "TenZ", "igl")
 
     sent = ctx.send.call_args[0][0]
     assert "locked" in sent
@@ -205,7 +205,7 @@ async def test_set_allowed_when_unlocked(mock_bot, ctx, engine):
     _seed_player_and_team(engine)
 
     cog = FantasyCog(mock_bot)
-    await cog.set.callback(cog, ctx, "TenZ", "captain")
+    await cog.set.callback(cog, ctx, "TenZ", "igl")
 
     # Should proceed past lock check (may fail for other reasons, but not lockout)
     sent = "".join(call[0][0] for call in ctx.send.call_args_list)

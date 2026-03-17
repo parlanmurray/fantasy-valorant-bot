@@ -4,7 +4,7 @@ import fantasyVCT.database as db
 from discord.ext import commands
 from sqlalchemy import select, or_
 
-from fantasyVCT.utils import add_spaces
+from fantasyVCT.utils import add_spaces, POSITIONS
 
 
 class ConfigCog(commands.Cog, name="Configuration"):
@@ -171,6 +171,37 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		"""Display the stat weights used to calculate fantasy points."""
 		buf = "```\n"
 		buf += PointCalculator.get_scoring_info()
+		buf += "```"
+		return await ctx.send(buf)
+
+	@commands.command()
+	async def roles(self, ctx):
+		"""Display each role's mechanic and bonus weights."""
+		buf = "```\n"
+		buf += "Role-Based Scoring\n\n"
+		col_r, col_m = 18, 60
+		header = add_spaces("", 4) + "Role"
+		header += add_spaces(header, col_r) + "Mechanic"
+		header += add_spaces(header, col_m) + "Weights"
+		buf += header + "\n"
+		buf += "    " + "-" * 76 + "\n"
+		rows = [
+			("IGL",        "Bonus when their pro team wins the map",  "+8.5 per win"),
+			("Duelist",    "Bonus for first kills",                   "+2.0/FK  (3.0 total)"),
+			("Initiator",  "Bonus for assists",                       "+1.0/assist  (1.5 total)"),
+			("Controller", "Bonus for assists and rounds survived",   "+0.65/assist  +0.35/survived"),
+			("Sentinel",   "Reduced death penalty",                   "-0.60/death  (saves 0.40)"),
+			("Flex",       "No bonus -- bypasses team restriction",   "--"),
+		]
+		for role, mechanic, weights in rows:
+			line = add_spaces("", 4) + role
+			line += add_spaces(line, col_r) + mechanic
+			line += add_spaces(line, col_m) + weights
+			buf += line + "\n"
+		buf += "\n"
+		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"
+		buf += "like managing a real Valorant team. Choosing which role a player will fill each\n"
+		buf += "week will matter -- choosing well could be the difference between a win and a loss.\n"
 		buf += "```"
 		return await ctx.send(buf)
 

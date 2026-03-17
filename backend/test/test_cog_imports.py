@@ -7,8 +7,8 @@ from fantasyVCT.matchup_cog import MatchupCog
 
 
 def test_utils_positions():
-    assert POSITIONS[0] == "Captain"
-    assert POSITIONS[5] == "Player5"
+    assert POSITIONS[0] == "IGL"
+    assert POSITIONS[5] == "Flex"
     assert POSITIONS[6] == "Sub1"
 
 
