@@ -25,6 +25,13 @@ class DatabaseManager:
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string, pool_pre_ping=True)
 
+	@classmethod
+	def from_engine(cls, engine):
+		"""Create a DatabaseManager from a pre-built engine (e.g. SQLite for tests)."""
+		obj = cls.__new__(cls)
+		obj._engine = engine
+		return obj
+
 	def connect(self):
 		"""
 		Caller is repsonsible for Connection object.
