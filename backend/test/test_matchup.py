@@ -22,10 +22,13 @@ def test_schedule_even_teams():
         assert len(week_pairs) == 2
         # No team appears twice in the same week
         seen = []
-        for home, away in week_pairs:
+        for home, away, ghost_mirror in week_pairs:
             assert home not in seen
             assert away not in seen
             seen.extend([home, away])
+            # Even teams: no ghost matchups
+            assert away is not None
+            assert ghost_mirror is None
 
 
 def test_schedule_even_full_roundrobin():
@@ -35,7 +38,7 @@ def test_schedule_even_full_roundrobin():
 
     pairs = set()
     for week_pairs in schedule:
-        for home, away in week_pairs:
+        for home, away, ghost_mirror in week_pairs:
             pair = frozenset([home, away])
             assert pair not in pairs, f"Duplicate matchup: {pair}"
             pairs.add(pair)
@@ -52,7 +55,7 @@ def test_schedule_odd_teams():
     assert len(schedule) == 3
     for week_pairs in schedule:
         assert len(week_pairs) == 2  # 4 slots / 2 = 2 games (one has ghost)
-        ghost_count = sum(1 for _, away in week_pairs if away is None)
+        ghost_count = sum(1 for _, away, _m in week_pairs if away is None)
         assert ghost_count == 1, "Exactly one ghost matchup per round with odd teams"
 
 
@@ -63,7 +66,7 @@ def test_schedule_repeat():
     schedule = generate_schedule(teams, num_weeks=6)
 
     assert len(schedule) == 6
-    # First 3 weeks == last 3 weeks
+    # First 3 weeks == last 3 weeks (tuples include ghost_mirror_id)
     assert schedule[0] == schedule[3]
     assert schedule[1] == schedule[4]
     assert schedule[2] == schedule[5]
@@ -73,7 +76,9 @@ def test_schedule_single_week():
     schedule = generate_schedule([1, 2], num_weeks=1)
     assert len(schedule) == 1
     assert len(schedule[0]) == 1
-    assert frozenset(schedule[0][0]) == frozenset([1, 2])
+    home, away, ghost_mirror = schedule[0][0]
+    assert frozenset([home, away]) == frozenset([1, 2])
+    assert ghost_mirror is None
 
 
 def test_schedule_too_few_teams():
@@ -293,7 +298,7 @@ def test_schedule_repeat_all_matchups_valid():
     teams = [1, 2, 3, 4]
     schedule = generate_schedule(teams, num_weeks=9)
     for week_pairs in schedule:
-        for home, away in week_pairs:
+        for home, away, ghost_mirror in week_pairs:
             assert home is not None  # home is always a real team
 
 
@@ -319,9 +324,33 @@ def test_schedule_odd_each_team_gets_ghost_once():
 
     ghost_counts = {t: 0 for t in teams}
     for week_pairs in schedule:
-        for home, away in week_pairs:
+        for home, away, ghost_mirror in week_pairs:
             if away is None:
                 ghost_counts[home] += 1
 
     for team_id, count in ghost_counts.items():
         assert count == 1, f"Team {team_id} expected 1 ghost matchup, got {count}"
+
+
+def test_ghost_mirror_is_real_team():
+    """Ghost matchups must have a non-None ghost_mirror_id pointing to a real team."""
+    teams = [1, 2, 3]
+    schedule = generate_schedule(teams, num_weeks=3)
+
+    for week_pairs in schedule:
+        for home, away, ghost_mirror in week_pairs:
+            if away is None:
+                assert ghost_mirror is not None, "Ghost matchup must have a mirror team"
+                assert ghost_mirror in teams, f"ghost_mirror {ghost_mirror} not in team list"
+                assert ghost_mirror != home, "Ghost mirror should not be the bye team itself"
+
+
+def test_ghost_mirror_not_set_for_real_matchups():
+    """Non-ghost matchups must have ghost_mirror_id = None."""
+    teams = [1, 2, 3]
+    schedule = generate_schedule(teams, num_weeks=3)
+
+    for week_pairs in schedule:
+        for home, away, ghost_mirror in week_pairs:
+            if away is not None:
+                assert ghost_mirror is None

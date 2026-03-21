@@ -227,11 +227,13 @@ CREATE TABLE IF NOT EXISTS FantasyValDev.matchups
 	week_id INT NOT NULL,
 	home_team_id INT NOT NULL,
 	away_team_id INT NULL,
+	ghost_team_id INT NULL,
 	home_score FLOAT NOT NULL DEFAULT 0.0,
 	away_score FLOAT NOT NULL DEFAULT 0.0,
 	FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (home_team_id) REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
+	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
+	FOREIGN KEY (ghost_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS FantasyValProd.matchups
@@ -240,11 +242,13 @@ CREATE TABLE IF NOT EXISTS FantasyValProd.matchups
 	week_id INT NOT NULL,
 	home_team_id INT NOT NULL,
 	away_team_id INT NULL,
+	ghost_team_id INT NULL,
 	home_score FLOAT NOT NULL DEFAULT 0.0,
 	away_score FLOAT NOT NULL DEFAULT 0.0,
 	FOREIGN KEY (week_id) REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
 	FOREIGN KEY (home_team_id) REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
-	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
+	FOREIGN KEY (away_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE,
+	FOREIGN KEY (ghost_team_id) REFERENCES fantasy_teams(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 ALTER TABLE FantasyValDev.results ADD COLUMN IF NOT EXISTS week_id INT NULL,

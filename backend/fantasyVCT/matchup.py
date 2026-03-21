@@ -13,11 +13,13 @@ from collections import defaultdict
 
 def generate_schedule(
     team_ids: list[int], num_weeks: int, round_offset: int = 0
-) -> list[list[tuple[int, int | None]]]:
+) -> list[list[tuple[int, int | None, int | None]]]:
     """Generate a round-robin matchup schedule.
 
-    Returns a list of length num_weeks. Each entry is a list of (home_id, away_id) pairs
-    for that week. away_id is None for ghost matchups when team count is odd.
+    Returns a list of length num_weeks. Each entry is a list of
+    (home_id, away_id, ghost_mirror_id) triples for that week.
+    away_id is None for ghost matchups (odd team count).
+    ghost_mirror_id is the real team whose score the ghost mirrors (None for non-ghost).
 
     Uses the circle/polygon algorithm for round-robin scheduling.
     If num_weeks > num_rounds, the schedule repeats from the beginning.
@@ -28,7 +30,8 @@ def generate_schedule(
         round_offset: which round index to start from (for stage continuation)
 
     Returns:
-        list[list[tuple[int, int | None]]]: schedule[week_index] = [(home, away), ...]
+        list[list[tuple[int, int | None, int | None]]]:
+            schedule[week_index] = [(home, away, ghost_mirror_id), ...]
     """
     if len(team_ids) < 2:
         raise ValueError("Need at least 2 teams to generate a schedule")
@@ -47,7 +50,7 @@ def generate_schedule(
     rotation = teams[1:]  # first team is fixed; rotate the rest
 
     for round_idx in range(num_rounds):
-        pairs = []
+        raw_pairs = []
         fixed = teams[0]
         round_teams = [fixed] + rotation
 
@@ -60,7 +63,14 @@ def generate_schedule(
             # Always put ghost in away slot
             if home is None:
                 home, away = away, home
-            pairs.append((home, away))
+            raw_pairs.append((home, away))
+
+        # For ghost pairs, mirror the first real team in the round
+        ghost_mirror = next((h for h, a in raw_pairs if a is not None), None)
+        pairs = [
+            (home, away, ghost_mirror if away is None else None)
+            for home, away in raw_pairs
+        ]
         rounds.append(pairs)
 
         # Rotate: move last element of rotation to front

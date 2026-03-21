@@ -9,22 +9,22 @@ def _soup(canonical_href):
 
 
 def test_parse_week_number_w1():
-    soup = _soup("https://www.vlr.gg/459518/team-a-vs-team-b/w1")
+    soup = _soup("https://www.vlr.gg/459518/team-a-vs-team-b-w1")
     assert Scraper.parse_week_number(soup) == 1
 
 
 def test_parse_week_number_w2():
-    soup = _soup("https://www.vlr.gg/459519/some-match/w2")
+    soup = _soup("https://www.vlr.gg/459519/some-match-w2")
     assert Scraper.parse_week_number(soup) == 2
 
 
 def test_parse_week_number_double_digit():
-    soup = _soup("https://www.vlr.gg/459520/some-match/w12")
+    soup = _soup("https://www.vlr.gg/459520/some-match-w12")
     assert Scraper.parse_week_number(soup) == 12
 
 
 def test_parse_week_number_no_week():
-    """Match URL without /wN suffix returns None."""
+    """Match URL without -wN suffix returns None."""
     soup = _soup("https://www.vlr.gg/459521/some-match")
     assert Scraper.parse_week_number(soup) is None
 
