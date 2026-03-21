@@ -53,15 +53,16 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			if len(fteams) < 2:
 				return await ctx.send("Need at least 2 registered fantasy teams to generate a schedule.")
 
-			# Clear any existing matchups for this season
 			weeks = list(session.scalars(select(db.Week).where(db.Week.season_id == season.id)))
 			week_map = {w.week_number: w.id for w in weeks}
 
+			# Idempotency guard — abort if matchups already exist
 			for week in weeks:
-				existing = session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)).all()
-				for m in existing:
-					session.delete(m)
-			session.flush()
+				if session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)).first():
+					return await ctx.send(
+						"Matchups already exist for this season. "
+						"Delete them manually before regenerating."
+					)
 
 			team_ids = [t.id for t in fteams]
 			# Compute round offset for stage continuation

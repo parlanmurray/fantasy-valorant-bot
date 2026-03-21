@@ -361,9 +361,9 @@ class Scraper:
 		if not canonical:
 			return None
 		href = canonical.get('href', '')
-		# Match URL pattern: .../<slug>/wN  (e.g. /w1, /w2, /w12)
+		# Match URL pattern: ...-wN  (e.g. -w1, -w2, -w12)
 		import re
-		m = re.search(r'/w(\d+)$', href)
+		m = re.search(r'-w(\d+)$', href)
 		if m:
 			return int(m.group(1))
 		return None
