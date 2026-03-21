@@ -327,12 +327,14 @@ class Matchup(Base):
 	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=False)
 	home_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=False)
 	away_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=True)
+	ghost_team_id: Mapped[Optional[int]] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=True)
 	home_score: Mapped[float] = mapped_column(default=0.0)
 	away_score: Mapped[float] = mapped_column(default=0.0)
 
 	week: Mapped[Week] = relationship(back_populates="matchups")
 	home_team: Mapped[FantasyTeam] = relationship(foreign_keys=[home_team_id])
 	away_team: Mapped[FantasyTeam] = relationship(foreign_keys=[away_team_id])
+	ghost_team: Mapped[Optional[FantasyTeam]] = relationship(foreign_keys=[ghost_team_id])
 
 	def __repr__(self) -> str:
 		return (

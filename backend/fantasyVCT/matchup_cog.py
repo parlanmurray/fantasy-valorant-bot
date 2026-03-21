@@ -78,11 +78,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				week_id = week_map.get(week_number)
 				if not week_id:
 					continue
-				for home_id, away_id in pairs:
+				for home_id, away_id, ghost_mirror_id in pairs:
 					session.add(db.Matchup(
 						week_id=week_id,
 						home_team_id=home_id,
 						away_team_id=away_id,
+						ghost_team_id=ghost_mirror_id,
 						home_score=0.0,
 						away_score=0.0
 					))
@@ -114,8 +115,9 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				matchup.home_score = compute_weekly_score(matchup.home_team_id, week.id, session)
 				if matchup.away_team_id is not None:
 					matchup.away_score = compute_weekly_score(matchup.away_team_id, week.id, session)
+				elif matchup.ghost_team_id is not None:
+					matchup.away_score = compute_weekly_score(matchup.ghost_team_id, week.id, session)
 				else:
-					# Ghost: mirror the home team's score (home always beats ghost)
 					matchup.away_score = 0.0
 
 			season.roster_locked = False
@@ -182,12 +184,19 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			away_team = matchup_row.away_team
 
 			home_score = compute_weekly_score(home_team.id, target_week.id, session)
-			away_score = compute_weekly_score(away_team.id, target_week.id, session) if away_team else 0.0
+			if away_team:
+				away_score = compute_weekly_score(away_team.id, target_week.id, session)
+			elif matchup_row.ghost_team_id is not None:
+				away_score = compute_weekly_score(matchup_row.ghost_team_id, target_week.id, session)
+			else:
+				away_score = 0.0
 
 			buf = f"```\nWeek {target_week.week_number} Matchup — {season.name}\n"
 			buf += f"{home_team.abbrev} / {home_team.name}: {home_score} pts\n"
 			if away_team:
 				buf += f"{away_team.abbrev} / {away_team.name}: {away_score} pts\n"
+			elif matchup_row.ghost_team:
+				buf += f"{matchup_row.ghost_team.abbrev} Ghost: {away_score} pts\n"
 			else:
 				buf += f"Ghost: {away_score} pts\n"
 			buf += "```"
@@ -210,7 +219,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				matchups = list(session.scalars(select(db.Matchup).where(db.Matchup.week_id == week.id)))
 				buf += f"Week {week.week_number}:\n"
 				for m in matchups:
-					away_label = m.away_team.abbrev if m.away_team else "Ghost"
+					if m.away_team:
+						away_label = m.away_team.abbrev
+					elif m.ghost_team:
+						away_label = f"{m.ghost_team.abbrev} Ghost"
+					else:
+						away_label = "Ghost"
 					buf += f"  {m.home_team.abbrev} vs {away_label}\n"
 				buf += "\n"
 				if len(buf) > 1800:
