@@ -25,7 +25,7 @@ services:
   backend:
     build:
       context: backend
-    command: ["python3", "main.py", "--prod", "--h2h"]
+    command: ["python3", "main.py", "--h2h"]
     restart: unless-stopped
     secrets:
       - db-discord-password
