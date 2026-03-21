@@ -332,14 +332,23 @@ class Scraper:
 			name_tag = soup.find('div', class_='event-header-title')
 		event_name = name_tag.get_text(strip=True) if name_tag else "Unknown Event"
 
-		# Week count: count distinct week tabs in the event nav
+		# Week count: find highest week number from nav tabs or match labels
 		# vlr.gg event pages have week filter buttons like "W1", "W2", etc.
-		week_tabs = soup.find_all('a', class_='wf-nav-item', string=lambda t: t and t.strip().upper().startswith('W') and t.strip()[1:].isdigit())
-		if not week_tabs:
-			# fallback: look for filter items with week labels
-			week_tabs = [tag for tag in soup.find_all(string=True)
-						 if tag.strip().upper().startswith('W') and len(tag.strip()) <= 3 and tag.strip()[1:].isdigit()]
-		num_weeks = len(week_tabs) if week_tabs else 0
+		def _week_num(text):
+			t = text.strip().upper()
+			if t.startswith('W') and t[1:].isdigit():
+				return int(t[1:])
+			return None
+
+		week_tabs = soup.find_all('a', class_='wf-nav-item', string=lambda t: t and _week_num(t) is not None)
+		if week_tabs:
+			nums = [_week_num(tag.get_text()) for tag in week_tabs]
+		else:
+			# fallback: collect all "WN" strings on the page and take the max
+			# (counts distinct weeks, not occurrences per match row)
+			nums = list({_week_num(tag) for tag in soup.find_all(string=True) if _week_num(tag) is not None})
+
+		num_weeks = max(nums) if nums else 0
 		if num_weeks == 0:
 			raise ValueError(f"Could not determine week count from event page: {url}")
 
