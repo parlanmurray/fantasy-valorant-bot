@@ -65,13 +65,14 @@ class MatchupCog(commands.Cog, name="Matchup"):
 					)
 
 			team_ids = [t.id for t in fteams]
+			num_weeks = season.num_weeks
 			# Compute round offset for stage continuation
 			round_offset = 0
 			if season.previous_season_id is not None:
 				chain = get_season_chain(season)
 				total_prev_weeks = sum(s.num_weeks for s in chain[:-1])
 				round_offset = compute_round_offset(total_prev_weeks, len(team_ids))
-			schedule = generate_schedule(team_ids, season.num_weeks, round_offset)
+			schedule = generate_schedule(team_ids, num_weeks, round_offset)
 
 			for week_idx, pairs in enumerate(schedule):
 				week_number = week_idx + 1
@@ -91,7 +92,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			session.commit()
 
 		team_count = len(fteams)
-		await ctx.send(f"Schedule generated for {team_count} teams across {season.num_weeks} weeks.")
+		await ctx.send(f"Schedule generated for {team_count} teams across {num_weeks} weeks.")
 
 	@commands.command()
 	async def closeweek(self, ctx, week_number: int):
