@@ -3,10 +3,57 @@ from fantasyVCT.scraper import Scraper
 from fantasyVCT.matchup import (
 	generate_schedule, compute_weekly_score, derive_record,
 	get_season_chain, compute_round_offset,
+	week_role_leaders, week_top_base_scorers,
 )
 
 from discord.ext import commands
 from sqlalchemy import select
+
+
+def _fmt_week_summary(week_number: int, matchups: list, week_id: int, fteams: list, session) -> list[str]:
+	"""Build week summary message strings (sections 1–3). Returns list of Discord messages."""
+	SEP = "═" * 42
+
+	# ── Section 1: Matchup Results ─────────────────────────────
+	lines = [f"```\n{SEP}", f" WEEK {week_number} RESULTS", SEP]
+	for m in matchups:
+		home = m.home_team.abbrev
+		hs   = m.home_score
+		aws  = m.away_score
+		if m.away_team_id is not None:
+			away = m.away_team.abbrev
+			verb = "def" if hs >= aws else "lost to"
+			lines.append(f" {home:<5} {hs:>6.1f}  {verb}  {away:<5} {aws:>6.1f}")
+		else:
+			mirror = m.ghost_team.abbrev if m.ghost_team else "?"
+			verb   = "def" if hs >= aws else "lost to"
+			lines.append(f" {home:<5} {hs:>6.1f}  {verb}  GHOST  {aws:>6.1f}  (via {mirror})")
+	lines.append(f"{SEP}```")
+	msg1 = "\n".join(lines)
+
+	# ── Section 2: Top Performers by Role ──────────────────────
+	leaders = week_role_leaders(week_id, fteams, session)
+	lines2  = [f"```\n{SEP}", " TOP PERFORMERS BY ROLE", SEP]
+	for role in ["IGL", "Duelist", "Initiator", "Controller", "Sentinel", "Flex"]:
+		lines2.append(f" {role}")
+		players = leaders.get(role, [])
+		if not players:
+			lines2.append("   —")
+		for i, p in enumerate(players, 1):
+			lines2.append(f"  {i}. {p['player']:<16} {p['pro_team']:<6} {p['fteam']:<5} {p['total']:>6.1f}")
+	lines2.append(f"{SEP}```")
+	msg2 = "\n".join(lines2)
+
+	# ── Section 3: Top Base Scorers (incl. free agents) ────────
+	scorers = week_top_base_scorers(week_id, fteams, session)
+	lines3  = [f"```\n{SEP}", " TOP BASE SCORERS (incl. free agents)", SEP]
+	for i, p in enumerate(scorers, 1):
+		tag = f"({p['fteam']})" if p["fteam"] else "(FA)"
+		lines3.append(f"  {i}. {p['player']:<16} {p['pro_team']:<6} {p['base']:>6.1f}  {tag}")
+	lines3.append(f"{SEP}```")
+	msg3 = "\n".join(lines3)
+
+	return [msg1, msg2, msg3]
 
 
 class MatchupCog(commands.Cog, name="Matchup"):
@@ -124,7 +171,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			season.roster_locked = False
 			session.commit()
 
+			fteams = list(session.scalars(select(db.FantasyTeam)))
+			summary_msgs = _fmt_week_summary(week_number, matchups, week.id, fteams, session)
+
 		await ctx.send(f"Week {week_number} scores locked. Rosters are now unlocked.")
+		for msg in summary_msgs:
+			await ctx.send(msg)
 
 	@commands.command()
 	async def lockroster(self, ctx):

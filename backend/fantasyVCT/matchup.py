@@ -173,6 +173,116 @@ def compute_weekly_score(fantasy_team_id: int, week_id: int, session: Session) -
     return round(total, 1)
 
 
+def _player_week_totals(player_id: int, position: int, week_id: int, session: Session) -> tuple[float, float, float]:
+    """Return (base, bonus, total) for a player's top-2 maps this week."""
+    role = POSITIONS[position]
+    results = session.scalars(
+        select(db.Result).where(
+            db.Result.week_id == week_id,
+            db.Result.player_id == player_id,
+        )
+    ).all()
+    if not results:
+        return 0.0, 0.0, 0.0
+    map_scores = sorted(
+        ((PointCalculator.score(r), PointCalculator.role_bonus(r, role)) for r in results),
+        key=lambda x: x[0] + x[1],
+        reverse=True,
+    )
+    top2 = map_scores[:2]
+    base  = round(sum(b for b, _ in top2), 1)
+    bonus = round(sum(bn for _, bn in top2), 1)
+    return base, bonus, round(base + bonus, 1)
+
+
+def week_role_leaders(week_id: int, fteams: list, session: Session, n: int = 3) -> dict[str, list[dict]]:
+    """Return top-n performers per active role slot for the week.
+
+    Args:
+        week_id: Week.id to score against
+        fteams: all FantasyTeam objects
+        session: active SQLAlchemy session
+        n: number of players to return per role
+
+    Returns:
+        dict keyed by role name ("IGL", "Duelist", ...) with list of
+        {player, pro_team, fteam, base, bonus, total} dicts, sorted desc by total.
+    """
+    role_buckets: dict[str, list[dict]] = defaultdict(list)
+
+    for fteam in fteams:
+        for fp in fteam.fantasyplayers:
+            if fp.position >= 6:
+                continue
+            base, bonus, total = _player_week_totals(fp.player_id, fp.position, week_id, session)
+            if total == 0.0:
+                continue
+            role = POSITIONS[fp.position]
+            pro_team = fp.player.team.abbrev if fp.player.team else "—"
+            role_buckets[role].append({
+                "player":    fp.player.name,
+                "pro_team":  pro_team,
+                "fteam":     fteam.abbrev,
+                "base":      base,
+                "bonus":     bonus,
+                "total":     total,
+            })
+
+    return {
+        role: sorted(role_buckets.get(role, []), key=lambda x: x["total"], reverse=True)[:n]
+        for role in ["IGL", "Duelist", "Initiator", "Controller", "Sentinel", "Flex"]
+    }
+
+
+def week_top_base_scorers(week_id: int, fteams: list, session: Session, n: int = 5) -> list[dict]:
+    """Return top-n players by base score this week, including free agents.
+
+    Args:
+        week_id: Week.id to score against
+        fteams: all FantasyTeam objects (used to identify drafted players)
+        session: active SQLAlchemy session
+        n: number of players to return
+
+    Returns:
+        list of {player, pro_team, fteam (None if free agent), base} dicts,
+        sorted desc by base score.
+    """
+    # Build player_id → fteam_abbrev from current rosters
+    drafted: dict[int, str] = {
+        fp.player_id: fteam.abbrev
+        for fteam in fteams
+        for fp in fteam.fantasyplayers
+    }
+
+    results = session.scalars(
+        select(db.Result).where(db.Result.week_id == week_id)
+    ).all()
+
+    player_results: dict[int, list] = defaultdict(list)
+    for r in results:
+        player_results[r.player_id].append(r)
+
+    scores = []
+    for player_id, maps in player_results.items():
+        base_total = round(sum(sorted(
+            (PointCalculator.score(r) for r in maps), reverse=True
+        )[:2]), 1)
+        if base_total == 0.0:
+            continue
+        player = session.get(db.Player, player_id)
+        if not player:
+            continue
+        scores.append({
+            "player":   player.name,
+            "pro_team": player.team.abbrev if player.team else "—",
+            "fteam":    drafted.get(player_id),
+            "base":     base_total,
+        })
+
+    scores.sort(key=lambda x: x["base"], reverse=True)
+    return scores[:n]
+
+
 def derive_record(matchups: list[db.Matchup], fantasy_team_id: int) -> tuple[int, int, int]:
     """Derive W/L/T record for a team from a list of closed matchups.
 

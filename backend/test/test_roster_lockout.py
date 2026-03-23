@@ -240,5 +240,5 @@ async def test_closeweek_unlocks_roster(mock_bot, ctx, engine):
         season = s.get(db.Season, season_id)
         assert season.roster_locked is False
 
-    sent = ctx.send.call_args[0][0]
+    sent = ctx.send.call_args_list[0][0][0]
     assert "unlocked" in sent
