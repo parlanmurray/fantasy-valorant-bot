@@ -64,29 +64,33 @@ class MatchupCog(commands.Cog, name="Matchup"):
 		await ctx.send(f"An error occurred in the Matchup cog: {error}")
 
 	@commands.command()
-	async def newseason(self, ctx, event_url: str):
-		"""Create a new season from a vlr.gg event URL"""
-		try:
-			event_name, num_weeks = Scraper.parse_event_page(event_url)
-		except Exception as e:
-			return await ctx.send(f"Failed to parse event page: {e}")
+	async def newseason(self, ctx, name: str, num_weeks: int, event_url: str = None):
+		"""Create a new season. event_url is optional and can be added later with !seteventurl."""
+		if event_url:
+			try:
+				Scraper.parse_event_page(event_url)
+			except Exception as e:
+				return await ctx.send(f"Failed to parse event page: {e}")
 
 		with self.bot.db_manager.create_session() as session:
-			# Deactivate any existing active season
 			existing = session.scalars(select(db.Season).where(db.Season.is_active == True)).all()
 			for s in existing:
 				s.is_active = False
 
-			season = db.Season(name=event_name, event_url=event_url, num_weeks=num_weeks, is_active=True)
+			season = db.Season(name=name, event_url=event_url, num_weeks=num_weeks, is_active=True)
 			session.add(season)
 			session.flush()
 
 			for i in range(1, num_weeks + 1):
 				session.add(db.Week(season_id=season.id, week_number=i))
 
+			if event_url:
+				session.add(db.SeasonEvent(season_id=season.id, event_url=event_url))
+
 			session.commit()
 
-		await ctx.send(f"Season created: **{event_name}** ({num_weeks} weeks). Use `!generateschedule` to build matchups.")
+		url_note = "" if event_url else " No event URL set — use `!seteventurl <url>` when available."
+		await ctx.send(f"Season created: **{name}** ({num_weeks} weeks). Use `!generateschedule` to build matchups.{url_note}")
 
 	@commands.command()
 	async def generateschedule(self, ctx):
@@ -332,12 +336,13 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 
 	@commands.command()
-	async def continueseason(self, ctx, event_url: str):
-		"""Start Stage 2 continuing from the active season (same teams, cumulative record)"""
-		try:
-			event_name, num_weeks = Scraper.parse_event_page(event_url)
-		except Exception as e:
-			return await ctx.send(f"Failed to parse event page: {e}")
+	async def continueseason(self, ctx, name: str, num_weeks: int, event_url: str = None):
+		"""Continue into a new stage (same teams, cumulative record). event_url optional."""
+		if event_url:
+			try:
+				Scraper.parse_event_page(event_url)
+			except Exception as e:
+				return await ctx.send(f"Failed to parse event page: {e}")
 
 		with self.bot.db_manager.create_session() as session:
 			prev_season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
@@ -348,7 +353,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			prev_season.is_active = False
 
 			new_season = db.Season(
-				name=event_name,
+				name=name,
 				event_url=event_url,
 				num_weeks=num_weeks,
 				is_active=True,
@@ -360,14 +365,44 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			for i in range(1, num_weeks + 1):
 				session.add(db.Week(season_id=new_season.id, week_number=i))
 
-			# Track the primary event URL in season_events as well
-			session.add(db.SeasonEvent(season_id=new_season.id, event_url=event_url))
+			if event_url:
+				session.add(db.SeasonEvent(season_id=new_season.id, event_url=event_url))
+
 			session.commit()
 
+		url_note = "" if event_url else " No event URL set — use `!seteventurl <url>` when available."
 		await ctx.send(
-			f"Season continued: **{event_name}** ({num_weeks} weeks). "
-			f"Run `!generateschedule` to build matchups (round offset applied automatically)."
+			f"Season continued: **{name}** ({num_weeks} weeks). "
+			f"Run `!generateschedule` to build matchups (round offset applied automatically).{url_note}"
 		)
+
+	@commands.command()
+	async def seteventurl(self, ctx, event_url: str):
+		"""Attach a vlr.gg event URL to the active season (use when page becomes available)."""
+		try:
+			Scraper.parse_event_page(event_url)
+		except Exception as e:
+			return await ctx.send(f"Failed to parse event page: {e}")
+
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+
+			season.event_url = event_url
+
+			existing = session.scalars(
+				select(db.SeasonEvent).where(
+					db.SeasonEvent.season_id == season.id,
+					db.SeasonEvent.event_url == event_url,
+				)
+			).first()
+			if not existing:
+				session.add(db.SeasonEvent(season_id=season.id, event_url=event_url))
+
+			session.commit()
+
+		await ctx.send(f"Event URL set for **{season.name}**.")
 
 	@commands.command()
 	async def addevent(self, ctx, event_url: str):
