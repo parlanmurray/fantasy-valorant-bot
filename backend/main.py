@@ -53,7 +53,6 @@ elif not DB_PROD:
 # these arguments get automatically added to the bot as variables
 parser = argparse.ArgumentParser()
 parser.add_argument('--skip-draft', action='store_true', help='skip the draft step')
-parser.add_argument('-r', '--rounds', dest='num_rounds', action='store', default=7, type=int, help="number of draft rounds")
 parser.add_argument('-s', '--subs', dest='sub_slots', action='store', default=0, type=int, help="number of sub slots allowed per team")
 parser.add_argument('--prod', action='store_true', help='use production database instead of development database')
 parser.add_argument('--h2h', action='store_true', help='enable head-to-head weekly matchup mode')
@@ -61,9 +60,12 @@ parser.add_argument('--h2h', action='store_true', help='enable head-to-head week
 bot = FantasyValBot("!")
 
 parser.parse_args(namespace=bot)
-# default to 3 sub slots in h2h mode unless explicitly set
+# default to 4 sub slots in h2h mode unless explicitly set
 if bot.h2h and bot.sub_slots == 0:
-    bot.sub_slots = 3
+    bot.sub_slots = 4
+
+# derive round count: 6 active slots + sub slots
+bot.num_rounds = 6 + bot.sub_slots
 
 bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE, db_host=DB_HOST)
 
