@@ -163,6 +163,21 @@ class TestParseTeamSubFiltering:
         assert "Flicker" not in players
         assert "StarterA" in players
 
+    def test_inactive_excluded(self):
+        def player_html(alias, label=None):
+            label_div = f'<div>{label}</div>' if label else ''
+            return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{label_div}</div>'
+        roster = player_html("StarterA") + player_html("inspire", "Inactive")
+        html = f"""<html><body>
+            <div class="team-header"><div></div><div><div><h1>NV</h1><h2>NV</h2></div></div></div>
+            <div class="team-summary-container-1"><div class="wf-card"><div></div><div>{roster}</div></div></div>
+        </body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert "inspire" not in players
+        assert "StarterA" in players
+
     def test_all_starters_included(self):
         html = _make_team_html([("A", False), ("B", False), ("C", False), ("D", False), ("E", False)])
         soup = BeautifulSoup(html, "html.parser")

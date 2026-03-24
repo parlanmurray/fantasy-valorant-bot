@@ -417,9 +417,9 @@ class Scraper:
 
 		player_names = list()
 		for player in players:
-			# Skip substitutes — vlr.gg marks them with a <div>Sub</div> inside the roster item
+			# Skip substitutes and inactive players
 			labels = [d.get_text(strip=True) for d in player.find_all('div')]
-			if 'Sub' in labels:
+			if 'Sub' in labels or 'Inactive' in labels:
 				continue
 			player_names.append(player.find('div', {'class': 'team-roster-item-name-alias'}).get_text(strip=True))
 
