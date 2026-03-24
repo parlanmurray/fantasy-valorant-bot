@@ -278,62 +278,43 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def standings(self, ctx):
-		"""Show current fantasy league standings sorted by score."""
+		"""Show W/L/T standings and total points across all stages of the active season."""
 
 		with self.bot.db_manager.create_session() as session:
-			fteams = list(session.scalars(select(db.FantasyTeam)))
-
-			# Compute season points (base + role bonus)
-			for fteam in fteams:
-				total = 0
-				for fp in fteam.fantasyplayers:
-					if fp.position < 6:
-						for row in fp.player.results:
-							fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
-							if not fantasy_points:
-								fantasy_points = PointCalculator.score(row)
-								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						role_pts = sum(PointCalculator.role_bonus(row, POSITIONS[fp.position]) for row in fp.player.results)
-						total = round(total + player_points + role_pts, 1)
-				fteam.points = total
-
-			# Compute W/L/T if there's an active season (walk all stages)
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
-			team_records = {}
-			if season:
-				chain = get_season_chain(season)
-				all_season_ids = [s.id for s in chain]
-				chain_week_ids = select(db.Week.id).where(db.Week.season_id.in_(all_season_ids))
-				for fteam in fteams:
-					matchups = list(session.scalars(
-						select(db.Matchup).where(
-							(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
-							db.Matchup.week_id.in_(chain_week_ids)
+			if not season:
+				return await ctx.send("No active season.")
+
+			chain = get_season_chain(season)
+			all_season_ids = [s.id for s in chain]
+			all_weeks = [wk for s in chain for wk in s.weeks]
+
+			fteams = list(session.scalars(select(db.FantasyTeam)))
+			rows = []
+			for fteam in fteams:
+				matchups = list(session.scalars(
+					select(db.Matchup).where(
+						(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
+						db.Matchup.week_id.in_(
+							select(db.Week.id).where(db.Week.season_id.in_(all_season_ids))
 						)
-					))
-					closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
-					team_records[fteam.id] = derive_record(closed, fteam.id)
+					)
+				))
+				closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
+				w, l, t = derive_record(closed, fteam.id)
+				total_pts = round(sum(compute_weekly_score(fteam.id, wk.id, session) for wk in all_weeks), 1)
+				rows.append((fteam, w, l, t, total_pts))
 
-			# Sort by wins (if H2H active), then total points
-			if team_records:
-				sorted_teams = sorted(fteams, key=lambda k: (-team_records[k.id][0], -k.points))
-			else:
-				sorted_teams = sorted(fteams, key=lambda k: k.points, reverse=True)
+			rows.sort(key=lambda r: (-r[1], -r[4]))
 
-			names = {fteam.id: f"{fteam.abbrev} / {fteam.name}" for fteam in sorted_teams}
-			col_w = max(len(n) for n in names.values()) if names else 18
+			names = [f"{fteam.abbrev} / {fteam.name}" for fteam, *_ in rows]
+			col_w = max(len(n) for n in names) if names else 18
 			col_w = max(col_w, len("Team"))
 
 			buf = "```\nStandings\n\n"
-			if team_records:
-				buf += f"  {'Team':<{col_w}}  {'W':<4}{'L':<4}{'T':<4}{'Pts'}\n\n"
-				for fteam in sorted_teams:
-					w, l, t = team_records[fteam.id]
-					buf += f"  {names[fteam.id]:<{col_w}}  {w:<4}{l:<4}{t:<4}{fteam.points}\n"
-			else:
-				for fteam in sorted_teams:
-					buf += f"\t{fteam.abbrev} / {fteam.name} - {str(fteam.points)}\n"
+			buf += f"  {'Team':<{col_w}}  W   L   T   Pts\n"
+			for (fteam, w, l, t, pts), name in zip(rows, names):
+				buf += f"  {name:<{col_w}}  {w:<4}{l:<4}{t:<4}{pts}\n"
 			buf += "```"
 			await ctx.send(buf)
 

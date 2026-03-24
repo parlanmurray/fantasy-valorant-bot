@@ -292,51 +292,6 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			buf += "```"
 			await ctx.send(buf)
 
-	@commands.command()
-	async def record(self, ctx):
-		"""Show W/L/T standings across all stages of the active season"""
-		with self.bot.db_manager.create_session() as session:
-			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
-			if not season:
-				return await ctx.send("No active season.")
-
-			# Walk chain to collect all season ids (all stages)
-			chain = get_season_chain(season)
-			all_season_ids = [s.id for s in chain]
-
-			fteams = list(session.scalars(select(db.FantasyTeam)))
-			records = []
-			for fteam in fteams:
-				matchups = list(session.scalars(
-					select(db.Matchup).where(
-						(db.Matchup.home_team_id == fteam.id) | (db.Matchup.away_team_id == fteam.id),
-						db.Matchup.week_id.in_(
-							select(db.Week.id).where(db.Week.season_id.in_(all_season_ids))
-						)
-					)
-				))
-				closed = [m for m in matchups if m.home_score > 0 or m.away_score > 0]
-				w, l, t = derive_record(closed, fteam.id)
-
-				# Total points across all stages
-				all_weeks = [wk for s in chain for wk in s.weeks]
-				total_pts = sum(compute_weekly_score(fteam.id, wk.id, session) for wk in all_weeks)
-				records.append((fteam, w, l, t, round(total_pts, 1)))
-
-			records.sort(key=lambda r: (-r[1], -r[4]))
-
-			names = [f"{fteam.abbrev} / {fteam.name}" for fteam, *_ in records]
-			col_w = max(len(n) for n in names) if names else 16
-			col_w = max(col_w, len("Team"))
-
-			header = "Season Standings (all stages)" if len(chain) > 1 else f"Season Standings — {season.name}"
-			buf = f"```\n{header}\n\n"
-			buf += f"  {'Team':<{col_w}}  W   L   T   Pts\n"
-			for (fteam, w, l, t, pts), name in zip(records, names):
-				buf += f"  {name:<{col_w}}  {w:<4}{l:<4}{t:<4}{pts}\n"
-			buf += "```"
-			await ctx.send(buf)
-
 
 	@commands.command()
 	async def continueseason(self, ctx, name: str, num_weeks: int, event_url: str = None):
