@@ -321,13 +321,16 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			else:
 				sorted_teams = sorted(fteams, key=lambda k: k.points, reverse=True)
 
+			names = {fteam.id: f"{fteam.abbrev} / {fteam.name}" for fteam in sorted_teams}
+			col_w = max(len(n) for n in names.values()) if names else 18
+			col_w = max(col_w, len("Team"))
+
 			buf = "```\nStandings\n\n"
 			if team_records:
-				buf += f"  {'Team':<18} {'W':<4}{'L':<4}{'T':<4}{'Pts'}\n\n"
+				buf += f"  {'Team':<{col_w}}  {'W':<4}{'L':<4}{'T':<4}{'Pts'}\n\n"
 				for fteam in sorted_teams:
 					w, l, t = team_records[fteam.id]
-					name = f"{fteam.abbrev} / {fteam.name}"
-					buf += f"  {name:<18} {w:<4}{l:<4}{t:<4}{fteam.points}\n"
+					buf += f"  {names[fteam.id]:<{col_w}}  {w:<4}{l:<4}{t:<4}{fteam.points}\n"
 			else:
 				for fteam in sorted_teams:
 					buf += f"\t{fteam.abbrev} / {fteam.name} - {str(fteam.points)}\n"
