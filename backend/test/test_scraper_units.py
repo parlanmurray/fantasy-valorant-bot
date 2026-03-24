@@ -131,6 +131,53 @@ class TestMatchSummaryFiltering:
             assert len(match.maps) == 0
 
 
+def _make_team_html(players):
+    """Build minimal team page HTML matching parse_team's expected DOM. Each player is (alias, is_sub)."""
+    def player_html(alias, is_sub):
+        sub_div = '<div>Sub</div>' if is_sub else ''
+        return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{sub_div}</div>'
+
+    roster = ''.join(player_html(a, s) for a, s in players)
+    # team-header: needs 2 direct child divs; parse_team uses getNthDiv(header, 1).div
+    # wf-card: needs 2 direct child divs; parse_team uses getNthDiv(roster_body, 1)
+    return f"""<html><body>
+        <div class="team-header">
+            <div></div>
+            <div><div><h1>TestTeam</h1><h2>TT</h2></div></div>
+        </div>
+        <div class="team-summary-container-1">
+            <div class="wf-card">
+                <div></div>
+                <div>{roster}</div>
+            </div>
+        </div>
+    </body></html>"""
+
+
+class TestParseTeamSubFiltering:
+    def test_sub_excluded(self):
+        html = _make_team_html([("StarterA", False), ("Flicker", True)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert "Flicker" not in players
+        assert "StarterA" in players
+
+    def test_all_starters_included(self):
+        html = _make_team_html([("A", False), ("B", False), ("C", False), ("D", False), ("E", False)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert len(players) == 5
+
+    def test_all_subs_returns_empty(self):
+        html = _make_team_html([("SubOnly", True)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert players == []
+
+
 class TestParseEventTeams:
     def _event_html(self, team_hrefs):
         links = "".join(f'<a href="{h}">Team</a>' for h in team_hrefs)
