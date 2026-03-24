@@ -264,6 +264,28 @@ def test_season_instantiate():
     assert s.is_active is True
 
 
+def test_season_no_url():
+    """Season can be created without an event URL."""
+    s = Season(name="Split 1", num_weeks=8, is_active=True)
+    assert s.event_url is None
+
+
+def test_season_no_url_persists(engine):
+    """Season with no event_url can be saved and retrieved from DB."""
+    from fantasyVCT.database import Season as DBSeason
+    with Session(engine) as s:
+        season = DBSeason(name="Split 1 No URL", num_weeks=6, is_active=False)
+        s.add(season)
+        s.flush()
+        sid = season.id
+        s.commit()
+
+    with Session(engine) as s:
+        loaded = s.get(DBSeason, sid)
+        assert loaded.event_url is None
+        assert loaded.name == "Split 1 No URL"
+
+
 def test_week_instantiate():
     w = Week(season_id=1, week_number=3)
     assert w.week_number == 3
