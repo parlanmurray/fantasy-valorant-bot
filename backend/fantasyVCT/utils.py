@@ -20,9 +20,3 @@ def is_roster_locked(session) -> bool:
 	return bool(season and season.roster_locked)
 
 
-def add_spaces(buff, length):
-	"""Add spaces until the buffer is at least the provided length."""
-	rv = ""
-	while (len(buff) + len(rv)) < length:
-		rv += " "
-	return rv

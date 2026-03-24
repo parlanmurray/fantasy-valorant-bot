@@ -8,7 +8,7 @@ from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
 from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain
-from fantasyVCT.utils import add_spaces, POSITIONS, is_roster_locked
+from fantasyVCT.utils import POSITIONS, is_roster_locked
 
 
 class FantasyCog(commands.Cog, name="Fantasy"):
@@ -161,10 +161,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
-				line = add_spaces("", 4) + str(POSITIONS[k])
+				line = f"    {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line += add_spaces(line, 16) + f"{fp.player.team.abbrev} {fp.player.name}"
+						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
 						for row in fp.player.results:
 							fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
 							if not fantasy_points:
@@ -175,21 +175,20 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
 							total += total_pts
-						line += add_spaces(line, 36) + str(round(base_pts, 1))
+						line = f"{line:<36}{round(base_pts, 1)}"
 						role_str = ("+" + str(role_pts)) if role_pts > 0 else (str(role_pts) if role_pts != 0 else "-")
-						line += add_spaces(line, 46) + role_str
-						line += add_spaces(line, 56) + str(total_pts)
+						line = f"{line:<46}{role_str}"
+						line = f"{line:<56}{total_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
 					buf2 += "\n"
 			buf += " -- " + str(round(total, 1)) + "\n"
-			line = ""
-			line += add_spaces(line, 4) + "Position"
-			line += add_spaces(line, 16) + "Name"
-			line += add_spaces(line, 36) + "Base"
-			line += add_spaces(line, 46) + "Role"
-			line += add_spaces(line, 56) + "Total"
+			line = f"    Position"
+			line = f"{line:<16}Name"
+			line = f"{line:<36}Base"
+			line = f"{line:<46}Role"
+			line = f"{line:<56}Total"
 			buf += line + "\n\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
@@ -203,8 +202,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			free_agents = session.scalars(stmt)
 
 			buf = "```\nFree Agents\n"
-			line = add_spaces("", 4) + "Player"
-			line += add_spaces(line, 24) + "Points"
+			line = f"    Player"
+			line = f"{line:<24}Points"
 			buf += line + "\n\n"
 			for player in free_agents:
 				for row in player.results:
@@ -213,15 +212,15 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						fantasy_points = PointCalculator.score(row)
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
 				player_points = self.bot.cache.retrieve_total(player.id)
-				line = add_spaces("", 4) + f"{player.team.abbrev} {player.name}"
-				line += add_spaces(line, 24) + str(player_points)
+				line = f"    {player.team.abbrev} {player.name}"
+				line = f"{line:<24}{player_points}"
 
 				if len(buf + line) > 1900:
 					buf += "```"
 					await ctx.send(buf)
 					buf = "```\nFree Agents (page 2)\n"
-					line2 = add_spaces("", 4) + "Player"
-					line2 += add_spaces(line, 24) + "Points"
+					line2 = f"    Player"
+					line2 = f"{line2:<24}Points"
 					buf += line2 + "\n\n"
 				buf += line + "\n"
 			buf += "```"

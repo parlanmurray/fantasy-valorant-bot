@@ -325,12 +325,15 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 			records.sort(key=lambda r: (-r[1], -r[4]))
 
+			names = [f"{fteam.abbrev} / {fteam.name}" for fteam, *_ in records]
+			col_w = max(len(n) for n in names) if names else 16
+			col_w = max(col_w, len("Team"))
+
 			header = "Season Standings (all stages)" if len(chain) > 1 else f"Season Standings — {season.name}"
 			buf = f"```\n{header}\n\n"
-			buf += "  Team             W   L   T   Pts\n"
-			for fteam, w, l, t, pts in records:
-				name = f"{fteam.abbrev} / {fteam.name}"
-				buf += f"  {name:<16} {w:<4}{l:<4}{t:<4}{pts}\n"
+			buf += f"  {'Team':<{col_w}}  W   L   T   Pts\n"
+			for (fteam, w, l, t, pts), name in zip(records, names):
+				buf += f"  {name:<{col_w}}  {w:<4}{l:<4}{t:<4}{pts}\n"
 			buf += "```"
 			await ctx.send(buf)
 

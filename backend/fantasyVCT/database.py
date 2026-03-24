@@ -71,37 +71,24 @@ class Team(Base):
 		return f"Team(id={self.id!r}, name={self.name!r}, abbrev={self.abbrev!r}, region={self.region!r})"
 
 	def __str__(self) -> str:
-		format_str = ""
-		format_str += self.abbrev + " / " + self.name
-		format_str += add_spaces(format_str, 30)
-		format_str += str(self.score)
+		format_str = self.abbrev + " / " + self.name
+		format_str = f"{format_str:<30}{self.score}"
 		if self.won:
 			format_str += " -- Winner"
 		if self.map_pick:
 			format_str += " -- Map Pick"
 		line = "Player"
-		line += add_spaces(line, 20)
-		line += "Agent"
-		line += add_spaces(line, 40)
-		line += "ACS"
-		line += add_spaces(line, 50)
-		line += "K/D/A"
-		line += add_spaces(line, 80)
-		line += "2k"
-		line += add_spaces(line, 90)
-		line += "3k"
-		line += add_spaces(line, 100)
-		line += "4k"
-		line += add_spaces(line, 110)
-		line += "5k"
-		line += add_spaces(line, 120)
-		line += "1v2"
-		line += add_spaces(line, 130)
-		line += "1v3"
-		line += add_spaces(line, 140)
-		line += "1v4"
-		line += add_spaces(line, 150)
-		line += "1v5"
+		line = f"{line:<20}Agent"
+		line = f"{line:<40}ACS"
+		line = f"{line:<50}K/D/A"
+		line = f"{line:<80}2k"
+		line = f"{line:<90}3k"
+		line = f"{line:<100}4k"
+		line = f"{line:<110}5k"
+		line = f"{line:<120}1v2"
+		line = f"{line:<130}1v3"
+		line = f"{line:<140}1v4"
+		line = f"{line:<150}1v5"
 		format_str += "\n" + line
 		format_str += "\n{0}\n{1}\n{2}\n{3}\n{4}\n".format(
 			self.players[0],
@@ -139,8 +126,7 @@ class Player(Base):
 		line = ""
 		for result in self.results:
 			line += self.name
-			line += add_spaces(line, 20)
-			line += str(result)
+			line = f"{line:<20}{result}"
 			if len(self.results) > 1:
 				line += "\n"
 		return line
@@ -197,26 +183,16 @@ class Result(Base):
 
 	def __str__(self) -> str:
 		line = self.agent
-		line += add_spaces(line, 20)
-		line += str(self.player_acs)
-		line += add_spaces(line, 30)
-		line += f"{self.player_kills}/{self.player_deaths}/{self.player_assists}"
-		line += add_spaces(line, 60)
-		line += str(self.player_2k)
-		line += add_spaces(line, 70)
-		line += str(self.player_3k)
-		line += add_spaces(line, 80)
-		line += str(self.player_4k)
-		line += add_spaces(line, 90)
-		line += str(self.player_5k)
-		line += add_spaces(line, 100)
-		line += str(self.player_clutch_v2)
-		line += add_spaces(line, 110)
-		line += str(self.player_clutch_v3)
-		line += add_spaces(line, 120)
-		line += str(self.player_clutch_v4)
-		line += add_spaces(line, 130)
-		line += str(self.player_clutch_v5)
+		line = f"{line:<20}{self.player_acs}"
+		line = f"{line:<30}{self.player_kills}/{self.player_deaths}/{self.player_assists}"
+		line = f"{line:<60}{self.player_2k}"
+		line = f"{line:<70}{self.player_3k}"
+		line = f"{line:<80}{self.player_4k}"
+		line = f"{line:<90}{self.player_5k}"
+		line = f"{line:<100}{self.player_clutch_v2}"
+		line = f"{line:<110}{self.player_clutch_v3}"
+		line = f"{line:<120}{self.player_clutch_v4}"
+		line = f"{line:<130}{self.player_clutch_v5}"
 		return line
 	
 
@@ -384,11 +360,3 @@ class Match:
 ## Helpers
 ######################################
 
-def add_spaces(buff, length):
-	"""
-	Add spaces until the buffer is at least the provided length.
-	"""
-	rv = ""
-	while (len(buff) + len(rv)) < length:
-		rv += " "
-	return rv

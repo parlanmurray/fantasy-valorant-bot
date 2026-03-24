@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session as SASession
 import fantasyVCT.database as db
 from fantasyVCT.database import Base
 from fantasyVCT.interactions import (
-	ConfigCog, FantasyCog, StatsCog, Category, add_spaces, POSITIONS,
+	ConfigCog, FantasyCog, StatsCog, Category, POSITIONS,
 )
 
 
@@ -68,14 +68,6 @@ def ctx():
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
-
-class TestAddSpaces:
-	def test_pads_short_string(self):
-		result = "hi" + add_spaces("hi", 10)
-		assert len(result) == 10
-
-	def test_no_padding_when_already_long(self):
-		assert add_spaces("hello world!", 5) == ""
 
 
 class TestCategoryFromStr:

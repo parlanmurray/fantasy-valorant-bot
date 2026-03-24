@@ -4,7 +4,7 @@ import fantasyVCT.database as db
 from discord.ext import commands
 from sqlalchemy import select, or_
 
-from fantasyVCT.utils import add_spaces, POSITIONS
+from fantasyVCT.utils import POSITIONS
 
 
 class ConfigCog(commands.Cog, name="Configuration"):
@@ -239,9 +239,9 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf = "```\n"
 		buf += "Role-Based Scoring\n\n"
 		col_r, col_m = 18, 60
-		header = add_spaces("", 4) + "Role"
-		header += add_spaces(header, col_r) + "Mechanic"
-		header += add_spaces(header, col_m) + "Weights"
+		header = f"    Role"
+		header = f"{header:<{col_r}}Mechanic"
+		header = f"{header:<{col_m}}Weights"
 		buf += header + "\n"
 		buf += "    " + "-" * 76 + "\n"
 		rows = [
@@ -253,9 +253,9 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			("Flex",       "No bonus -- bypasses team restriction",   "--"),
 		]
 		for role, mechanic, weights in rows:
-			line = add_spaces("", 4) + role
-			line += add_spaces(line, col_r) + mechanic
-			line += add_spaces(line, col_m) + weights
+			line = f"    {role}"
+			line = f"{line:<{col_r}}{mechanic}"
+			line = f"{line:<{col_m}}{weights}"
 			buf += line + "\n"
 		buf += "\n"
 		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"

@@ -37,14 +37,6 @@ POSITIONS = {
 	9 : "Sub4"
 }
 
-def add_spaces(buff, length):
-	"""
-	Add spaces until the buffer is at least the provided length.
-	"""
-	rv = ""
-	while (len(buff) + len(rv)) < length:
-		rv += " "
-	return rv
 
 
 class ConfigCog(commands.Cog, name="Configuration"):
@@ -237,9 +229,9 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf = "```\n"
 		buf += "Role-Based Scoring\n\n"
 		col_r, col_m = 18, 60
-		header = add_spaces("", 4) + "Role"
-		header += add_spaces(header, col_r) + "Mechanic"
-		header += add_spaces(header, col_m) + "Weights"
+		header = f"    Role"
+		header = f"{header:<{col_r}}Mechanic"
+		header = f"{header:<{col_m}}Weights"
 		buf += header + "\n"
 		buf += "    " + "-" * 76 + "\n"
 		rows = [
@@ -251,9 +243,9 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			("Flex",       "No bonus -- bypasses team restriction",   "--"),
 		]
 		for role, mechanic, weights in rows:
-			line = add_spaces("", 4) + role
-			line += add_spaces(line, col_r) + mechanic
-			line += add_spaces(line, col_m) + weights
+			line = f"    {role}"
+			line = f"{line:<{col_r}}{mechanic}"
+			line = f"{line:<{col_m}}{weights}"
 			buf += line + "\n"
 		buf += "\n"
 		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"
@@ -425,10 +417,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
-				line = add_spaces("", 4) + str(POSITIONS[k])
+				line = f"    {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line += add_spaces(line, 16) + f"{fp.player.team.abbrev} {fp.player.name}"
+						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
 						# update player information from results
 						# TODO optimize this out maybe with caching?
 						for row in fp.player.results:
@@ -442,21 +434,20 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
 							total += total_pts
-						line += add_spaces(line, 36) + str(round(base_pts, 1))
+						line = f"{line:<36}{round(base_pts, 1)}"
 						role_str = ("+" + str(role_pts)) if role_pts > 0 else ("" + str(role_pts)) if role_pts != 0 else "-"
-						line += add_spaces(line, 46) + role_str
-						line += add_spaces(line, 56) + str(total_pts)
+						line = f"{line:<46}{role_str}"
+						line = f"{line:<56}{total_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
 					buf2 += "\n"
 			buf += " -- " + str(round(total, 1)) + "\n"
-			line = ""
-			line += add_spaces(line, 4) + "Position"
-			line += add_spaces(line, 16) + "Name"
-			line += add_spaces(line, 36) + "Base"
-			line += add_spaces(line, 46) + "Role"
-			line += add_spaces(line, 56) + "Total"
+			line = f"    Position"
+			line = f"{line:<16}Name"
+			line = f"{line:<36}Base"
+			line = f"{line:<46}Role"
+			line = f"{line:<56}Total"
 			buf += line + "\n\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
@@ -471,8 +462,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			free_agents = session.scalars(stmt)
 
 			buf = "```\nFree Agents\n"
-			line = add_spaces("", 4) + "Player"
-			line += add_spaces(line, 24) + "Points"
+			line = f"    Player"
+			line = f"{line:<24}Points"
 			buf += line + "\n\n"
 			for player in free_agents:
 				# update player information from results
@@ -484,16 +475,16 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						fantasy_points = PointCalculator.score(row)
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
 				player_points = self.bot.cache.retrieve_total(player.id)
-				line = add_spaces("", 4) + f"{player.team.abbrev} {player.name}"
-				line += add_spaces(line, 24) + str(player_points)
+				line = f"    {player.team.abbrev} {player.name}"
+				line = f"{line:<24}{player_points}"
 
 				# check to ensure that the message has not exceeded discord's character limit
 				if len(buf + line) > 1900:
 					buf += "```"
 					await ctx.send(buf)
 					buf = "```\nFree Agents (page 2)\n"
-					line2 = add_spaces("", 4) + "Player"
-					line2 += add_spaces(line, 24) + "Points"
+					line2 = f"    Player"
+					line2 = f"{line2:<24}Points"
 					buf += line2 + "\n\n"
 				buf += line + "\n"
 			buf += "```"
@@ -627,16 +618,16 @@ class StatsCog(commands.Cog, name="Stats"):
 				buf += f"    Team: {player.team.name}\n"
 				buf += "\n"
 				buf += "    Match Results\n"
-				line = add_spaces("", 8) + "Points"
-				line += add_spaces(line, 16) + "ACS"
-				line += add_spaces(line, 24) + "K/D/A"
-				line += add_spaces(line, 34) + "Game ID\n"
+				line = f"        Points"
+				line = f"{line:<16}ACS"
+				line = f"{line:<24}K/D/A"
+				line = f"{line:<34}Game ID\n"
 				buf += line
 				for row in player.results:
-					line = add_spaces("", 8) + str(self.bot.cache.retrieve(player.id, row.game_id))
-					line += add_spaces(line, 16) + str(row.player_acs)
-					line += add_spaces(line, 24) + f"{str(row.player_kills)}/{str(row.player_deaths)}/{str(row.player_assists)}"
-					line += add_spaces(line, 34) + str(row.game_id) + "\n"
+					line = f"        {self.bot.cache.retrieve(player.id, row.game_id)}"
+					line = f"{line:<16}{row.player_acs}"
+					line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+					line = f"{line:<34}{row.game_id}\n"
 					buf += line
 				buf += "```"
 				return await ctx.send(buf)
@@ -655,9 +646,9 @@ class StatsCog(commands.Cog, name="Stats"):
 			return cache.retrieve_total(player.id)
 
 		buf = "```Player Rankings\n"
-		line = add_spaces("", 4) + "Player"
-		line += add_spaces(line, 30) + "Points"
-		line += add_spaces(line, 40) + "Fantasy Team\n\n"
+		line = f"    Player"
+		line = f"{line:<30}Points"
+		line = f"{line:<40}Fantasy Team\n\n"
 		buf += line
 
 		with self.bot.db_manager.create_session() as session:
@@ -666,18 +657,18 @@ class StatsCog(commands.Cog, name="Stats"):
 			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player), reverse=True)
 			for player in players:
 				line = f"    {player.team.abbrev} {player.name}"
-				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
+				line = f"{line:<30}{self.bot.cache.retrieve_total(player.id)}"
 				if player.fantasyplayer:
-					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
+					line = f"{line:<40}{player.fantasyplayer.fantasyteam.abbrev}"
 
 				# check to ensure that the message has not exceeded discord's character limit
 				if len(buf + line) > 1900:
 					buf += "```"
 					await ctx.send(buf)
 					buf = "```\nPlayer Rankings (page 2)\n"
-					line2 = add_spaces(buf, 4) + "Player"
-					line2 += add_spaces(buf, 30) + "Points"
-					line2 += add_spaces(buf, 40) + "Fantasy Team\n"
+					line2 = f"    Player"
+					line2 = f"{line2:<30}Points"
+					line2 = f"{line2:<40}Fantasy Team\n"
 					buf += line2 + "\n\n"
 				buf += line + "\n"
 
