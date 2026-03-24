@@ -131,6 +131,38 @@ class TestMatchSummaryFiltering:
             assert len(match.maps) == 0
 
 
+class TestParseEventTeams:
+    def _event_html(self, team_hrefs):
+        links = "".join(f'<a href="{h}">Team</a>' for h in team_hrefs)
+        return BeautifulSoup(f"<html><body>{links}</body></html>", "html.parser")
+
+    def test_returns_team_urls(self):
+        soup = self._event_html(["/team/1/team-a", "/team/2/team-b"])
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert "https://www.vlr.gg/team/1/team-a" in urls
+        assert "https://www.vlr.gg/team/2/team-b" in urls
+
+    def test_deduplicates(self):
+        soup = self._event_html(["/team/1/team-a", "/team/1/team-a"])
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert len(urls) == 1
+
+    def test_ignores_non_team_links(self):
+        soup = self._event_html(["/team/1/team-a"])
+        soup.body.append(BeautifulSoup('<a href="/event/2/other">x</a>', "html.parser"))
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert all("/team/" in u for u in urls)
+
+    def test_empty_page_returns_empty_list(self):
+        soup = BeautifulSoup("<html><body></body></html>", "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert urls == []
+
+
 class TestMatchPerformanceFiltering:
     def test_skips_all_and_not_available(self):
         soup = _game_divs_html("all", 99, body="not available")

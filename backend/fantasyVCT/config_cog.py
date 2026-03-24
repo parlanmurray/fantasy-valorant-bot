@@ -116,6 +116,65 @@ class ConfigCog(commands.Cog, name="Configuration"):
 			await ctx.send(f"It is <@!{next_drafter}>'s turn!")
 
 	@commands.command()
+	async def scrapeevent(self, ctx):
+		"""Scrape all teams and players from the active season's event URLs."""
+		if self.bot.draft_state.is_draft_started():
+			return await ctx.send("Cannot add teams/players once draft has started.")
+
+		with self.bot.db_manager.create_session() as session:
+			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if not season:
+				return await ctx.send("No active season.")
+			event_urls = [se.event_url for se in season.season_event_urls]
+
+		if not event_urls:
+			return await ctx.send("No event URLs attached to active season. Use `!seteventurl` or `!addevent` first.")
+
+		await ctx.send(f"Scraping {len(event_urls)} event(s)...")
+
+		all_team_urls = []
+		seen = set()
+		for event_url in event_urls:
+			try:
+				team_urls = self.bot.scraper.parse_event_teams(event_url)
+				for url in team_urls:
+					if url not in seen:
+						seen.add(url)
+						all_team_urls.append(url)
+			except Exception as e:
+				await ctx.send(f"Failed to scrape {event_url}: {e}")
+
+		if not all_team_urls:
+			return await ctx.send("No teams found on event pages.")
+
+		added = 0
+		updated = 0
+		failed = 0
+		for team_url in all_team_urls:
+			try:
+				team_name, team_abbrev, player_names = self.bot.scraper.parse_team(team_url)
+				with self.bot.db_manager.create_session() as session:
+					team = session.execute(select(db.Team).filter_by(name=team_name)).scalar_one_or_none()
+					if not team:
+						team = db.Team(name=team_name, abbrev=team_abbrev)
+						session.add(team)
+						added += 1
+					else:
+						updated += 1
+					for player_name in player_names:
+						player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
+						if not player:
+							player = db.Player(name=player_name)
+							session.add(player)
+						player.team = team
+					session.commit()
+			except Exception as e:
+				await ctx.send(f"Failed to scrape team {team_url}: {e}")
+				failed += 1
+
+		await ctx.send(f"Done. {added} teams added, {updated} updated, {failed} failed. {len(all_team_urls) - failed} teams total.")
+
+	@commands.command()
 	async def newteam(self, ctx, url: str):
 		"""Add a pro team and its players from vlr.gg.
 

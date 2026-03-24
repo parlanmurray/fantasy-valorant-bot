@@ -378,6 +378,26 @@ class Scraper:
 		return None
 
 	@staticmethod
+	def parse_event_teams(url: str) -> list[str]:
+		"""Scrape a vlr.gg event page for all participating team URLs.
+
+		Args:
+		    url (str): vlr.gg event URL
+
+		Returns:
+		    list[str]: absolute team URLs (e.g. https://www.vlr.gg/team/397/bbl-esports)
+		"""
+		soup = Scraper.scrape_url(url)
+		seen = set()
+		team_urls = []
+		for a in soup.find_all('a', href=True):
+			href = a['href']
+			if href.startswith('/team/') and href not in seen:
+				seen.add(href)
+				team_urls.append('https://www.vlr.gg' + href)
+		return team_urls
+
+	@staticmethod
 	def parse_team(url: str):
 		"""Parse a vlr.gg team page.
 		"""
