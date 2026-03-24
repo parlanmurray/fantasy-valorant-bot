@@ -390,6 +390,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				return await ctx.send("No active season.")
 
 			season.event_url = event_url
+			season_name = season.name
 
 			existing = session.scalars(
 				select(db.SeasonEvent).where(
@@ -402,7 +403,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 			session.commit()
 
-		await ctx.send(f"Event URL set for **{season.name}**.")
+		await ctx.send(f"Event URL set for **{season_name}**.")
 
 	@commands.command()
 	async def addevent(self, ctx, event_url: str):
