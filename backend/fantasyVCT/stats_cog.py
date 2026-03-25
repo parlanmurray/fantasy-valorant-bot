@@ -34,12 +34,7 @@ class StatsCog(commands.Cog, name="Stats"):
 
 			player = session.execute(select(db.Player).filter_by(name=query_string)).scalar_one_or_none()
 			if player:
-				for row in player.results:
-					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
-					if not fantasy_points:
-						fantasy_points = PointCalculator.score(row)
-						self.bot.cache.store(player.id, row.game_id, fantasy_points)
-				total = self.bot.cache.retrieve_total(player.id)
+				total = round(sum(PointCalculator.score(row) for row in player.results), 1)
 
 				# Build opponent lookup (always shown)
 				match_ids = list({row.match_id for row in player.results})
@@ -83,7 +78,7 @@ class StatsCog(commands.Cog, name="Stats"):
 						week_label = f"W{week_num}" if week_num else "--"
 						opp_abbrev = opponent_map.get(row.match_id)
 						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
-						pts = self.bot.cache.retrieve(player.id, row.game_id)
+						pts = PointCalculator.score(row)
 						line = f"        {week_label}"
 						line = f"{line:<12}{opponent}"
 						line = f"{line:<24}{pts}"
@@ -101,7 +96,7 @@ class StatsCog(commands.Cog, name="Stats"):
 					for row in player.results:
 						opp_abbrev = opponent_map.get(row.match_id)
 						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
-						pts = self.bot.cache.retrieve(player.id, row.game_id)
+						pts = PointCalculator.score(row)
 						line = f"        {pts}"
 						line = f"{line:<16}{row.player_acs}"
 						line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
@@ -118,16 +113,8 @@ class StatsCog(commands.Cog, name="Stats"):
 	async def rankplayers(self, ctx):
 		"""Rank all pro players by fantasy points, highest to lowest."""
 
-		def get_fantasy_points(cache, player):
-			total = cache.retrieve_total(player.id)
-			if not total:
-				for row in player.results:
-					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
-					if not fantasy_points:
-						fantasy_points = PointCalculator.score(row)
-						cache.store(player.id, row.game_id, fantasy_points)
-				total = cache.retrieve_total(player.id)
-			return total
+		def get_fantasy_points(player):
+			return round(sum(PointCalculator.score(row) for row in player.results), 1)
 
 		buf = "```Player Rankings\n"
 		line = f"    Player"
@@ -137,10 +124,10 @@ class StatsCog(commands.Cog, name="Stats"):
 
 		with self.bot.db_manager.create_session() as session:
 			players = list(session.scalars(select(db.Player)))
-			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player), reverse=True)
+			players = sorted(players, key=lambda player: get_fantasy_points(player), reverse=True)
 			for player in players:
 				line = f"    {player.team.abbrev} {player.name}"
-				line = f"{line:<30}{self.bot.cache.retrieve_total(player.id)}"
+				line = f"{line:<30}{get_fantasy_points(player)}"
 				if player.fantasyplayer:
 					line = f"{line:<40}{player.fantasyplayer.fantasyteam.abbrev}"
 

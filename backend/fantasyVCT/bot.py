@@ -1,6 +1,6 @@
 from fantasyVCT.database import DatabaseManager
 from fantasyVCT.scraper import Scraper
-from fantasyVCT.scoring import Cache
+
 from fantasyVCT.draft_state import DraftState
 
 from discord.ext import commands
@@ -12,7 +12,6 @@ class FantasyValBot(commands.Bot):
 		super().__init__(command_prefix, intents=Intents.all())
 		self.db_manager = None
 		self.scraper = Scraper()
-		self.cache = Cache()
 		self.draft_state = DraftState()
 		# there are several more fields here added by argparse
 		# skip_draft

@@ -91,7 +91,7 @@ async def test_upload_duplicate(mock_bot, ctx, engine):
 
 
 async def test_upload_success_inserts_results(mock_bot, ctx, engine):
-	"""Valid new match with existing teams/players: results inserted, cache invalidated.
+	"""Valid new match with existing teams/players: results inserted.
 	Note: upload() doesn't set Team.region (pre-existing omission), so teams must be
 	pre-seeded to avoid the NOT NULL constraint on that column.
 	"""
@@ -138,7 +138,6 @@ async def test_upload_success_inserts_results(mock_bot, ctx, engine):
 		results = list(s.scalars(select(db.Result).filter_by(match_id=99999)))
 		assert len(results) == 2
 
-	mock_bot.cache.invalidate.assert_called_once()
 
 
 # ── get_results() ─────────────────────────────────────────────────────────────
