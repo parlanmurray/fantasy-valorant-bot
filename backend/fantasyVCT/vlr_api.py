@@ -132,8 +132,7 @@ class FetchCog(commands.Cog, name="Results"):
 								inserted_team_ids.add(ft_id)
 					session.flush()
 
-			self.bot.cache.invalidate()
-			session.commit()
+				session.commit()
 
 			# Show live matchup scores if we tagged a week
 			if week_id is not None:
@@ -227,8 +226,7 @@ class FetchCog(commands.Cog, name="Results"):
 							self.bot.db_manager.insert_result_to_results(_map.name, _map.game_id, vlr_id, player_info[0], player, event_info[0])
 							self.bot.db_manager.commit()
 
-				self.bot.cache.invalidate()
-
+				
 	@get_results.before_loop
 	async def before_get_results(self):
 		await self.bot.wait_until_ready()

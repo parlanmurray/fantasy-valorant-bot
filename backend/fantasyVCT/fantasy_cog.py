@@ -165,12 +165,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				for fp in fantasy_players:
 					if fp.position is k:
 						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
-						for row in fp.player.results:
-							fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
-							if not fantasy_points:
-								fantasy_points = PointCalculator.score(row)
-								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						base_pts = self.bot.cache.retrieve_total(fp.player.id)
+						base_pts = round(sum(PointCalculator.score(row) for row in fp.player.results), 1)
 						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
 						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
@@ -206,12 +201,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			line = f"{line:<24}Points"
 			buf += line + "\n\n"
 			for player in free_agents:
-				for row in player.results:
-					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
-					if not fantasy_points:
-						fantasy_points = PointCalculator.score(row)
-						self.bot.cache.store(player.id, row.game_id, fantasy_points)
-				player_points = self.bot.cache.retrieve_total(player.id)
+				player_points = round(sum(PointCalculator.score(row) for row in player.results), 1)
 				line = f"    {player.team.abbrev} {player.name}"
 				line = f"{line:<24}{player_points}"
 
