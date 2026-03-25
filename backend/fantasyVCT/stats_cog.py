@@ -41,21 +41,74 @@ class StatsCog(commands.Cog, name="Stats"):
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
 				total = self.bot.cache.retrieve_total(player.id)
 
+				# Build opponent lookup (always shown)
+				match_ids = list({row.match_id for row in player.results})
+				opponent_map = {}
+				if match_ids:
+					opp_rows = session.execute(
+						select(db.Result.match_id, db.Team.abbrev)
+						.join(db.Player, db.Result.player_id == db.Player.id)
+						.join(db.Team, db.Player.team_id == db.Team.id)
+						.where(db.Result.match_id.in_(match_ids))
+						.where(db.Player.team_id != player.team_id)
+						.distinct()
+					).all()
+					opponent_map = {match_id: abbrev for match_id, abbrev in opp_rows}
+
+				# Build week lookup (h2h only)
+				week_map = {}
+				if self.bot.h2h:
+					week_ids = list({row.week_id for row in player.results if row.week_id})
+					if week_ids:
+						week_rows = session.execute(
+							select(db.Week.id, db.Week.week_number).where(db.Week.id.in_(week_ids))
+						).all()
+						week_map = {wid: wnum for wid, wnum in week_rows}
+
 				buf = f"```\n{player.name} - {str(total)}\n"
 				buf += f"    Team: {player.team.name}\n"
 				buf += "\n"
 				buf += "    Match Results\n"
-				line = f"        Points"
-				line = f"{line:<16}ACS"
-				line = f"{line:<24}K/D/A"
-				line = f"{line:<34}Game ID\n"
-				buf += line
-				for row in player.results:
-					line = f"        {self.bot.cache.retrieve(player.id, row.game_id)}"
-					line = f"{line:<16}{row.player_acs}"
-					line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
-					line = f"{line:<34}{row.game_id}\n"
+
+				if self.bot.h2h:
+					line = f"        Wk"
+					line = f"{line:<12}Opponent"
+					line = f"{line:<24}Points"
+					line = f"{line:<32}ACS"
+					line = f"{line:<40}K/D/A"
+					line = f"{line:<52}Game ID\n"
 					buf += line
+					for row in player.results:
+						week_num = week_map.get(row.week_id)
+						week_label = f"W{week_num}" if week_num else "--"
+						opp_abbrev = opponent_map.get(row.match_id)
+						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
+						pts = self.bot.cache.retrieve(player.id, row.game_id)
+						line = f"        {week_label}"
+						line = f"{line:<12}{opponent}"
+						line = f"{line:<24}{pts}"
+						line = f"{line:<32}{row.player_acs}"
+						line = f"{line:<40}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+						line = f"{line:<52}{row.game_id}\n"
+						buf += line
+				else:
+					line = f"        Points"
+					line = f"{line:<16}ACS"
+					line = f"{line:<24}K/D/A"
+					line = f"{line:<36}Opponent"
+					line = f"{line:<48}Game ID\n"
+					buf += line
+					for row in player.results:
+						opp_abbrev = opponent_map.get(row.match_id)
+						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
+						pts = self.bot.cache.retrieve(player.id, row.game_id)
+						line = f"        {pts}"
+						line = f"{line:<16}{row.player_acs}"
+						line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+						line = f"{line:<36}{opponent}"
+						line = f"{line:<48}{row.game_id}\n"
+						buf += line
+
 				buf += "```"
 				return await ctx.send(buf)
 
