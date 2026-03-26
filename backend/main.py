@@ -62,7 +62,7 @@ bot = FantasyValBot("!")
 parser.parse_args(namespace=bot)
 # default to 4 sub slots in h2h mode unless explicitly set
 if bot.h2h and bot.sub_slots == 0:
-    bot.sub_slots = 4
+	bot.sub_slots = 4
 
 # derive round count: 6 active slots + sub slots
 bot.num_rounds = 6 + bot.sub_slots

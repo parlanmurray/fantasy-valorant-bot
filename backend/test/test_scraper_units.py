@@ -12,225 +12,225 @@ import fantasyVCT.database as db
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _perf_row(name, abbrev="SEN", stats=None):
-    """Build a minimal performance-tab <tr> for _parse_player_performance.
+	"""Build a minimal performance-tab <tr> for _parse_player_performance.
 
-    items[0]  = "name abbrev"
-    items[2]  = player_2k
-    items[3]  = player_3k
-    items[4]  = player_4k
-    items[5]  = player_5k
-    items[7]  = player_clutch_v2
-    items[8]  = player_clutch_v3
-    items[9]  = player_clutch_v4
-    items[10] = player_clutch_v5
-    All unspecified cells are empty strings (parsed as 0).
-    """
-    cells = [""] * 11
-    cells[0] = f"{name} {abbrev}"
-    if stats:
-        for idx, val in stats.items():
-            cells[idx] = str(val)
-    tds = "".join(f"<td>{c}</td>" for c in cells)
-    return BeautifulSoup(f"<table><tr>{tds}</tr></table>", "html.parser").find("tr")
+	items[0]  = "name abbrev"
+	items[2]  = player_2k
+	items[3]  = player_3k
+	items[4]  = player_4k
+	items[5]  = player_5k
+	items[7]  = player_clutch_v2
+	items[8]  = player_clutch_v3
+	items[9]  = player_clutch_v4
+	items[10] = player_clutch_v5
+	All unspecified cells are empty strings (parsed as 0).
+	"""
+	cells = [""] * 11
+	cells[0] = f"{name} {abbrev}"
+	if stats:
+		for idx, val in stats.items():
+			cells[idx] = str(val)
+	tds = "".join(f"<td>{c}</td>" for c in cells)
+	return BeautifulSoup(f"<table><tr>{tds}</tr></table>", "html.parser").find("tr")
 
 
 def _game_divs_html(*game_ids, body="valid content"):
-    """Build a soup with vm-stats-game divs for the given game_ids."""
-    divs = "".join(
-        f'<div class="vm-stats-game" data-game-id="{gid}">{body}</div>'
-        for gid in game_ids
-    )
-    return BeautifulSoup(f"<html><body>{divs}</body></html>", "html.parser")
+	"""Build a soup with vm-stats-game divs for the given game_ids."""
+	divs = "".join(
+		f'<div class="vm-stats-game" data-game-id="{gid}">{body}</div>'
+		for gid in game_ids
+	)
+	return BeautifulSoup(f"<html><body>{divs}</body></html>", "html.parser")
 
 
 # ── Invalid match ID ──────────────────────────────────────────────────────────
 
 class TestInvalidMatchId:
-    def test_non_numeric_raises(self):
-        with pytest.raises(ValueError):
-            Scraper.parse_match("not-a-number")
+	def test_non_numeric_raises(self):
+		with pytest.raises(ValueError):
+			Scraper.parse_match("not-a-number")
 
-    def test_float_string_raises(self):
-        with pytest.raises(ValueError):
-            Scraper.parse_match("12.5")
+	def test_float_string_raises(self):
+		with pytest.raises(ValueError):
+			Scraper.parse_match("12.5")
 
-    def test_alphanumeric_raises(self):
-        with pytest.raises(ValueError):
-            Scraper.parse_match("123abc")
+	def test_alphanumeric_raises(self):
+		with pytest.raises(ValueError):
+			Scraper.parse_match("123abc")
 
 
 # ── _parse_player_performance ─────────────────────────────────────────────────
 
 class TestParsePlayerPerformance:
-    def test_empty_cells_yield_zero_stats(self):
-        player = db.Player(name="TenZ")
-        row = _perf_row("TenZ")
-        Scraper._parse_player_performance(row, player)
-        r = player.results[0]
-        assert r.player_2k == 0
-        assert r.player_3k == 0
-        assert r.player_4k == 0
-        assert r.player_5k == 0
-        assert r.player_clutch_v2 == 0
-        assert r.player_clutch_v3 == 0
-        assert r.player_clutch_v4 == 0
-        assert r.player_clutch_v5 == 0
+	def test_empty_cells_yield_zero_stats(self):
+		player = db.Player(name="TenZ")
+		row = _perf_row("TenZ")
+		Scraper._parse_player_performance(row, player)
+		r = player.results[0]
+		assert r.player_2k == 0
+		assert r.player_3k == 0
+		assert r.player_4k == 0
+		assert r.player_5k == 0
+		assert r.player_clutch_v2 == 0
+		assert r.player_clutch_v3 == 0
+		assert r.player_clutch_v4 == 0
+		assert r.player_clutch_v5 == 0
 
-    def test_nonzero_stats_parsed(self):
-        player = db.Player(name="aspas")
-        row = _perf_row("aspas", stats={2: 3, 3: 2, 4: 1, 5: 1, 7: 2, 8: 1, 9: 0, 10: 0})
-        Scraper._parse_player_performance(row, player)
-        r = player.results[0]
-        assert r.player_2k == 3
-        assert r.player_3k == 2
-        assert r.player_4k == 1
-        assert r.player_5k == 1
-        assert r.player_clutch_v2 == 2
-        assert r.player_clutch_v3 == 1
-        assert r.player_clutch_v4 == 0
-        assert r.player_clutch_v5 == 0
+	def test_nonzero_stats_parsed(self):
+		player = db.Player(name="aspas")
+		row = _perf_row("aspas", stats={2: 3, 3: 2, 4: 1, 5: 1, 7: 2, 8: 1, 9: 0, 10: 0})
+		Scraper._parse_player_performance(row, player)
+		r = player.results[0]
+		assert r.player_2k == 3
+		assert r.player_3k == 2
+		assert r.player_4k == 1
+		assert r.player_5k == 1
+		assert r.player_clutch_v2 == 2
+		assert r.player_clutch_v3 == 1
+		assert r.player_clutch_v4 == 0
+		assert r.player_clutch_v5 == 0
 
-    def test_name_mismatch_raises(self):
-        player = db.Player(name="TenZ")
-        row = _perf_row("aspas")
-        with pytest.raises(ValueError):
-            Scraper._parse_player_performance(row, player)
+	def test_name_mismatch_raises(self):
+		player = db.Player(name="TenZ")
+		row = _perf_row("aspas")
+		with pytest.raises(ValueError):
+			Scraper._parse_player_performance(row, player)
 
-    def test_reuses_existing_result(self):
-        """If player already has a result, stats are written into results[0]."""
-        player = db.Player(name="Boaster")
-        existing = db.Result()
-        player.results.append(existing)
-        row = _perf_row("Boaster", stats={2: 5})
-        Scraper._parse_player_performance(row, player)
-        assert len(player.results) == 1
-        assert player.results[0].player_2k == 5
+	def test_reuses_existing_result(self):
+		"""If player already has a result, stats are written into results[0]."""
+		player = db.Player(name="Boaster")
+		existing = db.Result()
+		player.results.append(existing)
+		row = _perf_row("Boaster", stats={2: 5})
+		Scraper._parse_player_performance(row, player)
+		assert len(player.results) == 1
+		assert player.results[0].player_2k == 5
 
 
 # ── Summary/performance map filtering ────────────────────────────────────────
 
 class TestMatchSummaryFiltering:
-    def test_skips_all_game_id(self):
-        """`data-game-id="all"` divs are excluded."""
-        soup = _game_divs_html("all")
-        with patch.object(Scraper, "scrape_url", return_value=soup), \
-             patch.object(Scraper, "_parse_map_summary") as mock_parse:
-            match = db.Match(match_id=1)
-            Scraper._parse_match_summary(match)
-            mock_parse.assert_not_called()
-            assert len(match.maps) == 0
+	def test_skips_all_game_id(self):
+		"""`data-game-id="all"` divs are excluded."""
+		soup = _game_divs_html("all")
+		with patch.object(Scraper, "scrape_url", return_value=soup), \
+			 patch.object(Scraper, "_parse_map_summary") as mock_parse:
+			match = db.Match(match_id=1)
+			Scraper._parse_match_summary(match)
+			mock_parse.assert_not_called()
+			assert len(match.maps) == 0
 
-    def test_skips_not_available_maps(self):
-        """`not available` text in a map div is excluded."""
-        soup = _game_divs_html(42, body="not available")
-        with patch.object(Scraper, "scrape_url", return_value=soup), \
-             patch.object(Scraper, "_parse_map_summary") as mock_parse:
-            match = db.Match(match_id=1)
-            Scraper._parse_match_summary(match)
-            mock_parse.assert_not_called()
-            assert len(match.maps) == 0
+	def test_skips_not_available_maps(self):
+		"""`not available` text in a map div is excluded."""
+		soup = _game_divs_html(42, body="not available")
+		with patch.object(Scraper, "scrape_url", return_value=soup), \
+			 patch.object(Scraper, "_parse_map_summary") as mock_parse:
+			match = db.Match(match_id=1)
+			Scraper._parse_match_summary(match)
+			mock_parse.assert_not_called()
+			assert len(match.maps) == 0
 
 
 def _make_team_html(players):
-    """Build minimal team page HTML matching parse_team's expected DOM. Each player is (alias, is_sub)."""
-    def player_html(alias, is_sub):
-        sub_div = '<div>Sub</div>' if is_sub else ''
-        return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{sub_div}</div>'
+	"""Build minimal team page HTML matching parse_team's expected DOM. Each player is (alias, is_sub)."""
+	def player_html(alias, is_sub):
+		sub_div = '<div>Sub</div>' if is_sub else ''
+		return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{sub_div}</div>'
 
-    roster = ''.join(player_html(a, s) for a, s in players)
-    # team-header: needs 2 direct child divs; parse_team uses getNthDiv(header, 1).div
-    # wf-card: needs 2 direct child divs; parse_team uses getNthDiv(roster_body, 1)
-    return f"""<html><body>
-        <div class="team-header">
-            <div></div>
-            <div><div><h1>TestTeam</h1><h2>TT</h2></div></div>
-        </div>
-        <div class="team-summary-container-1">
-            <div class="wf-card">
-                <div></div>
-                <div>{roster}</div>
-            </div>
-        </div>
-    </body></html>"""
+	roster = ''.join(player_html(a, s) for a, s in players)
+	# team-header: needs 2 direct child divs; parse_team uses getNthDiv(header, 1).div
+	# wf-card: needs 2 direct child divs; parse_team uses getNthDiv(roster_body, 1)
+	return f"""<html><body>
+		<div class="team-header">
+			<div></div>
+			<div><div><h1>TestTeam</h1><h2>TT</h2></div></div>
+		</div>
+		<div class="team-summary-container-1">
+			<div class="wf-card">
+				<div></div>
+				<div>{roster}</div>
+			</div>
+		</div>
+	</body></html>"""
 
 
 class TestParseTeamSubFiltering:
-    def test_sub_excluded(self):
-        html = _make_team_html([("StarterA", False), ("Flicker", True)])
-        soup = BeautifulSoup(html, "html.parser")
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
-        assert "Flicker" not in players
-        assert "StarterA" in players
+	def test_sub_excluded(self):
+		html = _make_team_html([("StarterA", False), ("Flicker", True)])
+		soup = BeautifulSoup(html, "html.parser")
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+		assert "Flicker" not in players
+		assert "StarterA" in players
 
-    def test_inactive_excluded(self):
-        def player_html(alias, label=None):
-            label_div = f'<div>{label}</div>' if label else ''
-            return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{label_div}</div>'
-        roster = player_html("StarterA") + player_html("inspire", "Inactive")
-        html = f"""<html><body>
-            <div class="team-header"><div></div><div><div><h1>NV</h1><h2>NV</h2></div></div></div>
-            <div class="team-summary-container-1"><div class="wf-card"><div></div><div>{roster}</div></div></div>
-        </body></html>"""
-        soup = BeautifulSoup(html, "html.parser")
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
-        assert "inspire" not in players
-        assert "StarterA" in players
+	def test_inactive_excluded(self):
+		def player_html(alias, label=None):
+			label_div = f'<div>{label}</div>' if label else ''
+			return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{label_div}</div>'
+		roster = player_html("StarterA") + player_html("inspire", "Inactive")
+		html = f"""<html><body>
+			<div class="team-header"><div></div><div><div><h1>NV</h1><h2>NV</h2></div></div></div>
+			<div class="team-summary-container-1"><div class="wf-card"><div></div><div>{roster}</div></div></div>
+		</body></html>"""
+		soup = BeautifulSoup(html, "html.parser")
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+		assert "inspire" not in players
+		assert "StarterA" in players
 
-    def test_all_starters_included(self):
-        html = _make_team_html([("A", False), ("B", False), ("C", False), ("D", False), ("E", False)])
-        soup = BeautifulSoup(html, "html.parser")
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
-        assert len(players) == 5
+	def test_all_starters_included(self):
+		html = _make_team_html([("A", False), ("B", False), ("C", False), ("D", False), ("E", False)])
+		soup = BeautifulSoup(html, "html.parser")
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+		assert len(players) == 5
 
-    def test_all_subs_returns_empty(self):
-        html = _make_team_html([("SubOnly", True)])
-        soup = BeautifulSoup(html, "html.parser")
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
-        assert players == []
+	def test_all_subs_returns_empty(self):
+		html = _make_team_html([("SubOnly", True)])
+		soup = BeautifulSoup(html, "html.parser")
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+		assert players == []
 
 
 class TestParseEventTeams:
-    def _event_html(self, team_hrefs):
-        links = "".join(f'<a href="{h}">Team</a>' for h in team_hrefs)
-        return BeautifulSoup(f"<html><body>{links}</body></html>", "html.parser")
+	def _event_html(self, team_hrefs):
+		links = "".join(f'<a href="{h}">Team</a>' for h in team_hrefs)
+		return BeautifulSoup(f"<html><body>{links}</body></html>", "html.parser")
 
-    def test_returns_team_urls(self):
-        soup = self._event_html(["/team/1/team-a", "/team/2/team-b"])
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
-        assert "https://www.vlr.gg/team/1/team-a" in urls
-        assert "https://www.vlr.gg/team/2/team-b" in urls
+	def test_returns_team_urls(self):
+		soup = self._event_html(["/team/1/team-a", "/team/2/team-b"])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+		assert "https://www.vlr.gg/team/1/team-a" in urls
+		assert "https://www.vlr.gg/team/2/team-b" in urls
 
-    def test_deduplicates(self):
-        soup = self._event_html(["/team/1/team-a", "/team/1/team-a"])
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
-        assert len(urls) == 1
+	def test_deduplicates(self):
+		soup = self._event_html(["/team/1/team-a", "/team/1/team-a"])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+		assert len(urls) == 1
 
-    def test_ignores_non_team_links(self):
-        soup = self._event_html(["/team/1/team-a"])
-        soup.body.append(BeautifulSoup('<a href="/event/2/other">x</a>', "html.parser"))
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
-        assert all("/team/" in u for u in urls)
+	def test_ignores_non_team_links(self):
+		soup = self._event_html(["/team/1/team-a"])
+		soup.body.append(BeautifulSoup('<a href="/event/2/other">x</a>', "html.parser"))
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+		assert all("/team/" in u for u in urls)
 
-    def test_empty_page_returns_empty_list(self):
-        soup = BeautifulSoup("<html><body></body></html>", "html.parser")
-        with patch.object(Scraper, "scrape_url", return_value=soup):
-            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
-        assert urls == []
+	def test_empty_page_returns_empty_list(self):
+		soup = BeautifulSoup("<html><body></body></html>", "html.parser")
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+		assert urls == []
 
 
 class TestMatchPerformanceFiltering:
-    def test_skips_all_and_not_available(self):
-        soup = _game_divs_html("all", 99, body="not available")
-        with patch.object(Scraper, "scrape_url", return_value=soup), \
-             patch.object(Scraper, "_parse_map_performance") as mock_parse:
-            match = db.Match(match_id=1)
-            Scraper._parse_match_performance(match)
-            mock_parse.assert_not_called()
-            assert len(match.maps) == 0
+	def test_skips_all_and_not_available(self):
+		soup = _game_divs_html("all", 99, body="not available")
+		with patch.object(Scraper, "scrape_url", return_value=soup), \
+			 patch.object(Scraper, "_parse_map_performance") as mock_parse:
+			match = db.Match(match_id=1)
+			Scraper._parse_match_performance(match)
+			mock_parse.assert_not_called()
+			assert len(match.maps) == 0
