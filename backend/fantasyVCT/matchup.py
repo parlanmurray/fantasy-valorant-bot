@@ -195,6 +195,121 @@ def _player_week_totals(player_id: int, position: int, week_id: int, session: Se
 	return base, bonus, round(base + bonus, 1)
 
 
+def compute_weekly_score_snapshot(fantasy_team_id: int, week_id: int, session: Session) -> float:
+	"""Compute a fantasy team's score using the roster snapshot for that week.
+
+	Falls back to compute_weekly_score if no snapshot exists (e.g. pre-feature weeks).
+
+	Args:
+		fantasy_team_id: id of the FantasyTeam
+		week_id: id of the Week
+		session: active SQLAlchemy session
+
+	Returns:
+		float: total weekly fantasy points
+	"""
+	snapshots = session.scalars(
+		select(db.RosterSnapshot).where(
+			db.RosterSnapshot.fteam_id == fantasy_team_id,
+			db.RosterSnapshot.week_id == week_id,
+		)
+	).all()
+
+	if not snapshots:
+		return compute_weekly_score(fantasy_team_id, week_id, session)
+
+	active_roster = {
+		s.player_id: s.position
+		for s in snapshots
+		if s.position < 6
+	}
+	if not active_roster:
+		return 0.0
+
+	results = session.scalars(
+		select(db.Result).where(
+			db.Result.week_id == week_id,
+			db.Result.player_id.in_(active_roster.keys())
+		)
+	).all()
+
+	player_results = defaultdict(list)
+	for result in results:
+		player_results[result.player_id].append(result)
+
+	total = 0.0
+	for player_id, maps in player_results.items():
+		role = POSITIONS[active_roster[player_id]]
+		map_totals = sorted(
+			(PointCalculator.score(r) + PointCalculator.role_bonus(r, role) for r in maps),
+			reverse=True
+		)
+		total += sum(map_totals[:2])
+
+	return round(total, 1)
+
+
+def get_roster_breakdown(fteam_id: int, week_id: int, session: Session) -> tuple[bool, list[dict]]:
+	"""Return roster breakdown for display in !matchup.
+
+	Uses roster snapshot if available; falls back to current fantasy_players.
+
+	Args:
+		fteam_id: id of the FantasyTeam
+		week_id: id of the Week
+		session: active SQLAlchemy session
+
+	Returns:
+		(has_snapshot, slots) where slots is a list of 10 dicts (positions 0–9):
+		  position, role, player_name, base, bonus, is_active
+	"""
+	snapshots = session.scalars(
+		select(db.RosterSnapshot).where(
+			db.RosterSnapshot.fteam_id == fteam_id,
+			db.RosterSnapshot.week_id == week_id,
+		)
+	).all()
+
+	has_snapshot = bool(snapshots)
+
+	if has_snapshot:
+		# position -> player from snapshot
+		pos_to_player: dict[int, db.Player] = {s.position: s.player for s in snapshots}
+	else:
+		# position -> player from current roster
+		fps = session.scalars(
+			select(db.FantasyPlayer).where(db.FantasyPlayer.fantasy_team_id == fteam_id)
+		).all()
+		pos_to_player = {fp.position: fp.player for fp in fps}
+
+	slots = []
+	for pos in range(10):
+		player = pos_to_player.get(pos)
+		is_active = pos < 6
+
+		if player is None:
+			player_name = None
+			base, bonus = 0.0, 0.0
+		else:
+			pro_team = player.team.abbrev if player.team else ""
+			player_name = f"{pro_team} {player.name}".strip() if pro_team else player.name
+			if is_active:
+				base, bonus, _ = _player_week_totals(player.id, pos, week_id, session)
+			else:
+				base, bonus = 0.0, 0.0
+
+		slots.append({
+			"position":    pos,
+			"role":        POSITIONS[pos],
+			"player_name": player_name,
+			"base":        base,
+			"bonus":       bonus,
+			"is_active":   is_active,
+		})
+
+	return has_snapshot, slots
+
+
 def week_role_leaders(week_id: int, fteams: list, session: Session, n: int = 3) -> dict[str, list[dict]]:
 	"""Return top-n performers per active role slot for the week.
 

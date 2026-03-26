@@ -2,7 +2,10 @@
 import pytest
 from unittest.mock import MagicMock
 
-from fantasyVCT.matchup import generate_schedule, compute_weekly_score, derive_record
+from fantasyVCT.matchup import (
+	generate_schedule, compute_weekly_score, compute_weekly_score_snapshot,
+	get_roster_breakdown, derive_record,
+)
 from fantasyVCT.scoring import PointCalculator
 import fantasyVCT.database as db
 
@@ -354,3 +357,146 @@ def test_ghost_mirror_not_set_for_real_matchups():
 		for home, away, ghost_mirror in week_pairs:
 			if away is not None:
 				assert ghost_mirror is None
+
+
+# ---------------------------------------------------------------------------
+# compute_weekly_score_snapshot
+# ---------------------------------------------------------------------------
+
+def _scalars_side_effect(*return_lists):
+	"""Helper: return successive MagicMocks whose .all() returns each list."""
+	mocks = []
+	for lst in return_lists:
+		m = MagicMock()
+		m.all.return_value = lst
+		m.first.return_value = lst[0] if lst else None
+		mocks.append(m)
+	return mocks
+
+
+def test_compute_weekly_score_snapshot_uses_snapshot():
+	"""Snapshot rows drive scoring instead of current fantasy_players."""
+	snap = db.RosterSnapshot(week_id=5, fteam_id=1, player_id=10, position=5)  # Flex
+	r1 = _make_result(player_id=10, week_id=5, kills=10, acs=200)
+
+	session = MagicMock()
+	snap_mock, result_mock = _scalars_side_effect([snap], [r1])
+	session.scalars.side_effect = [snap_mock, result_mock]
+
+	score = compute_weekly_score_snapshot(1, 5, session)
+
+	expected = PointCalculator.score(r1)
+	assert round(score, 4) == round(expected, 4)
+
+
+def test_compute_weekly_score_snapshot_fallback():
+	"""No snapshot rows → falls back to compute_weekly_score."""
+	fteam = db.FantasyTeam(id=1, name="Alpha", abbrev="ALP")
+	fp = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=5)
+	fteam.fantasyplayers = [fp]
+	r1 = _make_result(player_id=10, week_id=5, kills=10, acs=200)
+
+	session = MagicMock()
+	session.get.return_value = fteam
+	snap_mock, result_mock = _scalars_side_effect([], [r1])
+	session.scalars.side_effect = [snap_mock, result_mock]
+
+	score = compute_weekly_score_snapshot(1, 5, session)
+
+	expected = PointCalculator.score(r1)
+	assert round(score, 4) == round(expected, 4)
+
+
+def test_compute_weekly_score_snapshot_subs_excluded():
+	"""Sub positions (6+) in snapshot are not scored."""
+	snap_active = db.RosterSnapshot(week_id=5, fteam_id=1, player_id=10, position=5)  # Flex (active)
+	snap_sub = db.RosterSnapshot(week_id=5, fteam_id=1, player_id=20, position=6)     # Sub1
+	r_active = _make_result(player_id=10, week_id=5, kills=10, acs=200)
+
+	session = MagicMock()
+	snap_mock, result_mock = _scalars_side_effect([snap_active, snap_sub], [r_active])
+	session.scalars.side_effect = [snap_mock, result_mock]
+
+	score = compute_weekly_score_snapshot(1, 5, session)
+	expected = PointCalculator.score(r_active)
+	assert round(score, 4) == round(expected, 4)
+
+
+# ---------------------------------------------------------------------------
+# get_roster_breakdown
+# ---------------------------------------------------------------------------
+
+def _make_player(player_id, name, team_abbrev="TST"):
+	player = db.Player(id=player_id, name=name)
+	team = db.Team(id=1, name="Test Team", abbrev=team_abbrev)
+	player.team = team
+	return player
+
+
+def test_get_roster_breakdown_with_snapshot():
+	"""Snapshot path: has_snapshot=True, active slots scored, subs 0.0."""
+	player = _make_player(10, "aspas")
+	snap = db.RosterSnapshot(week_id=5, fteam_id=1, player_id=10, position=5)
+	snap.player = player
+	r1 = _make_result(player_id=10, week_id=5, kills=10, acs=200)
+
+	session = MagicMock()
+	snap_mock, result_mock = _scalars_side_effect([snap], [r1])
+	session.scalars.side_effect = [snap_mock, result_mock]
+
+	has_snapshot, slots = get_roster_breakdown(1, 5, session)
+
+	assert has_snapshot is True
+	assert len(slots) == 10
+
+	# Position 5 (Flex) should have scores
+	flex_slot = slots[5]
+	assert flex_slot["player_name"] == "TST aspas"
+	assert flex_slot["base"] > 0
+	assert flex_slot["is_active"] is True
+
+	# Sub slots have 0.0 base/bonus
+	for s in slots[6:]:
+		assert s["base"] == 0.0
+		assert s["bonus"] == 0.0
+		assert s["is_active"] is False
+
+
+def test_get_roster_breakdown_fallback():
+	"""No snapshot → has_snapshot=False, reads from FantasyPlayer rows."""
+	player = _make_player(10, "TenZ")
+	fp = db.FantasyPlayer(id=1, player_id=10, fantasy_team_id=1, position=1)
+	fp.player = player
+	r1 = _make_result(player_id=10, week_id=5, kills=12, acs=220)
+
+	session = MagicMock()
+	snap_mock, fp_mock, result_mock = _scalars_side_effect([], [fp], [r1])
+	session.scalars.side_effect = [snap_mock, fp_mock, result_mock]
+
+	has_snapshot, slots = get_roster_breakdown(1, 5, session)
+
+	assert has_snapshot is False
+	duelist_slot = slots[1]
+	assert duelist_slot["player_name"] == "TST TenZ"
+	assert duelist_slot["base"] > 0
+
+
+def test_get_roster_breakdown_empty_slot():
+	"""Positions with no player assigned return player_name=None."""
+	snap = db.RosterSnapshot(week_id=5, fteam_id=1, player_id=10, position=0)
+	player = _make_player(10, "food")
+	snap.player = player
+	r1 = _make_result(player_id=10, week_id=5, kills=8, acs=190)
+
+	session = MagicMock()
+	snap_mock, result_mock = _scalars_side_effect([snap], [r1])
+	session.scalars.side_effect = [snap_mock, result_mock]
+
+	has_snapshot, slots = get_roster_breakdown(1, 5, session)
+
+	# Position 0 (IGL) has a player
+	assert slots[0]["player_name"] is not None
+
+	# All other active positions are empty
+	for pos in range(1, 6):
+		assert slots[pos]["player_name"] is None, f"Position {pos} should be empty"

@@ -1,7 +1,8 @@
 import fantasyVCT.database as db
 from fantasyVCT.scraper import Scraper
 from fantasyVCT.matchup import (
-	generate_schedule, compute_weekly_score, derive_record,
+	generate_schedule, compute_weekly_score, compute_weekly_score_snapshot,
+	get_roster_breakdown, derive_record,
 	get_season_chain, compute_round_offset,
 	week_role_leaders, week_top_base_scorers,
 )
@@ -165,11 +166,11 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				return await ctx.send(f"No matchups found for week {week_number}.")
 
 			for matchup in matchups:
-				matchup.home_score = compute_weekly_score(matchup.home_team_id, week.id, session)
+				matchup.home_score = compute_weekly_score_snapshot(matchup.home_team_id, week.id, session)
 				if matchup.away_team_id is not None:
-					matchup.away_score = compute_weekly_score(matchup.away_team_id, week.id, session)
+					matchup.away_score = compute_weekly_score_snapshot(matchup.away_team_id, week.id, session)
 				elif matchup.ghost_team_id is not None:
-					matchup.away_score = compute_weekly_score(matchup.ghost_team_id, week.id, session)
+					matchup.away_score = compute_weekly_score_snapshot(matchup.ghost_team_id, week.id, session)
 				else:
 					matchup.away_score = 0.0
 
@@ -185,14 +186,55 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def lockroster(self, ctx):
-		"""Lock all rosters for the active season. Use !closeweek to unlock."""
+		"""Lock all rosters and snapshot current assignments for the upcoming week."""
 		with self.bot.db_manager.create_session() as session:
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 			if not season:
 				return await ctx.send("No active season.")
+
+			# Find the first week with no results yet (upcoming week to snapshot)
+			target_week = None
+			for w in sorted(season.weeks, key=lambda w: w.week_number):
+				has_results = session.scalars(
+					select(db.Result).where(db.Result.week_id == w.id)
+				).first()
+				if not has_results:
+					target_week = w
+					break
+
+			if target_week is None:
+				season.roster_locked = True
+				session.commit()
+				return await ctx.send("Rosters are now locked. (No upcoming week found — no snapshot taken.)")
+
+			# Guard: skip if snapshot already exists for this week
+			existing = session.scalars(
+				select(db.RosterSnapshot).where(db.RosterSnapshot.week_id == target_week.id)
+			).first()
+			if existing:
+				season.roster_locked = True
+				session.commit()
+				return await ctx.send(f"Rosters locked. Snapshot already exists for week {target_week.week_number} — not overwritten.")
+
+			fteams = list(session.scalars(select(db.FantasyTeam)))
+			player_count = 0
+			for fteam in fteams:
+				for fp in fteam.fantasyplayers:
+					session.add(db.RosterSnapshot(
+						week_id=target_week.id,
+						fteam_id=fteam.id,
+						player_id=fp.player_id,
+						position=fp.position,
+					))
+					player_count += 1
+
 			season.roster_locked = True
 			session.commit()
-		await ctx.send("Rosters are now locked. No drops, adds, or position changes until !closeweek is run.")
+
+		await ctx.send(
+			f"Rosters locked. Snapshot taken for week {target_week.week_number} "
+			f"({len(fteams)} teams, {player_count} players)."
+		)
 
 	@commands.command()
 	async def matchup(self, ctx, week: int = None):
@@ -246,24 +288,69 @@ class MatchupCog(commands.Cog, name="Matchup"):
 			home_team = matchup_row.home_team
 			away_team = matchup_row.away_team
 
-			home_score = compute_weekly_score(home_team.id, target_week.id, session)
-			if away_team:
-				away_score = compute_weekly_score(away_team.id, target_week.id, session)
+			home_score = matchup_row.home_score if matchup_row.home_score > 0 else compute_weekly_score_snapshot(home_team.id, target_week.id, session)
+			if matchup_row.away_score > 0:
+				away_score = matchup_row.away_score
+			elif away_team:
+				away_score = compute_weekly_score_snapshot(away_team.id, target_week.id, session)
 			elif matchup_row.ghost_team_id is not None:
-				away_score = compute_weekly_score(matchup_row.ghost_team_id, target_week.id, session)
+				away_score = compute_weekly_score_snapshot(matchup_row.ghost_team_id, target_week.id, session)
 			else:
 				away_score = 0.0
 
-			buf = f"```\nWeek {target_week.week_number} Matchup — {season.name}\n"
-			buf += f"{home_team.abbrev} / {home_team.name}: {home_score} pts\n"
-			if away_team:
-				buf += f"{away_team.abbrev} / {away_team.name}: {away_score} pts\n"
-			elif matchup_row.ghost_team:
-				buf += f"{matchup_row.ghost_team.abbrev} Ghost: {away_score} pts\n"
+			label = "def" if home_score != away_score else "vs"
+
+			away_display_team = away_team or matchup_row.ghost_team
+			away_label = (
+				f"{away_team.abbrev}" if away_team
+				else f"{matchup_row.ghost_team.abbrev} Ghost" if matchup_row.ghost_team
+				else "Ghost"
+			)
+
+			SEP = "═" * 42
+			RULE = "─" * 40
+
+			home_snap, home_slots = get_roster_breakdown(home_team.id, target_week.id, session)
+			if away_display_team:
+				away_snap, away_slots = get_roster_breakdown(away_display_team.id, target_week.id, session)
 			else:
-				buf += f"Ghost: {away_score} pts\n"
-			buf += "```"
-			await ctx.send(buf)
+				away_snap, away_slots = False, []
+
+			def fmt_team_block(team, abbrev, snap, slots):
+				lines = [f" {abbrev} — {team.name}"]
+				if not snap:
+					lines.append("  (current roster — no snapshot)")
+				lines.append(f"  {'Role':<11} {'Player':<16} {'Base':>5}  {'Bonus':>5}")
+				lines.append(f"  {RULE}")
+				active = [s for s in slots if s["is_active"]]
+				subs   = [s for s in slots if not s["is_active"]]
+				for s in active:
+					if s["player_name"] is None:
+						lines.append(f"  {s['role']:<11} {'(empty)':<16}")
+					else:
+						lines.append(f"  {s['role']:<11} {s['player_name']:<16} {s['base']:>5.1f}  {s['bonus']:>5.1f}")
+				lines.append(f"  {RULE}")
+				for s in subs:
+					if s["player_name"] is None:
+						lines.append(f"  {s['role']:<11} {'(empty)':<16}")
+					else:
+						lines.append(f"  {s['role']:<11} {s['player_name']:<16} {'--':>5}  {'--':>5}")
+				return lines
+
+			buf_lines = [
+				"```",
+				SEP,
+				f" WEEK {target_week.week_number} — {season.name}",
+				f" {home_team.abbrev} {home_score}  {label}  {away_label} {away_score}",
+				SEP,
+			]
+			buf_lines += fmt_team_block(home_team, home_team.abbrev, home_snap, home_slots)
+			buf_lines.append("")
+			if away_display_team:
+				buf_lines += fmt_team_block(away_display_team, away_label, away_snap, away_slots)
+			buf_lines += [SEP, "```"]
+
+			await ctx.send("\n".join(buf_lines))
 
 	@commands.command()
 	async def schedule(self, ctx):
