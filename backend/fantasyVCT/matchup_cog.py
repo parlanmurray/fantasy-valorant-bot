@@ -65,7 +65,14 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def newseason(self, ctx, name: str, num_weeks: int, event_url: str = None):
-		"""Create a new season. event_url is optional and can be added later with !seteventurl."""
+		"""Create a new season.
+
+		Parameters:
+		-----------
+		name: Name of the season (e.g. "VCT 2025 Americas Stage 1").
+		num_weeks: Number of weeks to schedule.
+		event_url: vlr.gg event page URL (optional, can be added later with !seteventurl).
+		"""
 		if event_url:
 			try:
 				Scraper.parse_event_page(event_url)
@@ -147,7 +154,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def closeweek(self, ctx, week_number: int):
-		"""Finalize scores for a given week (locks home_score/away_score)"""
+		"""Finalize scores for a given week and unlock rosters for the next week.
+
+		Parameters:
+		-----------
+		week_number: The week number to close (e.g. 1).
+		"""
 		with self.bot.db_manager.create_session() as session:
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 			if not season:
@@ -195,7 +207,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def matchup(self, ctx, week: int = None):
-		"""Show your matchup for the current (or specified) week"""
+		"""Show your matchup for the current (or specified) week.
+
+		Parameters:
+		-----------
+		week: Week number to view (optional, defaults to most recent week with results).
+		"""
 		author_id = ctx.message.author.id
 
 		with self.bot.db_manager.create_session() as session:
@@ -295,7 +312,14 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def continueseason(self, ctx, name: str, num_weeks: int, event_url: str = None):
-		"""Continue into a new stage (same teams, cumulative record). event_url optional."""
+		"""Continue into a new stage with the same teams and cumulative record.
+
+		Parameters:
+		-----------
+		name: Name of the new stage (e.g. "VCT 2025 Americas Stage 2").
+		num_weeks: Number of weeks to schedule.
+		event_url: vlr.gg event page URL (optional, can be added later with !seteventurl).
+		"""
 		if event_url:
 			try:
 				Scraper.parse_event_page(event_url)
@@ -336,7 +360,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def seteventurl(self, ctx, event_url: str):
-		"""Attach a vlr.gg event URL to the active season (use when page becomes available)."""
+		"""Attach a vlr.gg event URL to the active season.
+
+		Parameters:
+		-----------
+		event_url: vlr.gg event page URL (e.g. https://www.vlr.gg/event/2395/...).
+		"""
 		try:
 			Scraper.parse_event_page(event_url)
 		except Exception as e:
@@ -365,7 +394,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 	@commands.command()
 	async def addevent(self, ctx, event_url: str):
-		"""Add a regional event URL to the active season"""
+		"""Add a regional event URL to the active season.
+
+		Parameters:
+		-----------
+		event_url: vlr.gg event page URL for a regional sub-event (e.g. Americas, EMEA).
+		"""
 		with self.bot.db_manager.create_session() as session:
 			season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 			if not season:
