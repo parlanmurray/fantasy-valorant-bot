@@ -65,7 +65,7 @@ def ctx():
 def _seed_locked_season(engine):
 	with SASession(engine) as s:
 		season = db.Season(
-			name="Test Season", event_url="https://vlr.gg/event/1",
+			name="Test Season",
 			num_weeks=3, is_active=True, roster_locked=True
 		)
 		s.add(season)
@@ -76,7 +76,7 @@ def _seed_locked_season(engine):
 def _seed_unlocked_season(engine):
 	with SASession(engine) as s:
 		season = db.Season(
-			name="Test Season", event_url="https://vlr.gg/event/1",
+			name="Test Season",
 			num_weeks=3, is_active=True, roster_locked=False
 		)
 		s.add(season)
@@ -217,7 +217,7 @@ async def test_set_allowed_when_unlocked(mock_bot, ctx, engine):
 async def test_closeweek_unlocks_roster(mock_bot, ctx, engine):
 	with SASession(engine) as s:
 		season = db.Season(
-			name="CS", event_url="https://vlr.gg/event/1",
+			name="CS",
 			num_weeks=1, is_active=True, roster_locked=True
 		)
 		s.add(season)

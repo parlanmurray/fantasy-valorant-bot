@@ -253,7 +253,6 @@ class Season(Base):
 
 	id: Mapped[int] = mapped_column(primary_key=True)
 	name: Mapped[str] = mapped_column(String(100), nullable=False)
-	event_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 	num_weeks: Mapped[int] = mapped_column(nullable=False)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
 	roster_locked: Mapped[bool] = mapped_column(Boolean, default=False)
