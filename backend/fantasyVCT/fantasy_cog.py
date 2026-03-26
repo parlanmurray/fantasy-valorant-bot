@@ -157,34 +157,31 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			fantasy_players = fantasy_team.fantasyplayers
 
+			SEP = "  " + "─" * 38
 			buf = "```\n" + fantasy_team.abbrev + " / " + fantasy_team.name
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
-				line = f"    {POSITIONS[k]}"
+				line = f"  {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
+						line = f"{line:<14}{fp.player.team.abbrev} {fp.player.name}"
 						base_pts = round(sum(PointCalculator.score(row) for row in fp.player.results), 1)
 						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
-						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
-							total += total_pts
-						line = f"{line:<36}{round(base_pts, 1)}"
-						role_str = ("+" + str(role_pts)) if role_pts > 0 else (str(role_pts) if role_pts != 0 else "-")
-						line = f"{line:<46}{role_str}"
-						line = f"{line:<56}{total_pts}"
+							total += round(base_pts + role_pts, 1)
+						line = f"{line:<30}{base_pts}"
+						line = f"{line:<36}{role_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
-					buf2 += "\n"
+					buf2 += SEP + "\n"
 			buf += " -- " + str(round(total, 1)) + "\n"
-			line = f"    Position"
-			line = f"{line:<16}Name"
-			line = f"{line:<36}Base"
-			line = f"{line:<46}Role"
-			line = f"{line:<56}Total"
-			buf += line + "\n\n"
+			line = f"  {'Role':<12}Player"
+			line = f"{line:<30}Base"
+			line = f"{line:<36}Bonus"
+			buf += line + "\n"
+			buf += SEP + "\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
 
@@ -302,9 +299,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			col_w = max(col_w, len("Team"))
 
 			buf = "```\nStandings\n\n"
-			buf += f"  {'Team':<{col_w}}  W   L   T   Pts\n"
+			buf += f"  {'Team':<{col_w}}  W  L  T  Pts\n"
 			for (fteam, w, l, t, pts), name in zip(rows, names):
-				buf += f"  {name:<{col_w}}  {w:<4}{l:<4}{t:<4}{pts}\n"
+				buf += f"  {name:<{col_w}}  {w:<3}{l:<3}{t:<3}{pts}\n"
 			buf += "```"
 			await ctx.send(buf)
 

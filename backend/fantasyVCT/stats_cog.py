@@ -66,12 +66,12 @@ class StatsCog(commands.Cog, name="Stats"):
 				buf += "    Match Results\n"
 
 				if self.bot.h2h:
-					line = f"        Wk"
-					line = f"{line:<12}Opponent"
-					line = f"{line:<24}Points"
-					line = f"{line:<32}ACS"
-					line = f"{line:<40}K/D/A"
-					line = f"{line:<52}Game ID\n"
+					line = f"      Wk"
+					line = f"{line:<10}Opponent"
+					line = f"{line:<22}Points"
+					line = f"{line:<30}ACS"
+					line = f"{line:<38}K/D/A"
+					line = f"{line:<48}Game ID\n"
 					buf += line
 					for row in player.results:
 						week_num = week_map.get(row.week_id)
@@ -79,29 +79,29 @@ class StatsCog(commands.Cog, name="Stats"):
 						opp_abbrev = opponent_map.get(row.match_id)
 						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
 						pts = PointCalculator.score(row)
-						line = f"        {week_label}"
-						line = f"{line:<12}{opponent}"
-						line = f"{line:<24}{pts}"
-						line = f"{line:<32}{row.player_acs}"
-						line = f"{line:<40}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
-						line = f"{line:<52}{row.game_id}\n"
+						line = f"      {week_label}"
+						line = f"{line:<10}{opponent}"
+						line = f"{line:<22}{pts}"
+						line = f"{line:<30}{row.player_acs}"
+						line = f"{line:<38}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+						line = f"{line:<48}{row.game_id}\n"
 						buf += line
 				else:
-					line = f"        Points"
-					line = f"{line:<16}ACS"
-					line = f"{line:<24}K/D/A"
-					line = f"{line:<36}Opponent"
-					line = f"{line:<48}Game ID\n"
+					line = f"      Points"
+					line = f"{line:<14}ACS"
+					line = f"{line:<22}K/D/A"
+					line = f"{line:<32}Opponent"
+					line = f"{line:<42}Game ID\n"
 					buf += line
 					for row in player.results:
 						opp_abbrev = opponent_map.get(row.match_id)
 						opponent = f"vs. {opp_abbrev}" if opp_abbrev else "vs. ?"
 						pts = PointCalculator.score(row)
-						line = f"        {pts}"
-						line = f"{line:<16}{row.player_acs}"
-						line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
-						line = f"{line:<36}{opponent}"
-						line = f"{line:<48}{row.game_id}\n"
+						line = f"      {pts}"
+						line = f"{line:<14}{row.player_acs}"
+						line = f"{line:<22}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+						line = f"{line:<32}{opponent}"
+						line = f"{line:<42}{row.game_id}\n"
 						buf += line
 
 				buf += "```"
