@@ -255,3 +255,7 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf += "between a win and a loss.\n"
 		buf += "```"
 		return await ctx.send(buf)
+
+
+async def setup(bot):
+	await bot.add_cog(ConfigCog(bot))
