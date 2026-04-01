@@ -173,7 +173,7 @@ def compute_weekly_score(fantasy_team_id: int, week_id: int, session: Session) -
 	return round(total, 1)
 
 
-def _player_week_totals(player_id: int, position: int, week_id: int, session: Session) -> tuple[float, float, float]:
+def player_week_totals(player_id: int, position: int, week_id: int, session: Session) -> tuple[float, float, float]:
 	"""Return (base, bonus, total) for a player's top-2 maps this week."""
 	role = POSITIONS[position]
 	results = session.scalars(
@@ -294,7 +294,7 @@ def get_roster_breakdown(fteam_id: int, week_id: int, session: Session) -> tuple
 			pro_team = player.team.abbrev if player.team else ""
 			player_name = f"{pro_team} {player.name}".strip() if pro_team else player.name
 			if is_active:
-				base, bonus, _ = _player_week_totals(player.id, pos, week_id, session)
+				base, bonus, _ = player_week_totals(player.id, pos, week_id, session)
 			else:
 				base, bonus = 0.0, 0.0
 
@@ -329,7 +329,7 @@ def week_role_leaders(week_id: int, fteams: list, session: Session, n: int = 3) 
 		for fp in fteam.fantasyplayers:
 			if fp.position >= 6:
 				continue
-			base, bonus, total = _player_week_totals(fp.player_id, fp.position, week_id, session)
+			base, bonus, total = player_week_totals(fp.player_id, fp.position, week_id, session)
 			if total == 0.0:
 				continue
 			role = POSITIONS[fp.position]
