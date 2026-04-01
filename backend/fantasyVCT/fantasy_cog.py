@@ -282,6 +282,72 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			await ctx.invoke(self.bot.get_command('roster'))
 
 	@commands.command()
+	async def setall(self, ctx, igl: str, duelist: str, initiator: str, controller: str, sentinel: str, flex: str):
+		"""Assign all 6 active slots at once. Remaining roster players fill sub slots.
+
+		Parameters:
+		-----------
+		igl: Player IGN for the IGL slot.
+		duelist: Player IGN for the Duelist slot.
+		initiator: Player IGN for the Initiator slot.
+		controller: Player IGN for the Controller slot.
+		sentinel: Player IGN for the Sentinel slot.
+		flex: Player IGN for the Flex slot.
+		"""
+		with self.bot.db_manager.create_session() as session:
+			if is_roster_locked(session):
+				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
+
+			user = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one_or_none()
+			if not user or not user.fantasyteam:
+				return await ctx.send("You do not have a registered fantasy team.")
+
+			names = [igl, duelist, initiator, controller, sentinel, flex]
+
+			# Validate no duplicates
+			seen = set()
+			for name in names:
+				if name in seen:
+					return await ctx.send(f"Duplicate player: {name}. Each slot must be a different player.")
+				seen.add(name)
+
+			# Resolve players and validate all on roster
+			fp_by_name = {fp.player.name: fp for fp in user.fantasyteam.fantasyplayers}
+			resolved = []  # list of (position, FantasyPlayer) in slot order
+			for pos, name in enumerate(names):
+				if name not in fp_by_name:
+					return await ctx.send(f"{name} is not on your roster.")
+				resolved.append((pos, fp_by_name[name]))
+
+			# Validate team restriction for positions 0–4
+			seen_teams = {}
+			for pos, fp in resolved[:5]:
+				team = fp.player.team
+				if team and team in seen_teams:
+					other_name = seen_teams[team]
+					return await ctx.send(
+						f"Team restriction: {other_name} and {fp.player.name} are both on {team.name}. "
+						f"IGL through Sentinel must be from different pro teams. See !rules."
+					)
+				seen_teams[team] = fp.player.name
+
+			# Assign active slots 0–5
+			assigned_ids = {fp.id for _, fp in resolved}
+			for pos, fp in resolved:
+				fp.position = pos
+
+			# Fill subs with remaining players in their current position order
+			subs = sorted(
+				[fp for fp in user.fantasyteam.fantasyplayers if fp.id not in assigned_ids],
+				key=lambda fp: fp.position
+			)
+			for sub_pos, fp in enumerate(subs, start=6):
+				fp.position = sub_pos
+
+			session.commit()
+			await ctx.invoke(self.bot.get_command('roster'))
+
+	@commands.command()
 	async def standings(self, ctx):
 		"""Show W/L/T standings and total points across all stages of the active season."""
 
