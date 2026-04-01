@@ -23,12 +23,10 @@ def _fmt_week_summary(week_number: int, matchups: list, week_id: int, fteams: li
 		aws  = m.away_score
 		if m.away_team_id is not None:
 			away = m.away_team.abbrev
-			verb = "def" if hs >= aws else "lost to"
-			lines.append(f" {home:<5} {hs:>6.1f}  {verb}  {away:<5} {aws:>6.1f}")
+			lines.append(f" {home:<5} {hs:>6.1f} - {aws:>6.1f}  {away:<5}")
 		else:
 			mirror = m.ghost_team.abbrev if m.ghost_team else "?"
-			verb   = "def" if hs >= aws else "lost to"
-			lines.append(f" {home:<5} {hs:>6.1f}  {verb}  GHOST  {aws:>6.1f}  (via {mirror})")
+			lines.append(f" {home:<5} {hs:>6.1f} - {aws:>6.1f}  GHOST  (via {mirror})")
 	lines.append(f"{SEP}```")
 	msg1 = "\n".join(lines)
 
@@ -343,7 +341,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				"```",
 				SEP,
 				f" WEEK {target_week.week_number} — {season.name}",
-				f" {home_team.abbrev} {home_score}  {label}  {away_label} {away_score}",
+				f" {home_team.abbrev} {home_score} - {away_score} {away_label}",
 				SEP,
 			]
 			buf_lines += fmt_team_block(home_team, home_team.abbrev, home_snap, home_slots)
