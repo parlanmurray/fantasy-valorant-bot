@@ -230,10 +230,12 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 			season.roster_locked = True
 			session.commit()
+			week_num = target_week.week_number
+			team_count = len(fteams)
 
 		await ctx.send(
-			f"Rosters locked. Snapshot taken for week {target_week.week_number} "
-			f"({len(fteams)} teams, {player_count} players)."
+			f"Rosters locked. Snapshot taken for week {week_num} "
+			f"({team_count} teams, {player_count} players)."
 		)
 
 	@commands.command()
