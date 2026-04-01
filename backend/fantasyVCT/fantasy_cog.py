@@ -205,31 +205,52 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def freeagents(self, ctx):
-		"""List all undrafted players and their fantasy points."""
+		"""List all undrafted players grouped by pro team, sorted by PPG."""
 
 		with self.bot.db_manager.create_session() as session:
-			stmt = select(db.Player).where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
-			free_agents = session.scalars(stmt)
+			stmt = (
+				select(db.Player)
+				.where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
+				.where(db.Player.team_id.isnot(None))
+			)
+			free_agents = list(session.scalars(stmt))
 
-			buf = "```\nFree Agents\n"
-			line = f"    Player"
-			line = f"{line:<24}Points"
-			buf += line + "\n\n"
+			# Group by team, compute PPG per player
+			teams: dict[str, list[tuple[str, float]]] = {}
 			for player in free_agents:
-				player_points = round(sum(PointCalculator.score(row) for row in player.results), 1)
-				line = f"    {player.team.abbrev} {player.name}"
-				line = f"{line:<24}{player_points}"
+				team_name = player.team.name if player.team else "Unknown"
+				num_maps = len(player.results)
+				if num_maps > 0:
+					total = sum(PointCalculator.score(r) for r in player.results)
+					ppg = round(total / num_maps, 1)
+				else:
+					ppg = None
+				teams.setdefault(team_name, []).append((player.name, ppg))
 
-				if len(buf + line) > 1900:
-					buf += "```"
-					await ctx.send(buf)
-					buf = "```\nFree Agents (page 2)\n"
-					line2 = f"    Player"
-					line2 = f"{line2:<24}Points"
-					buf += line2 + "\n\n"
-				buf += line + "\n"
-			buf += "```"
-			await ctx.send(buf)
+			# Sort teams alphabetically; within each team sort by PPG desc (None last)
+			RULE = "─" * 30
+			messages = []
+			buf = f"```\nFree Agents\n{RULE}\n"
+			for team_name in sorted(teams):
+				players = sorted(teams[team_name], key=lambda x: x[1] if x[1] is not None else -1, reverse=True)
+				team_block = f" {team_name}\n"
+				for name, ppg in players:
+					ppg_str = f"{ppg}" if ppg is not None else "--"
+					team_block += f"   {name:<18}{ppg_str}\n"
+				team_block += "\n"
+
+				# Flush if adding this block would exceed limit
+				if len(buf + team_block) > 1900:
+					buf += f"{RULE}```"
+					messages.append(buf)
+					buf = f"```\nFree Agents (cont.)\n{RULE}\n"
+				buf += team_block
+
+			buf += f"{RULE}```"
+			messages.append(buf)
+
+		for msg in messages:
+			await ctx.send(msg)
 
 	@commands.command()
 	async def set(self, ctx, player: str, position: str):
