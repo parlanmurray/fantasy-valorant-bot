@@ -7,7 +7,7 @@ import discord
 from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
-from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain
+from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain, player_week_totals
 from fantasyVCT.utils import POSITIONS, is_roster_locked
 
 
@@ -157,6 +157,21 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			fantasy_players = fantasy_team.fantasyplayers
 
+			# Resolve current display week: first week with results, or most recent
+			week_id = None
+			week_label = ""
+			active_season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if active_season:
+				weeks = sorted(active_season.weeks, key=lambda w: w.week_number)
+				current_week = None
+				for w in weeks:
+					has_results = session.scalars(select(db.Result).where(db.Result.week_id == w.id)).first()
+					if has_results:
+						current_week = w
+				if current_week:
+					week_id = current_week.id
+					week_label = f"  [Week {current_week.week_number}]"
+
 			SEP = "  " + "─" * 38
 			buf = "```\n" + fantasy_team.abbrev + " / " + fantasy_team.name
 			total = 0
@@ -166,17 +181,20 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				for fp in fantasy_players:
 					if fp.position is k:
 						line = f"{line:<14}{fp.player.team.abbrev} {fp.player.name}"
-						base_pts = round(sum(PointCalculator.score(row) for row in fp.player.results), 1)
-						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
+						if week_id is not None and k < 6:
+							base_pts, role_pts, _ = player_week_totals(fp.player_id, k, week_id, session)
+						else:
+							base_pts, role_pts = 0.0, 0.0
 						if k < 6:
 							total += round(base_pts + role_pts, 1)
 						line = f"{line:<30}{base_pts}"
-						line = f"{line:<36}{role_pts}"
+						if k < 6:
+							line = f"{line:<36}{role_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
 					buf2 += SEP + "\n"
-			buf += " -- " + str(round(total, 1)) + "\n"
+			buf += " -- " + str(round(total, 1)) + week_label + "\n"
 			line = f"  {'Role':<12}Player"
 			line = f"{line:<30}Base"
 			line = f"{line:<36}Bonus"
