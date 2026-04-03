@@ -180,7 +180,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				line = f"  {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line = f"{line:<14}{fp.player.team.abbrev} {fp.player.name}"
+						status = fp.player.status
+						status_tag = f" [{status.upper()}]" if status != "active" else ""
+						team_abbrev = fp.player.team.abbrev if fp.player.team else "FA"
+						line = f"{line:<14}{team_abbrev} {fp.player.name}{status_tag}"
 						if week_id is not None and k < 6:
 							base_pts, role_pts, _ = player_week_totals(fp.player_id, k, week_id, session)
 						else:
@@ -212,6 +215,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				select(db.Player)
 				.where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
 				.where(db.Player.team_id.isnot(None))
+				.where(db.Player.status.notin_(["inactive", "teamless"]))
 			)
 			free_agents = list(session.scalars(stmt))
 

@@ -1,6 +1,7 @@
 from fantasyVCT.scoring import PointCalculator
 import fantasyVCT.database as db
 
+import discord
 from discord.ext import commands
 from sqlalchemy import select, or_
 
@@ -260,6 +261,18 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf += "between a win and a loss.\n"
 		buf += "```"
 		return await ctx.send(buf)
+
+	@commands.command()
+	@commands.has_permissions(administrator=True)
+	async def setnotifychannel(self, ctx, channel: discord.TextChannel):
+		"""Set the channel for roster sync notifications (admin only).
+
+		Parameters:
+		-----------
+		channel: The Discord channel to post roster change notifications in (e.g. #notifications).
+		"""
+		self.bot.db_manager.set_config("gcd_notify_channel", str(channel.id))
+		await ctx.send(f"Roster sync notifications will be posted in {channel.mention}.")
 
 
 async def setup(bot):

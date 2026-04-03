@@ -45,6 +45,22 @@ class DatabaseManager:
 
 		return Session(self._engine, autoflush=autoflush)
 
+	def get_config(self, key: str) -> "str | None":
+		"""Return the value for a bot_config key, or None if not set."""
+		with self.create_session() as session:
+			row = session.get(BotConfig, key)
+			return row.value if row else None
+
+	def set_config(self, key: str, value: str) -> None:
+		"""Upsert a bot_config key-value pair."""
+		with self.create_session() as session:
+			row = session.get(BotConfig, key)
+			if row:
+				row.value = value
+			else:
+				session.add(BotConfig(key=key, value=value))
+			session.commit()
+
 
 ######################################
 ## Mapped Classes
@@ -332,6 +348,16 @@ class Matchup(Base):
 			f"Matchup(id={self.id!r}, week_id={self.week_id!r}, "
 			f"home_team_id={self.home_team_id!r}, away_team_id={self.away_team_id!r})"
 		)
+
+
+class BotConfig(Base):
+	__tablename__ = "bot_config"
+
+	key: Mapped[str] = mapped_column(String(50), primary_key=True)
+	value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+	def __repr__(self) -> str:
+		return f"BotConfig(key={self.key!r}, value={self.value!r})"
 
 
 ######################################
