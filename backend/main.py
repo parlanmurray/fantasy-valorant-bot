@@ -8,6 +8,7 @@ from fantasyVCT.fantasy_cog import setup as fantasy_setup
 from fantasyVCT.stats_cog import setup as stats_setup
 from fantasyVCT.matchup_cog import setup as matchup_setup
 from fantasyVCT.vlr_api import fetch_setup
+from fantasyVCT.roster_sync import setup as roster_sync_setup
 
 
 TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
@@ -76,6 +77,7 @@ async def main():
 		await stats_setup(bot)
 		await matchup_setup(bot)
 		await fetch_setup(bot)
+		await roster_sync_setup(bot)
 		await bot.start(TOKEN)
 
 
