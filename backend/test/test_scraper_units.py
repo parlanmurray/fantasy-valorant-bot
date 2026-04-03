@@ -225,6 +225,90 @@ class TestParseEventTeams:
 		assert urls == []
 
 
+def _make_roster_html(players):
+	"""Build team page HTML for parse_team_roster tests.
+
+	players: list of (alias, role) where role is None/'Sub'/'Inactive'/'head coach'/etc.
+	"""
+	def player_html(alias, role):
+		role_div = f'<div class="team-roster-item-name-role">{role}</div>' if role else ''
+		return (
+			f'<div class="team-roster-item">'
+			f'<div class="team-roster-item-name">'
+			f'<div class="team-roster-item-name-alias">{alias}</div>'
+			f'{role_div}'
+			f'</div></div>'
+		)
+	roster = ''.join(player_html(a, r) for a, r in players)
+	return BeautifulSoup(f"""<html><body>
+		<div class="team-header">
+			<div></div>
+			<div><div><h1>TestTeam</h1><h2>TT</h2></div></div>
+		</div>
+		<div class="team-summary-container-1">
+			<div class="wf-card">
+				<div></div>
+				<div>{roster}</div>
+			</div>
+		</div>
+	</body></html>""", "html.parser")
+
+
+class TestParseTeamRoster:
+	def test_active_players_returned(self):
+		soup = _make_roster_html([("stax", None), ("TenZ", None)])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team_roster("https://www.vlr.gg/team/1/test")
+		assert {"name": "stax", "status": "active"} in players
+		assert {"name": "TenZ", "status": "active"} in players
+
+	def test_sub_mapped_to_reserve(self):
+		soup = _make_roster_html([("StarterA", None), ("SubPlayer", "Sub")])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team_roster("https://www.vlr.gg/team/1/test")
+		names = {p["name"]: p["status"] for p in players}
+		assert names["SubPlayer"] == "reserve"
+		assert names["StarterA"] == "active"
+
+	def test_inactive_mapped_to_inactive(self):
+		soup = _make_roster_html([("StarterA", None), ("OldPlayer", "Inactive")])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team_roster("https://www.vlr.gg/team/1/test")
+		names = {p["name"]: p["status"] for p in players}
+		assert names["OldPlayer"] == "inactive"
+
+	def test_staff_excluded(self):
+		soup = _make_roster_html([
+			("StarterA", None),
+			("CoachX", "head coach"),
+			("Mgr", "manager"),
+			("Scout", "analyst"),
+		])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team_roster("https://www.vlr.gg/team/1/test")
+		names = [p["name"] for p in players]
+		assert "StarterA" in names
+		assert "CoachX" not in names
+		assert "Mgr" not in names
+		assert "Scout" not in names
+
+	def test_mixed_roster(self):
+		soup = _make_roster_html([
+			("P1", None), ("P2", None), ("P3", None), ("P4", None), ("P5", None),
+			("Sub1", "Sub"),
+			("Retired", "Inactive"),
+			("HC", "head coach"),
+		])
+		with patch.object(Scraper, "scrape_url", return_value=soup):
+			_, _, players = Scraper.parse_team_roster("https://www.vlr.gg/team/1/test")
+		assert len(players) == 7  # 5 active + 1 reserve + 1 inactive, no staff
+		statuses = {p["name"]: p["status"] for p in players}
+		assert statuses["P1"] == "active"
+		assert statuses["Sub1"] == "reserve"
+		assert statuses["Retired"] == "inactive"
+		assert "HC" not in statuses
+
+
 class TestMatchPerformanceFiltering:
 	def test_skips_all_and_not_available(self):
 		soup = _game_divs_html("all", 99, body="not available")

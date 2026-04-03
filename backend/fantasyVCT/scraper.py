@@ -424,3 +424,56 @@ class Scraper:
 			player_names.append(player.find('div', {'class': 'team-roster-item-name-alias'}).get_text(strip=True))
 
 		return team_name, team_abbrev, player_names
+
+	# Staff role keywords — rows with these labels are skipped entirely
+	_STAFF_KEYWORDS = {"coach", "manager", "analyst", "director", "staff"}
+
+	@staticmethod
+	def parse_team_roster(url: str) -> tuple[str, str, list[dict]]:
+		"""Parse a vlr.gg team page, returning all roster members with status.
+
+		Unlike parse_team, this includes substitutes and inactive players so
+		the roster sync can detect status changes. Staff (coaches, managers,
+		analysts) are excluded.
+
+		Returns:
+		    (team_name, team_abbrev, players) where each player dict has:
+		      'name': str — handle alias
+		      'status': 'active' | 'reserve' | 'inactive'
+		"""
+		html = Scraper.scrape_url(url)
+		header = html.body.find('div', {'class': 'team-header'})
+		body = html.body.find('div', {'class': 'team-summary-container-1'})
+
+		team_header = getNthDiv(header, 1).div
+		team_name = team_header.h1.get_text(strip=True)
+		team_abbrev = team_header.h2.get_text(strip=True) if team_header.h2 else team_name
+
+		roster_body = body.find('div', {'class': 'wf-card'})
+		roster_players = getNthDiv(roster_body, 1)
+		items = roster_players.find_all('div', {'class': 'team-roster-item'})
+
+		players = []
+		for item in items:
+			alias_div = item.find('div', {'class': 'team-roster-item-name-alias'})
+			if not alias_div:
+				continue
+			name = alias_div.get_text(strip=True)
+
+			role_div = item.find('div', {'class': 'team-roster-item-name-role'})
+			role = role_div.get_text(strip=True).lower() if role_div else ""
+
+			# Skip staff — any role containing a staff keyword
+			if any(kw in role for kw in Scraper._STAFF_KEYWORDS):
+				continue
+
+			if role == "sub":
+				status = "reserve"
+			elif role == "inactive":
+				status = "inactive"
+			else:
+				status = "active"
+
+			players.append({"name": name, "status": status})
+
+		return team_name, team_abbrev, players
