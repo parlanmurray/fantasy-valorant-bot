@@ -4,6 +4,7 @@ from discord.ext import commands
 from sqlalchemy import select
 
 from fantasyVCT.scoring import PointCalculator
+from fantasyVCT.utils import build_opponent_map
 
 
 class StatsCog(commands.Cog, name="Stats"):
@@ -34,21 +35,13 @@ class StatsCog(commands.Cog, name="Stats"):
 
 			player = session.execute(select(db.Player).filter_by(name=query_string)).scalar_one_or_none()
 			if player:
-				total = round(sum(PointCalculator.score(row) for row in player.results), 1)
+				num_maps = len(player.results)
+				total    = round(sum(PointCalculator.score(row) for row in player.results), 1)
+				ppg      = round(total / num_maps, 1) if num_maps > 0 else 0.0
 
 				# Build opponent lookup (always shown)
-				match_ids = list({row.match_id for row in player.results})
-				opponent_map = {}
-				if match_ids:
-					opp_rows = session.execute(
-						select(db.Result.match_id, db.Team.abbrev)
-						.join(db.Player, db.Result.player_id == db.Player.id)
-						.join(db.Team, db.Player.team_id == db.Team.id)
-						.where(db.Result.match_id.in_(match_ids))
-						.where(db.Player.team_id != player.team_id)
-						.distinct()
-					).all()
-					opponent_map = {match_id: abbrev for match_id, abbrev in opp_rows}
+				match_ids    = list({row.match_id for row in player.results})
+				opponent_map = build_opponent_map(set(match_ids), player.team_id, session)
 
 				# Build week lookup (h2h only)
 				week_map = {}
@@ -60,7 +53,7 @@ class StatsCog(commands.Cog, name="Stats"):
 						).all()
 						week_map = {wid: wnum for wid, wnum in week_rows}
 
-				buf = f"```\n{player.name} - {str(total)}\n"
+				buf = f"```\n{player.name} - {ppg} PPG\n"
 				buf += f"    Team: {player.team.name}\n"
 				buf += "\n"
 				buf += "    Match Results\n"
