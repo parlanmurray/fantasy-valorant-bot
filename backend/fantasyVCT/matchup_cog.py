@@ -4,7 +4,7 @@ from fantasyVCT.matchup import (
 	generate_schedule, compute_weekly_score, compute_weekly_score_snapshot,
 	get_roster_breakdown, derive_record,
 	get_season_chain, compute_round_offset,
-	week_role_leaders, week_top_base_scorers,
+	week_role_leaders, week_top_base_scorers, week_top_map_performances,
 )
 
 from discord.ext import commands
@@ -12,8 +12,8 @@ from sqlalchemy import select
 
 
 def _fmt_week_summary(week_number: int, matchups: list, week_id: int, fteams: list, session) -> list[str]:
-	"""Build week summary message strings (sections 1–3). Returns list of Discord messages."""
-	SEP = "═" * 42
+	"""Build week summary message strings (sections 1–4). Returns list of Discord messages."""
+	SEP = "═" * 46
 
 	# ── Section 1: Matchup Results ─────────────────────────────
 	lines = [f"```\n{SEP}", f" WEEK {week_number} RESULTS", SEP]
@@ -23,36 +23,73 @@ def _fmt_week_summary(week_number: int, matchups: list, week_id: int, fteams: li
 		aws  = m.away_score
 		if m.away_team_id is not None:
 			away = m.away_team.abbrev
-			lines.append(f" {home:<5} {hs:>6.1f} - {aws:>6.1f}  {away:<5}")
+			w, ws, l, ls = (home, hs, away, aws) if hs >= aws else (away, aws, home, hs)
+			lines.append(f" {w:<10} {ws:>6.1f}  defeats  {l:<10} {ls:>6.1f}")
 		else:
 			mirror = m.ghost_team.abbrev if m.ghost_team else "?"
-			lines.append(f" {home:<5} {hs:>6.1f} - {aws:>6.1f}  GHOST  (via {mirror})")
+			lines.append(f" {home:<10} {hs:>6.1f}  defeats  {'GHOST':<10} {aws:>6.1f}  (via {mirror})")
 	lines.append(f"{SEP}```")
 	msg1 = "\n".join(lines)
 
 	# ── Section 2: Top Performers by Role ──────────────────────
-	leaders = week_role_leaders(week_id, fteams, session)
-	lines2  = [f"```\n{SEP}", " TOP PERFORMERS BY ROLE", SEP]
+	leaders    = week_role_leaders(week_id, fteams, session)
+	all_p      = [p for role in leaders.values() for p in role]
+	name_w     = max((len(f"{p['pro_team']} {p['player']}") for p in all_p), default=len("PLAYER"))
+	name_w     = max(name_w, len("PLAYER"))
+	team_w     = max((len(p['fteam']) for p in all_p), default=len("TEAM"))
+	team_w     = max(team_w, len("TEAM"))
+	lines2     = [f"```\n{SEP}", " TOP PERFORMERS BY ROLE", SEP]
+	lines2.append(f"  #  {'PLAYER':<{name_w}} {'TEAM':<{team_w}}  {'BASE':>6}  {'BONUS':>6}  {'PTS':>6}")
 	for role in ["IGL", "Duelist", "Initiator", "Controller", "Sentinel", "Flex"]:
 		lines2.append(f" {role}")
 		players = leaders.get(role, [])
 		if not players:
 			lines2.append("   —")
 		for i, p in enumerate(players, 1):
-			lines2.append(f"  {i}. {p['player']:<16} {p['pro_team']:<6} {p['fteam']:<5} {p['total']:>6.1f}")
+			name = f"{p['pro_team']} {p['player']}"
+			lines2.append(f"  {i}. {name:<{name_w}} {p['fteam']:<{team_w}}  {p['base']:>6.1f}  {p['bonus']:>6.1f}  {p['total']:>6.1f}")
 	lines2.append(f"{SEP}```")
 	msg2 = "\n".join(lines2)
 
-	# ── Section 3: Top Base Scorers (incl. free agents) ────────
+	# ── Section 3: Top Base Scorers ────────────────────────────
 	scorers = week_top_base_scorers(week_id, fteams, session)
-	lines3  = [f"```\n{SEP}", " TOP BASE SCORERS (incl. free agents)", SEP]
+	s_name_w = max((len(f"{p['pro_team']} {p['player']}") for p in scorers), default=len("PLAYER"))
+	s_name_w = max(s_name_w, len("PLAYER"))
+	s_team_w = max((len(p['fteam']) if p['fteam'] else 1 for p in scorers), default=len("TEAM"))
+	s_team_w = max(s_team_w, len("TEAM"))
+	lines3   = [f"```\n{SEP}", " TOP BASE SCORERS", SEP]
+	lines3.append(f"  #  {'PLAYER':<{s_name_w}} {'TEAM':<{s_team_w}}  {'PTS':>6}")
 	for i, p in enumerate(scorers, 1):
-		tag = f"({p['fteam']})" if p["fteam"] else "(FA)"
-		lines3.append(f"  {i}. {p['player']:<16} {p['pro_team']:<6} {p['base']:>6.1f}  {tag}")
+		name = f"{p['pro_team']} {p['player']}"
+		tag  = p['fteam'] if p['fteam'] else "-"
+		lines3.append(f"  {i}. {name:<{s_name_w}} {tag:<{s_team_w}}  {p['base']:>6.1f}")
 	lines3.append(f"{SEP}```")
 	msg3 = "\n".join(lines3)
 
-	return [msg1, msg2, msg3]
+	# ── Section 4: Top Map Performances ────────────────────────
+	perfs  = week_top_map_performances(week_id, session)
+	lines4 = [f"```\n{SEP}", " TOP MAP PERFORMANCES", SEP]
+	if perfs:
+		p_name_w = max(len(f"{p['pro_team']} {p['player']}") for p in perfs)
+		p_name_w = max(p_name_w, len("PLAYER"))
+		map_w    = max(len(p['map_str']) for p in perfs)
+		map_w    = max(map_w, len("MAP"))
+		k_w      = max(len(str(p['kills']))   for p in perfs); k_w = max(k_w, len("K"))
+		d_w      = max(len(str(p['deaths']))  for p in perfs); d_w = max(d_w, len("D"))
+		a_w      = max(len(str(p['assists'])) for p in perfs); a_w = max(a_w, len("A"))
+		mk_w     = max(len(str(int(p['mk_pts']))) for p in perfs); mk_w = max(mk_w, len("MK/Clutch"))
+		lines4.append(f"  #  {'PLAYER':<{p_name_w}} {'MAP':<{map_w}}  {'ACS':>4}  {'K':>{k_w}} {'D':>{d_w}} {'A':>{a_w}}  {'MK/Clutch':<{mk_w}}  {'PTS':>6}")
+		for i, p in enumerate(perfs, 1):
+			name = f"{p['pro_team']} {p['player']}"
+			mk   = str(int(p['mk_pts']))
+			lines4.append(
+				f"  {i}. {name:<{p_name_w}} {p['map_str']:<{map_w}}  {p['acs']:>4.0f}  "
+				f"{p['kills']:>{k_w}} {p['deaths']:>{d_w}} {p['assists']:>{a_w}}  {mk:<{mk_w}}  {p['base']:>6.1f}"
+			)
+	lines4.append(f"{SEP}```")
+	msg4 = "\n".join(lines4)
+
+	return [msg1, msg2, msg3, msg4]
 
 
 class MatchupCog(commands.Cog, name="Matchup"):
