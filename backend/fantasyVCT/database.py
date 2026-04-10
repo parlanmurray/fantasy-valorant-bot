@@ -248,12 +248,27 @@ class FantasyPlayer(Base):
 	def __repr__(self) -> str:
 		return f"FantasyPlayer(id={self.id!r}, player_id={self.player_id!r}, fantasy_team_id={self.fantasy_team_id!r}, position={self.position!r})"
 
+
+class RosterSnapshot(Base):
+	__tablename__ = "roster_snapshots"
+
+	id:        Mapped[int] = mapped_column(primary_key=True)
+	week_id:   Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=False)
+	fteam_id:  Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=False)
+	player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
+	position:  Mapped[int] = mapped_column(nullable=False)
+
+	player: Mapped["Player"] = relationship()
+
+	def __repr__(self) -> str:
+		return f"RosterSnapshot(week_id={self.week_id!r}, fteam_id={self.fteam_id!r}, player_id={self.player_id!r}, position={self.position!r})"
+
+
 class Season(Base):
 	__tablename__ = "seasons"
 
 	id: Mapped[int] = mapped_column(primary_key=True)
 	name: Mapped[str] = mapped_column(String(100), nullable=False)
-	event_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 	num_weeks: Mapped[int] = mapped_column(nullable=False)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
 	roster_locked: Mapped[bool] = mapped_column(Boolean, default=False)

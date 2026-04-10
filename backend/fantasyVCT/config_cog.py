@@ -205,24 +205,26 @@ class ConfigCog(commands.Cog, name="Configuration"):
 	@commands.command()
 	async def rules(self, ctx):
 		"""Display league rules and how scoring works."""
-		buf = "```\n"
-		buf += "How to play:\n"
-		buf += "- Draft a team of valorant players, and compete to see who whose players have the best performance over the course of the event\n"
-		buf += "- Players will receive points based on their performance in the games\n"
-		buf += "- During the draft phase, participants will take turns picking players for their teams\n"
-		buf == "- Until the draft phase is over, you will not be able to add or drop players outside of your turn\n"
-		buf += "- After the draft phase, you can add, drop and move players as much as you'd like\n"
-		buf += "- Each team can only have ONE player from a given team. i.e. you can only have one member of 100 Thieves on your active roster\n"
-		buf += "- Each team has 6 active slots and " + str(self.bot.sub_slots) + " sub slot(s)\n"
-		buf += "- The Captain role is a special role that does not follow the 'one player from each team' restriction. You can have a player from ANY team as your flex, even if you already have a player from that team\n"
-		buf += "- Only players in active slots count towards your team's total points\n"
-		buf += "- At the end of the event, the fantasy team with the most total points wins\n"
+		buf = "How to play\n"
+		buf += "Draft a team of VCT pro players and compete head-to-head each week. "
+		buf += "Players score points based on their stats each map (see !scoring). "
+		buf += "The fantasy team with the higher total score wins the week. "
+		buf += "The team with the best record at the end of the season wins.\n"
 		buf += "\n"
-		buf += "Draft phase:\n"
-		buf += "- There will be " + str(self.bot.num_rounds) + " rounds\n"
-		buf += "- Snake draft (1234554321123...)\n"
-		buf += "- The draft is asynchronous, and you will be pinged when it is your turn to draft\n"
-		buf += "```"
+		buf += "Roster management\n"
+		buf += f"Each team has 6 active slots (IGL, Duelist, Initiator, Controller, Sentinel, Flex) and {self.bot.sub_slots} sub slot(s). "
+		buf += "Only active slots score points. "
+		buf += "IGL through Sentinel must each be from a different pro team. Flex is exempt from this restriction. "
+		buf += "Each week, assign roles with !set or !setall, then lock your roster with !lockroster. "
+		buf += "Rosters unlock after !closeweek.\n"
+		buf += "\n"
+		buf += "Role bonuses\n"
+		buf += "Each active slot has a stat bonus on top of base score (see !roles). "
+		buf += "Placing the right player in the right role can swing a week.\n"
+		buf += "\n"
+		buf += "Draft\n"
+		buf += f"{self.bot.num_rounds} rounds, snake format. "
+		buf += "The draft is asynchronous and you will be pinged when it is your turn.\n"
 		return await ctx.send(buf)
 
 	@commands.command()
@@ -238,29 +240,24 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		"""Display each role's mechanic and bonus weights."""
 		buf = "```\n"
 		buf += "Role-Based Scoring\n\n"
-		col_r, col_m = 18, 60
-		header = f"    Role"
-		header = f"{header:<{col_r}}Mechanic"
-		header = f"{header:<{col_m}}Weights"
-		buf += header + "\n"
-		buf += "    " + "-" * 76 + "\n"
+		buf += f"  {'Role':<12}Weights\n"
+		buf += "  " + "─" * 36 + "\n"
 		rows = [
-			("IGL",        "Bonus when their pro team wins the map",  "+8.5 per win"),
-			("Duelist",    "Bonus for first kills",                   "+2.0/FK  (3.0 total)"),
-			("Initiator",  "Bonus for assists",                       "+1.0/assist  (1.5 total)"),
-			("Controller", "Bonus for assists and rounds survived",   "+0.65/assist  +0.35/survived"),
-			("Sentinel",   "Reduced death penalty",                   "-0.60/death  (saves 0.40)"),
-			("Flex",       "No bonus -- bypasses team restriction",   "--"),
+			("IGL",        "+8.5/win"),
+			("Duelist",    "+2.0/FK  (3.0 total w/ base)"),
+			("Initiator",  "+1.0/assist  (1.5 total)"),
+			("Controller", "+0.65/assist  +0.35/survived round"),
+			("Sentinel",   "-0.60/death  (saves 0.40/death)"),
+			("Flex",       "no bonus -- bypasses team restriction"),
 		]
-		for role, mechanic, weights in rows:
-			line = f"    {role}"
-			line = f"{line:<{col_r}}{mechanic}"
-			line = f"{line:<{col_m}}{weights}"
-			buf += line + "\n"
+		for role, weights in rows:
+			buf += f"  {role:<12}{weights}\n"
 		buf += "\n"
-		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"
-		buf += "like managing a real Valorant team. Choosing which role a player will fill each\n"
-		buf += "week will matter -- choosing well could be the difference between a win and a loss.\n"
+		buf += "The goal of role-based scoring is to make managing\n"
+		buf += "your fantasy team feel more like managing a real\n"
+		buf += "Valorant team. Choosing which role a player fills\n"
+		buf += "each week will matter -- it could be the difference\n"
+		buf += "between a win and a loss.\n"
 		buf += "```"
 		return await ctx.send(buf)
 

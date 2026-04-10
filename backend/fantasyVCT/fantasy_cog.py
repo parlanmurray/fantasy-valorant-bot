@@ -7,7 +7,7 @@ import discord
 from sqlalchemy import select, or_
 
 from fantasyVCT.scoring import PointCalculator
-from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain
+from fantasyVCT.matchup import compute_weekly_score, derive_record, get_season_chain, player_week_totals
 from fantasyVCT.utils import POSITIONS, is_roster_locked
 
 
@@ -157,74 +157,100 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			fantasy_players = fantasy_team.fantasyplayers
 
+			# Resolve current display week: first week with results, or most recent
+			week_id = None
+			week_label = ""
+			active_season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
+			if active_season:
+				weeks = sorted(active_season.weeks, key=lambda w: w.week_number)
+				current_week = None
+				for w in weeks:
+					has_results = session.scalars(select(db.Result).where(db.Result.week_id == w.id)).first()
+					if has_results:
+						current_week = w
+				if current_week:
+					week_id = current_week.id
+					week_label = f"  [Week {current_week.week_number}]"
+
+			SEP = "  " + "─" * 38
 			buf = "```\n" + fantasy_team.abbrev + " / " + fantasy_team.name
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
-				line = f"    {POSITIONS[k]}"
+				line = f"  {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
-						for row in fp.player.results:
-							fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
-							if not fantasy_points:
-								fantasy_points = PointCalculator.score(row)
-								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						base_pts = self.bot.cache.retrieve_total(fp.player.id)
-						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
-						total_pts = round(base_pts + role_pts, 1)
+						line = f"{line:<14}{fp.player.team.abbrev} {fp.player.name}"
+						if week_id is not None and k < 6:
+							base_pts, role_pts, _ = player_week_totals(fp.player_id, k, week_id, session)
+						else:
+							base_pts, role_pts = 0.0, 0.0
 						if k < 6:
-							total += total_pts
-						line = f"{line:<36}{round(base_pts, 1)}"
-						role_str = ("+" + str(role_pts)) if role_pts > 0 else (str(role_pts) if role_pts != 0 else "-")
-						line = f"{line:<46}{role_str}"
-						line = f"{line:<56}{total_pts}"
+							total += round(base_pts + role_pts, 1)
+						line = f"{line:<30}{base_pts}"
+						if k < 6:
+							line = f"{line:<36}{role_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
-					buf2 += "\n"
-			buf += " -- " + str(round(total, 1)) + "\n"
-			line = f"    Position"
-			line = f"{line:<16}Name"
-			line = f"{line:<36}Base"
-			line = f"{line:<46}Role"
-			line = f"{line:<56}Total"
-			buf += line + "\n\n"
+					buf2 += SEP + "\n"
+			buf += " -- " + str(round(total, 1)) + week_label + "\n"
+			line = f"  {'Role':<12}Player"
+			line = f"{line:<30}Base"
+			line = f"{line:<36}Bonus"
+			buf += line + "\n"
+			buf += SEP + "\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
 
 	@commands.command()
 	async def freeagents(self, ctx):
-		"""List all undrafted players and their fantasy points."""
+		"""List all undrafted players grouped by pro team, sorted by PPG."""
 
 		with self.bot.db_manager.create_session() as session:
-			stmt = select(db.Player).where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
-			free_agents = session.scalars(stmt)
+			stmt = (
+				select(db.Player)
+				.where(db.Player.id.notin_(select(db.FantasyPlayer.player_id)))
+				.where(db.Player.team_id.isnot(None))
+			)
+			free_agents = list(session.scalars(stmt))
 
-			buf = "```\nFree Agents\n"
-			line = f"    Player"
-			line = f"{line:<24}Points"
-			buf += line + "\n\n"
+			# Group by team, compute PPG per player
+			teams: dict[str, list[tuple[str, float]]] = {}
 			for player in free_agents:
-				for row in player.results:
-					fantasy_points = self.bot.cache.retrieve(player.id, row.game_id)
-					if not fantasy_points:
-						fantasy_points = PointCalculator.score(row)
-						self.bot.cache.store(player.id, row.game_id, fantasy_points)
-				player_points = self.bot.cache.retrieve_total(player.id)
-				line = f"    {player.team.abbrev} {player.name}"
-				line = f"{line:<24}{player_points}"
+				team_name = player.team.name if player.team else "Unknown"
+				num_maps = len(player.results)
+				if num_maps > 0:
+					total = sum(PointCalculator.score(r) for r in player.results)
+					ppg = round(total / num_maps, 1)
+				else:
+					ppg = None
+				teams.setdefault(team_name, []).append((player.name, ppg))
 
-				if len(buf + line) > 1900:
-					buf += "```"
-					await ctx.send(buf)
-					buf = "```\nFree Agents (page 2)\n"
-					line2 = f"    Player"
-					line2 = f"{line2:<24}Points"
-					buf += line2 + "\n\n"
-				buf += line + "\n"
-			buf += "```"
-			await ctx.send(buf)
+			# Sort teams alphabetically; within each team sort by PPG desc (None last)
+			RULE = "─" * 30
+			messages = []
+			buf = f"```\nFree Agents\n{RULE}\n"
+			for team_name in sorted(teams):
+				players = sorted(teams[team_name], key=lambda x: x[1] if x[1] is not None else -1, reverse=True)
+				team_block = f" {team_name}\n"
+				for name, ppg in players:
+					ppg_str = f"{ppg}" if ppg is not None else "--"
+					team_block += f"   {name:<18}{ppg_str}\n"
+				team_block += "\n"
+
+				# Flush if adding this block would exceed limit
+				if len(buf + team_block) > 1900:
+					buf += f"{RULE}```"
+					messages.append(buf)
+					buf = f"```\nFree Agents (cont.)\n{RULE}\n"
+				buf += team_block
+
+			buf += f"{RULE}```"
+			messages.append(buf)
+
+		for msg in messages:
+			await ctx.send(msg)
 
 	@commands.command()
 	async def set(self, ctx, player: str, position: str):
@@ -277,6 +303,72 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			await ctx.invoke(self.bot.get_command('roster'))
 
 	@commands.command()
+	async def setall(self, ctx, igl: str, duelist: str, initiator: str, controller: str, sentinel: str, flex: str):
+		"""Assign all 6 active slots at once. Remaining roster players fill sub slots.
+
+		Parameters:
+		-----------
+		igl: Player IGN for the IGL slot.
+		duelist: Player IGN for the Duelist slot.
+		initiator: Player IGN for the Initiator slot.
+		controller: Player IGN for the Controller slot.
+		sentinel: Player IGN for the Sentinel slot.
+		flex: Player IGN for the Flex slot.
+		"""
+		with self.bot.db_manager.create_session() as session:
+			if is_roster_locked(session):
+				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
+
+			user = session.execute(select(db.User).filter_by(discord_id=ctx.message.author.id)).scalar_one_or_none()
+			if not user or not user.fantasyteam:
+				return await ctx.send("You do not have a registered fantasy team.")
+
+			names = [igl, duelist, initiator, controller, sentinel, flex]
+
+			# Validate no duplicates (case-insensitive)
+			seen = set()
+			for name in names:
+				if name.lower() in seen:
+					return await ctx.send(f"Duplicate player: {name}. Each slot must be a different player.")
+				seen.add(name.lower())
+
+			# Resolve players and validate all on roster (case-insensitive)
+			fp_by_name = {fp.player.name.lower(): fp for fp in user.fantasyteam.fantasyplayers}
+			resolved = []  # list of (position, FantasyPlayer) in slot order
+			for pos, name in enumerate(names):
+				if name.lower() not in fp_by_name:
+					return await ctx.send(f"{name} is not on your roster.")
+				resolved.append((pos, fp_by_name[name.lower()]))
+
+			# Validate team restriction for positions 0–4
+			seen_teams = {}
+			for pos, fp in resolved[:5]:
+				team = fp.player.team
+				if team and team in seen_teams:
+					other_name = seen_teams[team]
+					return await ctx.send(
+						f"Team restriction: {other_name} and {fp.player.name} are both on {team.name}. "
+						f"IGL through Sentinel must be from different pro teams. See !rules."
+					)
+				seen_teams[team] = fp.player.name
+
+			# Assign active slots 0–5
+			assigned_ids = {fp.id for _, fp in resolved}
+			for pos, fp in resolved:
+				fp.position = pos
+
+			# Fill subs with remaining players in their current position order
+			subs = sorted(
+				[fp for fp in user.fantasyteam.fantasyplayers if fp.id not in assigned_ids],
+				key=lambda fp: fp.position
+			)
+			for sub_pos, fp in enumerate(subs, start=6):
+				fp.position = sub_pos
+
+			session.commit()
+			await ctx.invoke(self.bot.get_command('roster'))
+
+	@commands.command()
 	async def standings(self, ctx):
 		"""Show W/L/T standings and total points across all stages of the active season."""
 
@@ -312,9 +404,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			col_w = max(col_w, len("Team"))
 
 			buf = "```\nStandings\n\n"
-			buf += f"  {'Team':<{col_w}}  W   L   T   Pts\n"
+			buf += f"  {'Team':<{col_w}}  W  L  T  Pts\n"
 			for (fteam, w, l, t, pts), name in zip(rows, names):
-				buf += f"  {name:<{col_w}}  {w:<4}{l:<4}{t:<4}{pts}\n"
+				buf += f"  {name:<{col_w}}  {w:<3}{l:<3}{t:<3}{pts}\n"
 			buf += "```"
 			await ctx.send(buf)
 

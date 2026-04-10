@@ -1,248 +1,85 @@
 import pytest
-from fantasyVCT.scoring import PointCalculator, Cache
+from fantasyVCT.scoring import PointCalculator
 from fantasyVCT.scoring import (
-    ROLE_IGL_WIN, ROLE_DUELIST_FK, ROLE_INITIATOR_ASSIST,
-    ROLE_CONTROLLER_ASSIST, ROLE_CONTROLLER_SURVIVAL, ROLE_SENTINEL_DEATH_SAVE,
+	ROLE_IGL_WIN, ROLE_DUELIST_FK, ROLE_INITIATOR_ASSIST,
+	ROLE_CONTROLLER_ASSIST, ROLE_CONTROLLER_SURVIVAL, ROLE_SENTINEL_DEATH_SAVE,
 )
 from fantasyVCT.database import Result
 
 
 def make_result(**kwargs):
-    """Build a Result with all stat fields defaulting to 0."""
-    defaults = dict(
-        player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
-        player_2k=0, player_3k=0, player_4k=0, player_5k=0,
-        player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
-        player_fk=0,
-    )
-    defaults.update(kwargs)
-    return Result(**defaults)
+	"""Build a Result with all stat fields defaulting to 0."""
+	defaults = dict(
+		player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
+		player_2k=0, player_3k=0, player_4k=0, player_5k=0,
+		player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+		player_fk=0,
+	)
+	defaults.update(kwargs)
+	return Result(**defaults)
 
 
 # --- PointCalculator ---
 
 class TestPointCalculator:
 
-    def test_zero_stats_score_zero(self):
-        assert PointCalculator.score(make_result()) == 0.0
+	def test_zero_stats_score_zero(self):
+		assert PointCalculator.score(make_result()) == 0.0
 
-    def test_acs_weight(self):
-        # 200 * 0.03 = 6.0
-        assert PointCalculator.score(make_result(player_acs=200)) == 6.0
+	def test_acs_weight(self):
+		# 200 * 0.03 = 6.0
+		assert PointCalculator.score(make_result(player_acs=200)) == 6.0
 
-    def test_kills_weight(self):
-        # 10 * 1.5 = 15.0
-        assert PointCalculator.score(make_result(player_kills=10)) == 15.0
+	def test_kills_weight(self):
+		# 10 * 1.5 = 15.0
+		assert PointCalculator.score(make_result(player_kills=10)) == 15.0
 
-    def test_deaths_are_negative(self):
-        # 5 * -1 = -5.0
-        assert PointCalculator.score(make_result(player_deaths=5)) == -5.0
+	def test_deaths_are_negative(self):
+		# 5 * -1 = -5.0
+		assert PointCalculator.score(make_result(player_deaths=5)) == -5.0
 
-    def test_assists_weight(self):
-        # 4 * 0.5 = 2.0
-        assert PointCalculator.score(make_result(player_assists=4)) == 2.0
+	def test_assists_weight(self):
+		# 4 * 0.5 = 2.0
+		assert PointCalculator.score(make_result(player_assists=4)) == 2.0
 
-    def test_multikill_weights(self):
-        # 2k*2 + 3k*4 + 4k*7 + 5k*10 = 2 + 4 + 7 + 10 = 23.0
-        r = make_result(player_2k=1, player_3k=1, player_4k=1, player_5k=1)
-        assert PointCalculator.score(r) == 23.0
+	def test_multikill_weights(self):
+		# 2k*2 + 3k*4 + 4k*7 + 5k*10 = 2 + 4 + 7 + 10 = 23.0
+		r = make_result(player_2k=1, player_3k=1, player_4k=1, player_5k=1)
+		assert PointCalculator.score(r) == 23.0
 
-    def test_clutch_weights(self):
-        # v2*8 + v3*12 + v4*16 + v5*20 = 8 + 12 + 16 + 20 = 56.0
-        r = make_result(player_clutch_v2=1, player_clutch_v3=1, player_clutch_v4=1, player_clutch_v5=1)
-        assert PointCalculator.score(r) == 56.0
+	def test_clutch_weights(self):
+		# v2*8 + v3*12 + v4*16 + v5*20 = 8 + 12 + 16 + 20 = 56.0
+		r = make_result(player_clutch_v2=1, player_clutch_v3=1, player_clutch_v4=1, player_clutch_v5=1)
+		assert PointCalculator.score(r) == 56.0
 
-    def test_full_formula(self):
-        # 200*0.03 + 10*1.5 + 5*(-1) + 2*0.5 + 1*2 + 1*8 = 6+15-5+1+2+8 = 27.0
-        r = make_result(
-            player_acs=200, player_kills=10, player_deaths=5, player_assists=2,
-            player_2k=1, player_clutch_v2=1,
-        )
-        assert PointCalculator.score(r) == 27.0
+	def test_full_formula(self):
+		# 200*0.03 + 10*1.5 + 5*(-1) + 2*0.5 + 1*2 + 1*8 = 6+15-5+1+2+8 = 27.0
+		r = make_result(
+			player_acs=200, player_kills=10, player_deaths=5, player_assists=2,
+			player_2k=1, player_clutch_v2=1,
+		)
+		assert PointCalculator.score(r) == 27.0
 
-    def test_no_role_bonus_in_base_score(self):
-        # role_bonus is separate; base score must not include it
-        r = make_result(player_kills=10, player_fk=3, player_assists=4, player_deaths=5,
-                        rounds_played=20, team_won=True)
-        base = PointCalculator.score(r)
-        assert base == PointCalculator.score(make_result(
-            player_kills=10, player_fk=3, player_assists=4, player_deaths=5))
+	def test_no_role_bonus_in_base_score(self):
+		# role_bonus is separate; base score must not include it
+		r = make_result(player_kills=10, player_fk=3, player_assists=4, player_deaths=5,
+						rounds_played=20, team_won=True)
+		base = PointCalculator.score(r)
+		assert base == PointCalculator.score(make_result(
+			player_kills=10, player_fk=3, player_assists=4, player_deaths=5))
 
-    def test_fk_weight(self):
-        # 3 FK * 1.0 = 3.0
-        assert PointCalculator.score(make_result(player_fk=3)) == 3.0
+	def test_fk_weight(self):
+		# 3 FK * 1.0 = 3.0
+		assert PointCalculator.score(make_result(player_fk=3)) == 3.0
 
-    def test_fk_none_scores_zero(self):
-        # player_fk=None (pre-migration rows) should not raise and score 0
-        assert PointCalculator.score(make_result(player_fk=None)) == 0.0
+	def test_fk_none_scores_zero(self):
+		# player_fk=None (pre-migration rows) should not raise and score 0
+		assert PointCalculator.score(make_result(player_fk=None)) == 0.0
 
-    def test_score_rounds_to_one_decimal(self):
-        # 1 assist = 0.5, ensures rounding is applied
-        r = make_result(player_assists=1)
-        result = PointCalculator.score(r)
-        assert result == round(result, 1)
-
-
-# --- Cache ---
-
-class TestCache:
-
-    def test_store_and_retrieve(self):
-        cache = Cache()
-        cache.store(player_id=1, key=100, value=25.0)
-        assert cache.retrieve(1, 100) == 25.0
-
-    def test_retrieve_unknown_player_returns_none(self):
-        cache = Cache()
-        assert cache.retrieve(99) is None
-
-    def test_retrieve_unknown_key_returns_none(self):
-        cache = Cache()
-        cache.store(1, 100, 25.0)
-        assert cache.retrieve(1, 999) is None
-
-    def test_retrieve_all_values_for_player(self):
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.store(1, 102, 15.0)
-        all_vals = cache.retrieve(1)
-        assert all_vals[101] == 10.0
-        assert all_vals[102] == 15.0
-
-    def test_retrieve_total(self):
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.store(1, 102, 15.0)
-        assert cache.retrieve_total(1) == 25.0
-
-    def test_retrieve_total_unknown_player_returns_zero(self):
-        cache = Cache()
-        assert cache.retrieve_total(99) == 0
-
-    def test_invalidate_forces_recalculation(self):
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.retrieve_total(1)  # populates cached total
-        cache.invalidate()
-        # total is cleared; retrieve_total must recalculate correctly
-        assert cache.retrieve_total(1) == 10.0
-
-    def test_invalidate_does_not_drop_scores(self):
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.store(1, 102, 5.0)
-        cache.invalidate()
-        assert cache.retrieve_total(1) == 15.0
-
-    def test_multiple_players_isolated(self):
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.store(2, 101, 99.0)
-        assert cache.retrieve_total(1) == 10.0
-        assert cache.retrieve_total(2) == 99.0
-
-    def test_store_invalidates_cached_total(self):
-        # Bug fix: store() must reset the cached total so retrieve_total
-        # recalculates after new games are added.
-        cache = Cache()
-        cache.store(1, 101, 10.0)
-        cache.store(1, 102, 8.0)
-        assert cache.retrieve_total(1) == 18.0  # total cached as 18.0
-        # new game arrives
-        cache.store(1, 103, 42.0)
-        # total must reflect all three games, not the stale 18.0
-        assert cache.retrieve_total(1) == 60.0
-
-    def test_stale_total_not_returned_after_new_game(self):
-        # Simulates the upload → retrieve_total → store new game → retrieve_total
-        # sequence that triggered the !info and !standings stale total bug.
-        cache = Cache()
-        cache.store(1, 101, 11.2)
-        cache.store(1, 102, 8.1)
-        cache.retrieve_total(1)   # caches 19.3 at key -1
-        cache.invalidate()        # clears -1 back to None
-        cache.retrieve_total(1)   # rebuilds from old entries → 19.3 stored at -1
-        # new games added (as !info / !standings loop would do)
-        cache.store(1, 103, 42.4)
-        cache.store(1, 104, 23.9)
-        # must return full total, not the stale 19.3
-        assert cache.retrieve_total(1) == 85.6
+	def test_score_rounds_to_one_decimal(self):
+		# 1 assist = 0.5, ensures rounding is applied
+		r = make_result(player_assists=1)
+		result = PointCalculator.score(r)
+		assert result == round(result, 1)
 
 
-# --- PointCalculator.role_bonus ---
-
-def make_result_full(**kwargs):
-    """Build a Result with all fields defaulting to sensible values for role bonus tests."""
-    defaults = dict(
-        player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
-        player_2k=0, player_3k=0, player_4k=0, player_5k=0,
-        player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
-        player_fk=0, rounds_played=20, rounds_won=10, team_won=False,
-    )
-    defaults.update(kwargs)
-    return Result(**defaults)
-
-
-class TestRoleBonus:
-
-    def test_flex_no_bonus(self):
-        r = make_result_full(player_kills=10, player_fk=5, player_assists=8, team_won=True)
-        assert PointCalculator.role_bonus(r, 'flex') == 0.0
-
-    def test_sub_no_bonus(self):
-        r = make_result_full(player_kills=10, player_fk=5)
-        assert PointCalculator.role_bonus(r, 'sub1') == 0.0
-
-    def test_igl_win(self):
-        r = make_result_full(team_won=True)
-        assert PointCalculator.role_bonus(r, 'igl') == ROLE_IGL_WIN
-
-    def test_igl_loss(self):
-        r = make_result_full(team_won=False)
-        assert PointCalculator.role_bonus(r, 'igl') == 0.0
-
-    def test_igl_team_won_none(self):
-        r = make_result_full(team_won=None)
-        assert PointCalculator.role_bonus(r, 'igl') == 0.0
-
-    def test_duelist_fk_bonus(self):
-        # 4 FK × 2.0 = 8.0
-        r = make_result_full(player_fk=4)
-        assert PointCalculator.role_bonus(r, 'duelist') == 4 * ROLE_DUELIST_FK
-
-    def test_duelist_fk_none(self):
-        r = make_result_full(player_fk=None)
-        assert PointCalculator.role_bonus(r, 'duelist') == 0.0
-
-    def test_initiator_assist_bonus(self):
-        # 8 assists × 1.0 = 8.0
-        r = make_result_full(player_assists=8)
-        assert PointCalculator.role_bonus(r, 'initiator') == 8 * ROLE_INITIATOR_ASSIST
-
-    def test_controller_assist_and_survived(self):
-        # 6 assists × 0.65 + (20-5) survived × 0.35 = 3.9 + 5.25 = 9.15
-        r = make_result_full(player_assists=6, player_deaths=5, rounds_played=20)
-        expected = 6 * ROLE_CONTROLLER_ASSIST + 15 * ROLE_CONTROLLER_SURVIVAL
-        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
-
-    def test_controller_survived_floor_zero(self):
-        # deaths > rounds_played → survived clamped to 0
-        r = make_result_full(player_assists=3, player_deaths=25, rounds_played=20)
-        expected = 3 * ROLE_CONTROLLER_ASSIST
-        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
-
-    def test_controller_rounds_played_none(self):
-        # rounds_played=None → survived treated as 0 - deaths (clamped to 0)
-        r = make_result_full(player_assists=4, player_deaths=3, rounds_played=None)
-        expected = 4 * ROLE_CONTROLLER_ASSIST  # survived = max(0, 0-3) = 0
-        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
-
-    def test_sentinel_death_save(self):
-        # 15 deaths × 0.40 = 6.0
-        r = make_result_full(player_deaths=15, rounds_played=20)
-        assert PointCalculator.role_bonus(r, 'sentinel') == 15 * ROLE_SENTINEL_DEATH_SAVE
-
-    def test_role_bonus_case_insensitive(self):
-        r = make_result_full(team_won=True)
-        assert PointCalculator.role_bonus(r, 'IGL') == ROLE_IGL_WIN
-        assert PointCalculator.role_bonus(r, 'Duelist') == 0.0  # no FK

@@ -183,6 +183,30 @@ CREATE TABLE IF NOT EXISTS FantasyValProd.fantasy_players
 	FOREIGN KEY (position) REFERENCES positions(id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS FantasyValDev.roster_snapshots
+(
+	id         INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	week_id    INT NOT NULL,
+	fteam_id   INT NOT NULL,
+	player_id  INT NOT NULL,
+	position   INT NOT NULL,
+	FOREIGN KEY (week_id)   REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (fteam_id)  REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS FantasyValProd.roster_snapshots
+(
+	id         INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	week_id    INT NOT NULL,
+	fteam_id   INT NOT NULL,
+	player_id  INT NOT NULL,
+	position   INT NOT NULL,
+	FOREIGN KEY (week_id)   REFERENCES weeks(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (fteam_id)  REFERENCES fantasy_teams(id) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- H2H: seasons, weeks, matchups; week_id on results
 
 CREATE TABLE IF NOT EXISTS FantasyValDev.seasons
