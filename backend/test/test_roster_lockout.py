@@ -149,16 +149,64 @@ async def test_drop_allowed_when_unlocked(mock_bot, ctx, engine):
 # ── !draft (free agent add) blocked when locked ───────────────────────────────
 
 async def test_draft_freeagent_blocked_when_locked(mock_bot, ctx, engine):
+	"""Drafting into an active slot while locked is blocked."""
 	_seed_locked_season(engine)
 	mock_bot.draft_state.is_draft_started.return_value = True
 	mock_bot.draft_state.can_draft.return_value = True
 	mock_bot.draft_state.is_draft_complete.return_value = True
 
+	# Seed a free agent and a user with an empty roster (slot 0 will be targeted)
+	with SASession(engine) as s:
+		team = db.Team(name="NRG", abbrev="NRG", region="na")
+		s.add(team)
+		s.flush()
+		player = db.Player(name="s0m", team_id=team.id)
+		ft = db.FantasyTeam(name="LockTeam", abbrev="LT")
+		s.add_all([player, ft])
+		s.flush()
+		s.add(db.User(discord_id=AUTHOR_ID, fantasy_team_id=ft.id))
+		s.commit()
+
 	cog = FantasyCog(mock_bot)
-	await cog.draft.callback(cog, ctx, "TenZ")
+	await cog.draft.callback(cog, ctx, "s0m")
 
 	sent = ctx.send.call_args[0][0]
 	assert "locked" in sent
+
+
+async def test_draft_into_sub_allowed_when_locked(mock_bot, ctx, engine):
+	"""Drafting into a sub slot while locked is allowed."""
+	_seed_locked_season(engine)
+	mock_bot.draft_state.is_draft_started.return_value = True
+	mock_bot.draft_state.can_draft.return_value = True
+	mock_bot.draft_state.is_draft_complete.return_value = True
+	mock_bot.draft_state.next.return_value = None
+
+	# Seed a free agent and a team with active slots 0–5 filled
+	with SASession(engine) as s:
+		team = db.Team(name="NRG", abbrev="NRG", region="na")
+		s.add(team)
+		s.flush()
+		# Fill slots 0–5 with dummy players
+		ft = db.FantasyTeam(name="FullTeam", abbrev="FT")
+		s.add(ft)
+		s.flush()
+		s.add(db.User(discord_id=AUTHOR_ID, fantasy_team_id=ft.id))
+		for pos in range(6):
+			p = db.Player(name=f"dummy{pos}", team_id=team.id)
+			s.add(p)
+			s.flush()
+			s.add(db.FantasyPlayer(player_id=p.id, fantasy_team_id=ft.id, position=pos))
+		# Free agent to draft into sub slot 6
+		fa = db.Player(name="s0m", team_id=team.id)
+		s.add(fa)
+		s.commit()
+
+	cog = FantasyCog(mock_bot)
+	await cog.draft.callback(cog, ctx, "s0m")
+
+	sent = "".join(call[0][0] for call in ctx.send.call_args_list)
+	assert "locked" not in sent
 
 
 async def test_draft_initial_pick_not_blocked_when_locked(mock_bot, ctx, engine):

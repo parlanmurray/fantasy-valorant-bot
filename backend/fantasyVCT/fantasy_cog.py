@@ -35,8 +35,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			return await ctx.send("It is not your turn yet!")
 
 		with self.bot.db_manager.create_session() as session:
-			if self.bot.draft_state.is_draft_complete() and is_roster_locked(session):
-				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
+			locked = self.bot.draft_state.is_draft_complete() and is_roster_locked(session)
 
 			drafted_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not drafted_player:
@@ -68,6 +67,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 				if skip_flag or drafted_fp:
 					continue
+
+				if locked and i < 6:
+					return await ctx.send("Rosters are locked. You can only add players to sub slots.")
 
 				drafted_fp = db.FantasyPlayer(position=i)
 				drafted_fp.player = drafted_player
@@ -106,8 +108,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			return await ctx.send("Cannot drop players until initial draft is complete.")
 
 		with self.bot.db_manager.create_session() as session:
-			if is_roster_locked(session):
-				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
+			locked = is_roster_locked(session)
 			dropped_player = session.execute(select(db.Player).filter_by(name=player_name)).scalar_one_or_none()
 			if not dropped_player:
 				return await ctx.send(f"No player was found for \"{player_name}\"")
@@ -115,6 +116,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			user = session.execute(select(db.User).filter_by(discord_id=author_id)).scalar_one_or_none()
 			if not dropped_player.fantasyplayer or dropped_player.fantasyplayer not in user.fantasyteam.fantasyplayers:
 				return await ctx.send(f"No player {dropped_player.name} found on your roster. Try the `!roster` command. Type `!help` for more information.")
+
+			if locked and dropped_player.fantasyplayer.position < 6:
+				return await ctx.send("Rosters are locked. You can only drop players from sub slots.")
 
 			session.delete(dropped_player.fantasyplayer)
 			session.flush()
@@ -267,10 +271,6 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		position: Target role (igl, duelist, initiator, controller, sentinel, flex, sub1–sub4).
 		"""
 
-		with self.bot.db_manager.create_session() as session:
-			if is_roster_locked(session):
-				return await ctx.send("Rosters are locked for the current week. Wait for !closeweek to unlock.")
-
 		if not position.lower() in (string.lower() for string in POSITIONS.values()):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
 		dest_pos = list(POSITIONS.keys())[list(string.lower() for string in POSITIONS.values()).index(position.lower())]
@@ -278,6 +278,9 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			return await ctx.send("Not a valid position. Try command `!roster`. Type `!help` for more information.")
 
 		with self.bot.db_manager.create_session() as session:
+			if is_roster_locked(session) and dest_pos < 6:
+				return await ctx.send("Rosters are locked. You can only move players into sub slots.")
+
 			set_player = session.execute(select(db.Player).filter_by(name=player)).scalar_one_or_none()
 			if not set_player:
 				return await ctx.send(f"No player was not found for \"{player}\".")
