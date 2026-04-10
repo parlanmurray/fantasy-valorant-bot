@@ -37,7 +37,7 @@ class StatsCog(commands.Cog, name="Stats"):
 			if player:
 				num_maps = len(player.results)
 				total    = round(sum(PointCalculator.score(row) for row in player.results), 1)
-				ppg      = round(total / num_maps, 1) if num_maps > 0 else 0.0
+				ppm      = round(total / num_maps, 1) if num_maps > 0 else 0.0
 
 				# Build opponent lookup (always shown)
 				match_ids    = list({row.match_id for row in player.results})
@@ -53,7 +53,7 @@ class StatsCog(commands.Cog, name="Stats"):
 						).all()
 						week_map = {wid: wnum for wid, wnum in week_rows}
 
-				buf = f"```\n{player.name} - {ppg} PPG\n"
+				buf = f"```\n{player.name} - {ppm} PPM\n"
 				buf += f"    Team: {player.team.name}\n"
 				buf += "\n"
 				buf += "    Match Results\n"

@@ -208,7 +208,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.command()
 	async def freeagents(self, ctx):
-		"""List all undrafted players grouped by pro team, sorted by PPG."""
+		"""List all undrafted players grouped by pro team, sorted by PPM."""
 
 		with self.bot.db_manager.create_session() as session:
 			stmt = (
@@ -219,28 +219,28 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			)
 			free_agents = list(session.scalars(stmt))
 
-			# Group by team, compute PPG per player
+			# Group by team, compute PPM per player
 			teams: dict[str, list[tuple[str, float]]] = {}
 			for player in free_agents:
 				team_name = player.team.name if player.team else "Unknown"
 				num_maps = len(player.results)
 				if num_maps > 0:
 					total = sum(PointCalculator.score(r) for r in player.results)
-					ppg = round(total / num_maps, 1)
+					ppm = round(total / num_maps, 1)
 				else:
-					ppg = None
-				teams.setdefault(team_name, []).append((player.name, ppg))
+					ppm = None
+				teams.setdefault(team_name, []).append((player.name, ppm))
 
-			# Sort teams alphabetically; within each team sort by PPG desc (None last)
+			# Sort teams alphabetically; within each team sort by PPM desc (None last)
 			RULE = "─" * 30
 			messages = []
-			buf = f"```\nFree Agents\n{RULE}\n"
+			buf = f"```\nFree Agents\n{RULE}\n   {'Player':<18}PPM\n"
 			for team_name in sorted(teams):
 				players = sorted(teams[team_name], key=lambda x: x[1] if x[1] is not None else -1, reverse=True)
 				team_block = f" {team_name}\n"
-				for name, ppg in players:
-					ppg_str = f"{ppg}" if ppg is not None else "--"
-					team_block += f"   {name:<18}{ppg_str}\n"
+				for name, ppm in players:
+					ppm_str = f"{ppm}" if ppm is not None else "--"
+					team_block += f"   {name:<18}{ppm_str}\n"
 				team_block += "\n"
 
 				# Flush if adding this block would exceed limit
