@@ -3,7 +3,10 @@ import argparse
 import asyncio
 
 from fantasyVCT.bot import FantasyValBot
-from fantasyVCT.interactions import setup
+from fantasyVCT.config_cog import setup as config_setup
+from fantasyVCT.fantasy_cog import setup as fantasy_setup
+from fantasyVCT.stats_cog import setup as stats_setup
+from fantasyVCT.matchup_cog import setup as matchup_setup
 from fantasyVCT.vlr_api import fetch_setup
 
 
@@ -50,20 +53,28 @@ elif not DB_PROD:
 # these arguments get automatically added to the bot as variables
 parser = argparse.ArgumentParser()
 parser.add_argument('--skip-draft', action='store_true', help='skip the draft step')
-parser.add_argument('-r', '--rounds', dest='num_rounds', action='store', default=7, type=int, help="number of draft rounds")
 parser.add_argument('-s', '--subs', dest='sub_slots', action='store', default=0, type=int, help="number of sub slots allowed per team")
 parser.add_argument('--prod', action='store_true', help='use production database instead of development database')
+parser.add_argument('--h2h', action='store_true', help='enable head-to-head weekly matchup mode')
 
 bot = FantasyValBot("!")
 
 parser.parse_args(namespace=bot)
+# default to 4 sub slots in h2h mode unless explicitly set
+if bot.h2h and bot.sub_slots == 0:
+    bot.sub_slots = 4
+
+# derive round count: 6 active slots + sub slots
+bot.num_rounds = 6 + bot.sub_slots
 
 bot.configure_db(DB_USER, DB_PASSWORD, DB_DEV, DB_PROD, db_type=DB_TYPE, db_host=DB_HOST)
 
 async def main():
 	async with bot:
-		# configure and start bot
-		await setup(bot)
+		await config_setup(bot)
+		await fantasy_setup(bot)
+		await stats_setup(bot)
+		await matchup_setup(bot)
 		await fetch_setup(bot)
 		await bot.start(TOKEN)
 

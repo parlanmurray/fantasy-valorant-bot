@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import create_engine
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import String, ForeignKey, Boolean
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -24,6 +24,13 @@ class DatabaseManager:
 		self.uri_string = f"{self.type}://{self.user}:{self.password}@{self.host}/{self.database}?charset=utf8mb4"
 		# "mysql://<user>:<password>@localhost/FantasyValProd"
 		self._engine = create_engine(self.uri_string, pool_pre_ping=True)
+
+	@classmethod
+	def from_engine(cls, engine):
+		"""Create a DatabaseManager from a pre-built engine (e.g. SQLite for tests)."""
+		obj = cls.__new__(cls)
+		obj._engine = engine
+		return obj
 
 	def connect(self):
 		"""
@@ -64,37 +71,24 @@ class Team(Base):
 		return f"Team(id={self.id!r}, name={self.name!r}, abbrev={self.abbrev!r}, region={self.region!r})"
 
 	def __str__(self) -> str:
-		format_str = ""
-		format_str += self.abbrev + " / " + self.name
-		format_str += add_spaces(format_str, 30)
-		format_str += str(self.score)
+		format_str = self.abbrev + " / " + self.name
+		format_str = f"{format_str:<30}{self.score}"
 		if self.won:
 			format_str += " -- Winner"
 		if self.map_pick:
 			format_str += " -- Map Pick"
 		line = "Player"
-		line += add_spaces(line, 20)
-		line += "Agent"
-		line += add_spaces(line, 40)
-		line += "ACS"
-		line += add_spaces(line, 50)
-		line += "K/D/A"
-		line += add_spaces(line, 80)
-		line += "2k"
-		line += add_spaces(line, 90)
-		line += "3k"
-		line += add_spaces(line, 100)
-		line += "4k"
-		line += add_spaces(line, 110)
-		line += "5k"
-		line += add_spaces(line, 120)
-		line += "1v2"
-		line += add_spaces(line, 130)
-		line += "1v3"
-		line += add_spaces(line, 140)
-		line += "1v4"
-		line += add_spaces(line, 150)
-		line += "1v5"
+		line = f"{line:<20}Agent"
+		line = f"{line:<40}ACS"
+		line = f"{line:<50}K/D/A"
+		line = f"{line:<80}2k"
+		line = f"{line:<90}3k"
+		line = f"{line:<100}4k"
+		line = f"{line:<110}5k"
+		line = f"{line:<120}1v2"
+		line = f"{line:<130}1v3"
+		line = f"{line:<140}1v4"
+		line = f"{line:<150}1v5"
 		format_str += "\n" + line
 		format_str += "\n{0}\n{1}\n{2}\n{3}\n{4}\n".format(
 			self.players[0],
@@ -132,8 +126,7 @@ class Player(Base):
 		line = ""
 		for result in self.results:
 			line += self.name
-			line += add_spaces(line, 20)
-			line += str(result)
+			line = f"{line:<20}{result}"
 			if len(self.results) > 1:
 				line += "\n"
 		return line
@@ -171,7 +164,12 @@ class Result(Base):
 	player_clutch_v3: Mapped[int]
 	player_clutch_v4: Mapped[int]
 	player_clutch_v5: Mapped[int]
+	player_fk: Mapped[Optional[int]]
+	rounds_played: Mapped[Optional[int]]
+	rounds_won: Mapped[Optional[int]]
+	team_won: Mapped[Optional[bool]]
 	agent: Mapped[str] = mapped_column(String(20))
+	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=True, default=None)
 
 	# relationship fields
 	player: Mapped[Player] = relationship(back_populates="results")
@@ -185,26 +183,16 @@ class Result(Base):
 
 	def __str__(self) -> str:
 		line = self.agent
-		line += add_spaces(line, 20)
-		line += str(self.player_acs)
-		line += add_spaces(line, 30)
-		line += f"{self.player_kills}/{self.player_deaths}/{self.player_assists}"
-		line += add_spaces(line, 60)
-		line += str(self.player_2k)
-		line += add_spaces(line, 70)
-		line += str(self.player_3k)
-		line += add_spaces(line, 80)
-		line += str(self.player_4k)
-		line += add_spaces(line, 90)
-		line += str(self.player_5k)
-		line += add_spaces(line, 100)
-		line += str(self.player_clutch_v2)
-		line += add_spaces(line, 110)
-		line += str(self.player_clutch_v3)
-		line += add_spaces(line, 120)
-		line += str(self.player_clutch_v4)
-		line += add_spaces(line, 130)
-		line += str(self.player_clutch_v5)
+		line = f"{line:<20}{self.player_acs}"
+		line = f"{line:<30}{self.player_kills}/{self.player_deaths}/{self.player_assists}"
+		line = f"{line:<60}{self.player_2k}"
+		line = f"{line:<70}{self.player_3k}"
+		line = f"{line:<80}{self.player_4k}"
+		line = f"{line:<90}{self.player_5k}"
+		line = f"{line:<100}{self.player_clutch_v2}"
+		line = f"{line:<110}{self.player_clutch_v3}"
+		line = f"{line:<120}{self.player_clutch_v4}"
+		line = f"{line:<130}{self.player_clutch_v5}"
 		return line
 	
 
@@ -260,6 +248,77 @@ class FantasyPlayer(Base):
 	def __repr__(self) -> str:
 		return f"FantasyPlayer(id={self.id!r}, player_id={self.player_id!r}, fantasy_team_id={self.fantasy_team_id!r}, position={self.position!r})"
 
+class Season(Base):
+	__tablename__ = "seasons"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	name: Mapped[str] = mapped_column(String(100), nullable=False)
+	event_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+	num_weeks: Mapped[int] = mapped_column(nullable=False)
+	is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+	roster_locked: Mapped[bool] = mapped_column(Boolean, default=False)
+	previous_season_id: Mapped[Optional[int]] = mapped_column(ForeignKey("seasons.id"), nullable=True)
+
+	weeks: Mapped[List["Week"]] = relationship(back_populates="season")
+	previous_season: Mapped[Optional["Season"]] = relationship(
+		"Season", foreign_keys=[previous_season_id], remote_side="Season.id"
+	)
+	season_event_urls: Mapped[List["SeasonEvent"]] = relationship(back_populates="season")
+
+	def __repr__(self) -> str:
+		return f"Season(id={self.id!r}, name={self.name!r}, num_weeks={self.num_weeks!r}, is_active={self.is_active!r})"
+
+
+class SeasonEvent(Base):
+	__tablename__ = "season_events"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
+	event_url: Mapped[str] = mapped_column(String(255), nullable=False)
+
+	season: Mapped[Season] = relationship(back_populates="season_event_urls")
+
+	def __repr__(self) -> str:
+		return f"SeasonEvent(id={self.id!r}, season_id={self.season_id!r}, event_url={self.event_url!r})"
+
+
+class Week(Base):
+	__tablename__ = "weeks"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
+	week_number: Mapped[int] = mapped_column(nullable=False)
+
+	season: Mapped[Season] = relationship(back_populates="weeks")
+	matchups: Mapped[List["Matchup"]] = relationship(back_populates="week")
+
+	def __repr__(self) -> str:
+		return f"Week(id={self.id!r}, season_id={self.season_id!r}, week_number={self.week_number!r})"
+
+
+class Matchup(Base):
+	__tablename__ = "matchups"
+
+	id: Mapped[int] = mapped_column(primary_key=True)
+	week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"), nullable=False)
+	home_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=False)
+	away_team_id: Mapped[int] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=True)
+	ghost_team_id: Mapped[Optional[int]] = mapped_column(ForeignKey("fantasy_teams.id"), nullable=True)
+	home_score: Mapped[float] = mapped_column(default=0.0)
+	away_score: Mapped[float] = mapped_column(default=0.0)
+
+	week: Mapped[Week] = relationship(back_populates="matchups")
+	home_team: Mapped[FantasyTeam] = relationship(foreign_keys=[home_team_id])
+	away_team: Mapped[FantasyTeam] = relationship(foreign_keys=[away_team_id])
+	ghost_team: Mapped[Optional[FantasyTeam]] = relationship(foreign_keys=[ghost_team_id])
+
+	def __repr__(self) -> str:
+		return (
+			f"Matchup(id={self.id!r}, week_id={self.week_id!r}, "
+			f"home_team_id={self.home_team_id!r}, away_team_id={self.away_team_id!r})"
+		)
+
+
 ######################################
 ## Non-Mapped Classes
 ######################################
@@ -301,11 +360,3 @@ class Match:
 ## Helpers
 ######################################
 
-def add_spaces(buff, length):
-	"""
-	Add spaces until the buffer is at least the provided length.
-	"""
-	rv = ""
-	while (len(buff) + len(rv)) < length:
-		rv += " "
-	return rv

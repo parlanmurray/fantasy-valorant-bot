@@ -250,3 +250,64 @@ class TestFKViolation:
         session.add(p)
         with pytest.raises(IntegrityError):
             session.flush()
+
+
+# ── H2H model smoke tests ─────────────────────────────────────────────────────
+
+from fantasyVCT.database import Season, Week, Matchup
+
+
+def test_season_instantiate():
+    s = Season(name="VCT 2025 Americas Stage 1", event_url="https://vlr.gg/event/2347", num_weeks=5, is_active=True)
+    assert s.name == "VCT 2025 Americas Stage 1"
+    assert s.num_weeks == 5
+    assert s.is_active is True
+
+
+def test_season_no_url():
+    """Season can be created without an event URL."""
+    s = Season(name="Split 1", num_weeks=8, is_active=True)
+    assert s.event_url is None
+
+
+def test_season_no_url_persists(engine):
+    """Season with no event_url can be saved and retrieved from DB."""
+    from fantasyVCT.database import Season as DBSeason
+    with Session(engine) as s:
+        season = DBSeason(name="Split 1 No URL", num_weeks=6, is_active=False)
+        s.add(season)
+        s.flush()
+        sid = season.id
+        s.commit()
+
+    with Session(engine) as s:
+        loaded = s.get(DBSeason, sid)
+        assert loaded.event_url is None
+        assert loaded.name == "Split 1 No URL"
+
+
+def test_week_instantiate():
+    w = Week(season_id=1, week_number=3)
+    assert w.week_number == 3
+    assert w.season_id == 1
+
+
+def test_matchup_instantiate():
+    m = Matchup(week_id=1, home_team_id=1, away_team_id=2, home_score=0.0, away_score=0.0)
+    assert m.week_id == 1
+    assert m.home_team_id == 1
+    assert m.away_team_id == 2
+    assert m.home_score == 0.0
+    assert m.away_score == 0.0
+
+
+def test_matchup_ghost_away_null():
+    """away_team_id can be NULL for ghost matchups."""
+    m = Matchup(week_id=1, home_team_id=1, away_team_id=None)
+    assert m.away_team_id is None
+
+
+def test_result_has_week_id():
+    r = Result()
+    assert hasattr(r, 'week_id')
+    assert r.week_id is None

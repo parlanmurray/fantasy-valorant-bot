@@ -1,5 +1,9 @@
 import pytest
 from fantasyVCT.scoring import PointCalculator, Cache
+from fantasyVCT.scoring import (
+    ROLE_IGL_WIN, ROLE_DUELIST_FK, ROLE_INITIATOR_ASSIST,
+    ROLE_CONTROLLER_ASSIST, ROLE_CONTROLLER_SURVIVAL, ROLE_SENTINEL_DEATH_SAVE,
+)
 from fantasyVCT.database import Result
 
 
@@ -9,6 +13,7 @@ def make_result(**kwargs):
         player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
         player_2k=0, player_3k=0, player_4k=0, player_5k=0,
         player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+        player_fk=0,
     )
     defaults.update(kwargs)
     return Result(**defaults)
@@ -22,12 +27,12 @@ class TestPointCalculator:
         assert PointCalculator.score(make_result()) == 0.0
 
     def test_acs_weight(self):
-        # 200 * 0.05 = 10.0
-        assert PointCalculator.score(make_result(player_acs=200)) == 10.0
+        # 200 * 0.03 = 6.0
+        assert PointCalculator.score(make_result(player_acs=200)) == 6.0
 
     def test_kills_weight(self):
-        # 10 * 2 = 20.0
-        assert PointCalculator.score(make_result(player_kills=10)) == 20.0
+        # 10 * 1.5 = 15.0
+        assert PointCalculator.score(make_result(player_kills=10)) == 15.0
 
     def test_deaths_are_negative(self):
         # 5 * -1 = -5.0
@@ -38,29 +43,38 @@ class TestPointCalculator:
         assert PointCalculator.score(make_result(player_assists=4)) == 2.0
 
     def test_multikill_weights(self):
-        # 2k*1 + 3k*1.5 + 4k*2 + 5k*2.5 = 1 + 1.5 + 2 + 2.5 = 7.0
+        # 2k*2 + 3k*4 + 4k*7 + 5k*10 = 2 + 4 + 7 + 10 = 23.0
         r = make_result(player_2k=1, player_3k=1, player_4k=1, player_5k=1)
-        assert PointCalculator.score(r) == 7.0
+        assert PointCalculator.score(r) == 23.0
 
     def test_clutch_weights(self):
-        # v2*3 + v3*4 + v4*5 + v5*6 = 3 + 4 + 5 + 6 = 18.0
+        # v2*8 + v3*12 + v4*16 + v5*20 = 8 + 12 + 16 + 20 = 56.0
         r = make_result(player_clutch_v2=1, player_clutch_v3=1, player_clutch_v4=1, player_clutch_v5=1)
-        assert PointCalculator.score(r) == 18.0
+        assert PointCalculator.score(r) == 56.0
 
     def test_full_formula(self):
-        # 200*0.05 + 10*2 + 5*(-1) + 2*0.5 + 1*1 + 0 + 0 + 0 + 1*3 = 10+20-5+1+1+3 = 30.0
+        # 200*0.03 + 10*1.5 + 5*(-1) + 2*0.5 + 1*2 + 1*8 = 6+15-5+1+2+8 = 27.0
         r = make_result(
             player_acs=200, player_kills=10, player_deaths=5, player_assists=2,
             player_2k=1, player_clutch_v2=1,
         )
-        assert PointCalculator.score(r) == 30.0
+        assert PointCalculator.score(r) == 27.0
 
-    def test_captain_multiplier_is_1_2x(self):
-        # Captain bonus is applied externally; validate expected math
-        r = make_result(player_acs=200, player_kills=10, player_deaths=5, player_assists=2)
-        base = PointCalculator.score(r)  # 10+20-5+1 = 26.0
-        assert base == 26.0
-        assert round(base * 1.2, 1) == 31.2
+    def test_no_role_bonus_in_base_score(self):
+        # role_bonus is separate; base score must not include it
+        r = make_result(player_kills=10, player_fk=3, player_assists=4, player_deaths=5,
+                        rounds_played=20, team_won=True)
+        base = PointCalculator.score(r)
+        assert base == PointCalculator.score(make_result(
+            player_kills=10, player_fk=3, player_assists=4, player_deaths=5))
+
+    def test_fk_weight(self):
+        # 3 FK * 1.0 = 3.0
+        assert PointCalculator.score(make_result(player_fk=3)) == 3.0
+
+    def test_fk_none_scores_zero(self):
+        # player_fk=None (pre-migration rows) should not raise and score 0
+        assert PointCalculator.score(make_result(player_fk=None)) == 0.0
 
     def test_score_rounds_to_one_decimal(self):
         # 1 assist = 0.5, ensures rounding is applied
@@ -153,3 +167,82 @@ class TestCache:
         cache.store(1, 104, 23.9)
         # must return full total, not the stale 19.3
         assert cache.retrieve_total(1) == 85.6
+
+
+# --- PointCalculator.role_bonus ---
+
+def make_result_full(**kwargs):
+    """Build a Result with all fields defaulting to sensible values for role bonus tests."""
+    defaults = dict(
+        player_acs=0, player_kills=0, player_deaths=0, player_assists=0,
+        player_2k=0, player_3k=0, player_4k=0, player_5k=0,
+        player_clutch_v2=0, player_clutch_v3=0, player_clutch_v4=0, player_clutch_v5=0,
+        player_fk=0, rounds_played=20, rounds_won=10, team_won=False,
+    )
+    defaults.update(kwargs)
+    return Result(**defaults)
+
+
+class TestRoleBonus:
+
+    def test_flex_no_bonus(self):
+        r = make_result_full(player_kills=10, player_fk=5, player_assists=8, team_won=True)
+        assert PointCalculator.role_bonus(r, 'flex') == 0.0
+
+    def test_sub_no_bonus(self):
+        r = make_result_full(player_kills=10, player_fk=5)
+        assert PointCalculator.role_bonus(r, 'sub1') == 0.0
+
+    def test_igl_win(self):
+        r = make_result_full(team_won=True)
+        assert PointCalculator.role_bonus(r, 'igl') == ROLE_IGL_WIN
+
+    def test_igl_loss(self):
+        r = make_result_full(team_won=False)
+        assert PointCalculator.role_bonus(r, 'igl') == 0.0
+
+    def test_igl_team_won_none(self):
+        r = make_result_full(team_won=None)
+        assert PointCalculator.role_bonus(r, 'igl') == 0.0
+
+    def test_duelist_fk_bonus(self):
+        # 4 FK × 2.0 = 8.0
+        r = make_result_full(player_fk=4)
+        assert PointCalculator.role_bonus(r, 'duelist') == 4 * ROLE_DUELIST_FK
+
+    def test_duelist_fk_none(self):
+        r = make_result_full(player_fk=None)
+        assert PointCalculator.role_bonus(r, 'duelist') == 0.0
+
+    def test_initiator_assist_bonus(self):
+        # 8 assists × 1.0 = 8.0
+        r = make_result_full(player_assists=8)
+        assert PointCalculator.role_bonus(r, 'initiator') == 8 * ROLE_INITIATOR_ASSIST
+
+    def test_controller_assist_and_survived(self):
+        # 6 assists × 0.65 + (20-5) survived × 0.35 = 3.9 + 5.25 = 9.15
+        r = make_result_full(player_assists=6, player_deaths=5, rounds_played=20)
+        expected = 6 * ROLE_CONTROLLER_ASSIST + 15 * ROLE_CONTROLLER_SURVIVAL
+        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
+
+    def test_controller_survived_floor_zero(self):
+        # deaths > rounds_played → survived clamped to 0
+        r = make_result_full(player_assists=3, player_deaths=25, rounds_played=20)
+        expected = 3 * ROLE_CONTROLLER_ASSIST
+        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
+
+    def test_controller_rounds_played_none(self):
+        # rounds_played=None → survived treated as 0 - deaths (clamped to 0)
+        r = make_result_full(player_assists=4, player_deaths=3, rounds_played=None)
+        expected = 4 * ROLE_CONTROLLER_ASSIST  # survived = max(0, 0-3) = 0
+        assert round(PointCalculator.role_bonus(r, 'controller'), 5) == round(expected, 5)
+
+    def test_sentinel_death_save(self):
+        # 15 deaths × 0.40 = 6.0
+        r = make_result_full(player_deaths=15, rounds_played=20)
+        assert PointCalculator.role_bonus(r, 'sentinel') == 15 * ROLE_SENTINEL_DEATH_SAVE
+
+    def test_role_bonus_case_insensitive(self):
+        r = make_result_full(team_won=True)
+        assert PointCalculator.role_bonus(r, 'IGL') == ROLE_IGL_WIN
+        assert PointCalculator.role_bonus(r, 'Duelist') == 0.0  # no FK

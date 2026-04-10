@@ -1,63 +1,54 @@
-import os
+"""DatabaseManager unit tests using SQLite in-memory — no live DB required."""
+import pytest
+from sqlalchemy import create_engine, event, inspect
+from sqlalchemy.orm import Session as SASession
 
-from fantasyVCT.database import DatabaseManager, Player
-
+from fantasyVCT.database import Base, DatabaseManager, Team, Player
 from sqlalchemy import select
 
-# unit testing for database
-# requires database on host machine
-# run with pytest
 
-TOKEN_FILE = os.getenv('DISCORD_TOKEN_FILE')
-DB_PASSWORD_FILE = os.getenv('DATABASE_PASSWORD_FILE')
-DB_USER = os.getenv('DATABASE_USER')
-DB_TYPE = os.getenv('DATABASE_TYPE')
-DB_DEV = os.getenv('DATABASE_DEV')
-DB_PROD = os.getenv('DATABASE_PROD')
-DB_PASSWORD = None
-TOKEN = None
+@pytest.fixture
+def engine():
+	eng = create_engine("sqlite:///:memory:")
 
-if not TOKEN_FILE:
-	print("No discord token file specified.")
-	exit(1)
-elif not DB_PASSWORD_FILE:
-	print("No database password file specified.")
-	exit(1)
+	@event.listens_for(eng, "connect")
+	def set_fk(dbapi_conn, _):
+		cursor = dbapi_conn.cursor()
+		cursor.execute("PRAGMA foreign_keys = ON")
+		cursor.close()
 
-with open(DB_PASSWORD_FILE, 'r') as f:
-	DB_PASSWORD = f.read()
-
-with open(TOKEN_FILE, 'r') as f:
-	TOKEN = f.read()
-
-if not DB_USER:
-	print("No database user specified.")
-	exit(1)
-elif not DB_PASSWORD:
-	print("No database password specified. Did you create db/password.txt?")
-	exit(1)
-elif not TOKEN:
-	print("No discord token specified. Did you create backend/discord_token.txt?")
-	exit(1)
-elif not DB_DEV:
-	print("No development database specified.")
-	exit(1)
-elif not DB_PROD:
-	print("No production database specified.")
-	exit(1)
-
-db_manager = DatabaseManager(DB_TYPE, DB_USER, DB_PASSWORD, DB_DEV)
+	Base.metadata.create_all(eng)
+	yield eng
+	eng.dispose()
 
 
-def test_connect():
-    with db_manager.connect():
-        assert True
+@pytest.fixture
+def db_manager(engine):
+	return DatabaseManager.from_engine(engine)
 
 
-def test_update():
-    with db_manager.create_session() as session:
-        sandy = Player(name="sandy", team_id=None)
-        session.add(sandy)
-        stmt = select(Player).where(Player.name.in_(["sandy"]))
-        assert session.scalars(stmt)
-        session.rollback()
+def test_connect(db_manager, engine):
+	"""Engine connects and all ORM tables are present."""
+	with db_manager.connect():
+		table_names = inspect(engine).get_table_names()
+	assert "players" in table_names
+	assert "teams" in table_names
+	assert "results" in table_names
+
+
+def test_create_session_add_and_query(db_manager):
+	"""Session can add a Player and query it back."""
+	with db_manager.create_session() as session:
+		team = Team(name="TestTeam", abbrev="TST", region="na")
+		session.add(team)
+		session.flush()
+
+		player = Player(name="TestPlayer", team_id=team.id)
+		session.add(player)
+		session.flush()
+
+		found = session.scalars(select(Player).where(Player.name == "TestPlayer")).one()
+		assert found.name == "TestPlayer"
+		assert found.team_id == team.id
+
+		session.rollback()

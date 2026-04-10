@@ -1,3 +1,5 @@
+# interactions.py — deprecated; cogs split into config_cog.py, fantasy_cog.py, stats_cog.py
+
 from enum import Enum
 import typing
 
@@ -23,26 +25,18 @@ class Category(Enum):
 			raise ValueError
 
 POSITIONS = {
-	0 : "Captain",
-	1 : "Player1",
-	2 : "Player2",
-	3 : "Player3",
-	4 : "Player4",
-	5 : "Player5",
+	0 : "IGL",
+	1 : "Duelist",
+	2 : "Initiator",
+	3 : "Controller",
+	4 : "Sentinel",
+	5 : "Flex",
 	6 : "Sub1",
 	7 : "Sub2",
 	8 : "Sub3",
 	9 : "Sub4"
 }
 
-def add_spaces(buff, length):
-	"""
-	Add spaces until the buffer is at least the provided length.
-	"""
-	rv = ""
-	while (len(buff) + len(rv)) < length:
-		rv += " "
-	return rv
 
 
 class ConfigCog(commands.Cog, name="Configuration"):
@@ -208,7 +202,8 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		buf += "- After the draft phase, you can add, drop and move players as much as you'd like\n"
 		buf += "- Each team can only have ONE player from a given team. i.e. you can only have one member of 100 Thieves on your active roster\n"
 		buf += "- Each team has 6 active slots and " + str(self.bot.sub_slots) + " sub slot(s)\n"
-		buf += "- The Captain role is a special role that does not follow the 'one player from each team' restriction. You can have a player from ANY team as your flex, even if you already have a player from that team\n"
+		buf += "- The Flex role does not follow the 'one player from each team' restriction. You can assign any player to Flex regardless of team overlap\n"
+		buf += "- Each role slot (IGL/Duelist/Initiator/Controller/Sentinel) grants a stat-specific bonus on top of the base score. Flex and Subs receive no bonus\n"
 		buf += "- Only players in active slots count towards your team's total points\n"
 		buf += "- At the end of the event, the fantasy team with the most total points wins\n"
 		buf += "\n"
@@ -225,6 +220,37 @@ class ConfigCog(commands.Cog, name="Configuration"):
 		"""Display the stat weights used to calculate fantasy points."""
 		buf = "```\n"
 		buf += PointCalculator.get_scoring_info()
+		buf += "```"
+		return await ctx.send(buf)
+
+	@commands.hybrid_command()
+	async def roles(self, ctx):
+		"""Display each role's mechanic and bonus weights."""
+		buf = "```\n"
+		buf += "Role-Based Scoring\n\n"
+		col_r, col_m = 18, 60
+		header = f"    Role"
+		header = f"{header:<{col_r}}Mechanic"
+		header = f"{header:<{col_m}}Weights"
+		buf += header + "\n"
+		buf += "    " + "-" * 76 + "\n"
+		rows = [
+			("IGL",        "Bonus when their pro team wins the map",  "+8.5 per win"),
+			("Duelist",    "Bonus for first kills",                   "+2.0/FK  (3.0 total)"),
+			("Initiator",  "Bonus for assists",                       "+1.0/assist  (1.5 total)"),
+			("Controller", "Bonus for assists and rounds survived",   "+0.65/assist  +0.35/survived"),
+			("Sentinel",   "Reduced death penalty",                   "-0.60/death  (saves 0.40)"),
+			("Flex",       "No bonus -- bypasses team restriction",   "--"),
+		]
+		for role, mechanic, weights in rows:
+			line = f"    {role}"
+			line = f"{line:<{col_r}}{mechanic}"
+			line = f"{line:<{col_m}}{weights}"
+			buf += line + "\n"
+		buf += "\n"
+		buf += "The goal of role-based scoring is to make managing your fantasy team feel more\n"
+		buf += "like managing a real Valorant team. Choosing which role a player will fill each\n"
+		buf += "week will matter — choosing well could be the difference between a win and a loss.\n"
 		buf += "```"
 		return await ctx.send(buf)
 
@@ -281,7 +307,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 				skip_flag = False
 				for fp in user.fantasyteam.fantasyplayers:
 					if fp.position == i:
-						if i > 0 and i < 6 and drafted_player.team and fp.player.team == drafted_player.team:
+						if i < 5 and drafted_player.team and fp.player.team == drafted_player.team:
 							sub_flag = True
 						skip_flag = True
 						break
@@ -391,10 +417,10 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			total = 0
 			buf2 = ""
 			for k in range(self.pos_max):
-				line = add_spaces("", 4) + str(POSITIONS[k])
+				line = f"    {POSITIONS[k]}"
 				for fp in fantasy_players:
 					if fp.position is k:
-						line += add_spaces(line, 16) + f"{fp.player.team.abbrev} {fp.player.name}"
+						line = f"{line:<16}{fp.player.team.abbrev} {fp.player.name}"
 						# update player information from results
 						# TODO optimize this out maybe with caching?
 						for row in fp.player.results:
@@ -403,23 +429,25 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 								# game is not in cache, so perform calculation
 								fantasy_points = PointCalculator.score(row)
 								self.bot.cache.store(fp.player.id, row.game_id, fantasy_points)
-						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if k == 0:
-							player_points = player_points * 1.2
+						base_pts = self.bot.cache.retrieve_total(fp.player.id)
+						role_pts = round(sum(PointCalculator.role_bonus(row, POSITIONS[k]) for row in fp.player.results), 1)
+						total_pts = round(base_pts + role_pts, 1)
 						if k < 6:
-							total += player_points
-						line += add_spaces(line, 36) + str(round(player_points, 1))
-						if k == 0:
-							line += " (1.2x)"
+							total += total_pts
+						line = f"{line:<36}{round(base_pts, 1)}"
+						role_str = ("+" + str(role_pts)) if role_pts > 0 else ("" + str(role_pts)) if role_pts != 0 else "-"
+						line = f"{line:<46}{role_str}"
+						line = f"{line:<56}{total_pts}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
 					buf2 += "\n"
 			buf += " -- " + str(round(total, 1)) + "\n"
-			line = ""
-			line += add_spaces(line, 4) + "Position"
-			line += add_spaces(line, 16) + "Name"
-			line += add_spaces(line, 36) + "Points"
+			line = f"    Position"
+			line = f"{line:<16}Name"
+			line = f"{line:<36}Base"
+			line = f"{line:<46}Role"
+			line = f"{line:<56}Total"
 			buf += line + "\n\n"
 			buf += buf2 + "```"
 			await ctx.send(buf)
@@ -434,8 +462,8 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			free_agents = session.scalars(stmt)
 
 			buf = "```\nFree Agents\n"
-			line = add_spaces("", 4) + "Player"
-			line += add_spaces(line, 24) + "Points"
+			line = f"    Player"
+			line = f"{line:<24}Points"
 			buf += line + "\n\n"
 			for player in free_agents:
 				# update player information from results
@@ -447,16 +475,16 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						fantasy_points = PointCalculator.score(row)
 						self.bot.cache.store(player.id, row.game_id, fantasy_points)
 				player_points = self.bot.cache.retrieve_total(player.id)
-				line = add_spaces("", 4) + f"{player.team.abbrev} {player.name}"
-				line += add_spaces(line, 24) + str(player_points)
+				line = f"    {player.team.abbrev} {player.name}"
+				line = f"{line:<24}{player_points}"
 
 				# check to ensure that the message has not exceeded discord's character limit
 				if len(buf + line) > 1900:
 					buf += "```"
 					await ctx.send(buf)
 					buf = "```\nFree Agents (page 2)\n"
-					line2 = add_spaces("", 4) + "Player"
-					line2 += add_spaces(line, 24) + "Points"
+					line2 = f"    Player"
+					line2 = f"{line2:<24}Points"
 					buf += line2 + "\n\n"
 				buf += line + "\n"
 			buf += "```"
@@ -469,7 +497,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 		Parameters:
 		-----------
 		player: Player's exact IGN (case-sensitive).
-		position: Target position (captain, player1–player5, sub1–sub4).
+		position: Target role (igl, duelist, initiator, controller, sentinel, flex, sub1–sub4).
 		"""
 
 		# check position is valid
@@ -503,7 +531,7 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 			# verify that we do not violate the one from each team rule
 			existing_teams = list()
 			for curr_player in user.fantasyteam.fantasyplayers:
-				if curr_player.position > 0 and curr_player.position < 6:
+				if curr_player.position < 5:
 					if curr_player.player.team in existing_teams:
 						session.rollback()
 						return await ctx.send("Cannot assign player to this position due to team restriction. See !rules.")
@@ -517,16 +545,13 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 	@commands.hybrid_command()
 	async def standings(self, ctx):
-		"""Show current fantasy league standings sorted by optimized score."""
+		"""Show current fantasy league standings sorted by score."""
 
 		with self.bot.db_manager.create_session() as session:
-			# get curret scores
 			fteams = list(session.scalars(select(db.FantasyTeam)))
 			for fteam in fteams:
 				total = 0
 				for fp in fteam.fantasyplayers:
-					# populate cache for all players including subs (needed for optimal score)
-					# TODO optimize this out
 					for row in fp.player.results:
 						fantasy_points = self.bot.cache.retrieve(fp.player.id, row.game_id)
 						if not fantasy_points:
@@ -535,50 +560,18 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 					# don't count subs in actual score
 					if fp.position < 6:
 						player_points = self.bot.cache.retrieve_total(fp.player.id)
-						if fp.position == 0:
-							player_points = player_points * 1.2
-						total = round(total + player_points, 1)
+						role_pts = sum(PointCalculator.role_bonus(row, POSITIONS[fp.position]) for row in fp.player.results)
+						total = round(total + player_points + role_pts, 1)
 				fteam.points = total
 
-			# compute optimal scores
-			optimal_scores = {fteam.id: _optimal_score(fteam, self.bot.cache) for fteam in fteams}
+			sorted_teams = sorted(fteams, key=lambda t: t.points, reverse=True)
 
-			sorted_teams = sorted(fteams, key=lambda k: optimal_scores[k.id], reverse=True)
-
-			# format output
-			any_suboptimal = any(optimal_scores[t.id] != t.points for t in sorted_teams)
 			buf = "```\n" + "Standings\n\n"
 			for fteam in sorted_teams:
-				optimal = optimal_scores[fteam.id]
-				marker = "*" if optimal != fteam.points else ""
-				buf += f"\t{fteam.abbrev} / {fteam.name} - {optimal}{marker}\n"
-			if any_suboptimal:
-				buf += "\n* Optimized score shown. Use !set to improve your lineup."
+				buf += f"\t{fteam.abbrev} / {fteam.name} - {fteam.points}\n"
 			buf += "```"
 			await ctx.send(buf)
 
-
-def _optimal_score(fteam, cache) -> float:
-	"""Optimal score: try each player as captain, greedily pick best 5 active with distinct pro teams."""
-	players = [(cache.retrieve_total(fp.player.id), fp.player.team_id) for fp in fteam.fantasyplayers]
-	if not players:
-		return 0.0
-	players.sort(reverse=True)
-	best = 0.0
-	for i, (cap_score, _) in enumerate(players):
-		# pick best 5 active from remaining with distinct pro teams
-		active, used_teams = [], set()
-		for j, (score, team_id) in enumerate(players):
-			if j == i or team_id in used_teams:
-				continue
-			active.append(score)
-			used_teams.add(team_id)
-			if len(active) == 5:
-				break
-		total = round(cap_score * 1.2 + sum(active), 1)
-		if total > best:
-			best = total
-	return best
 
 
 class StatsCog(commands.Cog, name="Stats"):
@@ -625,16 +618,16 @@ class StatsCog(commands.Cog, name="Stats"):
 				buf += f"    Team: {player.team.name}\n"
 				buf += "\n"
 				buf += "    Match Results\n"
-				line = add_spaces("", 8) + "Points"
-				line += add_spaces(line, 16) + "ACS"
-				line += add_spaces(line, 24) + "K/D/A"
-				line += add_spaces(line, 34) + "Game ID\n"
+				line = f"        Points"
+				line = f"{line:<16}ACS"
+				line = f"{line:<24}K/D/A"
+				line = f"{line:<34}Game ID\n"
 				buf += line
 				for row in player.results:
-					line = add_spaces("", 8) + str(self.bot.cache.retrieve(player.id, row.game_id))
-					line += add_spaces(line, 16) + str(row.player_acs)
-					line += add_spaces(line, 24) + f"{str(row.player_kills)}/{str(row.player_deaths)}/{str(row.player_assists)}"
-					line += add_spaces(line, 34) + str(row.game_id) + "\n"
+					line = f"        {self.bot.cache.retrieve(player.id, row.game_id)}"
+					line = f"{line:<16}{row.player_acs}"
+					line = f"{line:<24}{row.player_kills}/{row.player_deaths}/{row.player_assists}"
+					line = f"{line:<34}{row.game_id}\n"
 					buf += line
 				buf += "```"
 				return await ctx.send(buf)
@@ -653,9 +646,9 @@ class StatsCog(commands.Cog, name="Stats"):
 			return cache.retrieve_total(player.id)
 
 		buf = "```Player Rankings\n"
-		line = add_spaces("", 4) + "Player"
-		line += add_spaces(line, 30) + "Points"
-		line += add_spaces(line, 40) + "Fantasy Team\n\n"
+		line = f"    Player"
+		line = f"{line:<30}Points"
+		line = f"{line:<40}Fantasy Team\n\n"
 		buf += line
 
 		with self.bot.db_manager.create_session() as session:
@@ -664,18 +657,18 @@ class StatsCog(commands.Cog, name="Stats"):
 			players = sorted(players, key=lambda player: get_fantasy_points(self.bot.cache, player), reverse=True)
 			for player in players:
 				line = f"    {player.team.abbrev} {player.name}"
-				line += add_spaces(line, 30) + str(self.bot.cache.retrieve_total(player.id))
+				line = f"{line:<30}{self.bot.cache.retrieve_total(player.id)}"
 				if player.fantasyplayer:
-					line += add_spaces(line, 40) + player.fantasyplayer.fantasyteam.abbrev
+					line = f"{line:<40}{player.fantasyplayer.fantasyteam.abbrev}"
 
 				# check to ensure that the message has not exceeded discord's character limit
 				if len(buf + line) > 1900:
 					buf += "```"
 					await ctx.send(buf)
 					buf = "```\nPlayer Rankings (page 2)\n"
-					line2 = add_spaces(buf, 4) + "Player"
-					line2 += add_spaces(buf, 30) + "Points"
-					line2 += add_spaces(buf, 40) + "Fantasy Team\n"
+					line2 = f"    Player"
+					line2 = f"{line2:<30}Points"
+					line2 = f"{line2:<40}Fantasy Team\n"
 					buf += line2 + "\n\n"
 				buf += line + "\n"
 

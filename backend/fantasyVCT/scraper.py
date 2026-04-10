@@ -73,10 +73,13 @@ class Scraper:
 		player_stats = html.find_all('td', class_="mod-stat")
 		player.results[0].player_acs = int(player_stats[1].find('span', class_="mod-both").get_text(strip=True))
 
-		# Use specific classes for K/D/A — robust to new columns being added
+		# Use specific classes for K/D/A/FK — robust to new columns being added
 		player.results[0].player_kills = int(html.find('td', class_="mod-vlr-kills").find('span', class_="mod-both").get_text(strip=True))
 		player.results[0].player_deaths = int(html.find('td', class_="mod-vlr-deaths").find('span', class_="mod-both").get_text(strip=True))
 		player.results[0].player_assists = int(html.find('td', class_="mod-vlr-assists").find('span', class_="mod-both").get_text(strip=True))
+		fk_td = html.find('td', class_="mod-fb")
+		fk_text = fk_td.find('span', class_="mod-both").get_text(strip=True) if fk_td else ""
+		player.results[0].player_fk = int(fk_text) if fk_text else None
 
 	@staticmethod
 	def _parse_player_performance(html, player: db.Player):
@@ -137,7 +140,7 @@ class Scraper:
 	def _parse_map_summary(html, map_: db.Map):
 		"""Parse an html object for summary information about a map, assuming
 		summary tab.
-		
+
 		Args:
 		    html (BeautifulSoup): a div containing information about a single map
 			map_ (db.Map): db.Map object to place map information in
@@ -175,6 +178,15 @@ class Scraper:
 			map_.team1.map_pick = True
 		elif 'mod-2' in map_header.find('span', class_="picked")['class']:
 			map_.team2.map_pick = True
+
+		# wire rounds data into each player's result
+		rounds_played = map_.team1.score + map_.team2.score
+		for team in (map_.team1, map_.team2):
+			for player in team.players:
+				if player.results:
+					player.results[0].rounds_played = rounds_played
+					player.results[0].rounds_won = team.score
+					player.results[0].team_won = team.won
 
 	@staticmethod
 	def _parse_map_performance(html, map_: db.Map):
@@ -300,6 +312,92 @@ class Scraper:
 		return match
 
 	@staticmethod
+	def parse_event_page(url: str) -> tuple[str, int]:
+		"""Scrape a vlr.gg event page for its name and week count.
+
+		Args:
+		    url (str): vlr.gg event URL (e.g. https://www.vlr.gg/event/2347/vct-2025-americas-stage-1/group-stage)
+
+		Returns:
+		    tuple[str, int]: (event_name, num_weeks)
+
+		Raises:
+		    ValueError: if week count cannot be determined from the page
+		"""
+		soup = Scraper.scrape_url(url)
+
+		# Event name
+		name_tag = soup.find('h1', class_='wf-title')
+		if not name_tag:
+			name_tag = soup.find('div', class_='event-header-title')
+		event_name = name_tag.get_text(strip=True) if name_tag else "Unknown Event"
+
+		# Week count: find highest week number from nav tabs or match labels
+		# vlr.gg event pages have week filter buttons like "W1", "W2", etc.
+		def _week_num(text):
+			t = text.strip().upper()
+			if t.startswith('W') and t[1:].isdigit():
+				return int(t[1:])
+			return None
+
+		week_tabs = soup.find_all('a', class_='wf-nav-item', string=lambda t: t and _week_num(t) is not None)
+		if week_tabs:
+			nums = [_week_num(tag.get_text()) for tag in week_tabs]
+		else:
+			# fallback: collect all "WN" strings on the page and take the max
+			# (counts distinct weeks, not occurrences per match row)
+			nums = list({_week_num(tag) for tag in soup.find_all(string=True) if _week_num(tag) is not None})
+
+		num_weeks = max(nums) if nums else 0
+		if num_weeks == 0:
+			raise ValueError(f"Could not determine week count from event page: {url}")
+
+		return event_name, num_weeks
+
+	@staticmethod
+	def parse_week_number(match_page_html) -> int | None:
+		"""Extract the VCT week number from a match page's canonical URL.
+
+		Looks for <link rel="canonical"> whose href ends in /wN.
+
+		Args:
+		    match_page_html (BeautifulSoup): parsed match page
+
+		Returns:
+		    int | None: week number (1-based) or None if not found
+		"""
+		canonical = match_page_html.find('link', rel='canonical')
+		if not canonical:
+			return None
+		href = canonical.get('href', '')
+		# Match URL pattern: ...-wN  (e.g. -w1, -w2, -w12)
+		import re
+		m = re.search(r'-w(\d+)$', href)
+		if m:
+			return int(m.group(1))
+		return None
+
+	@staticmethod
+	def parse_event_teams(url: str) -> list[str]:
+		"""Scrape a vlr.gg event page for all participating team URLs.
+
+		Args:
+		    url (str): vlr.gg event URL
+
+		Returns:
+		    list[str]: absolute team URLs (e.g. https://www.vlr.gg/team/397/bbl-esports)
+		"""
+		soup = Scraper.scrape_url(url)
+		seen = set()
+		team_urls = []
+		for a in soup.find_all('a', href=True):
+			href = a['href']
+			if href.startswith('/team/') and href not in seen:
+				seen.add(href)
+				team_urls.append('https://www.vlr.gg' + href)
+		return team_urls
+
+	@staticmethod
 	def parse_team(url: str):
 		"""Parse a vlr.gg team page.
 		"""
@@ -319,6 +417,10 @@ class Scraper:
 
 		player_names = list()
 		for player in players:
+			# Skip substitutes and inactive players
+			labels = [d.get_text(strip=True) for d in player.find_all('div')]
+			if 'Sub' in labels or 'Inactive' in labels:
+				continue
 			player_names.append(player.find('div', {'class': 'team-roster-item-name-alias'}).get_text(strip=True))
 
 		return team_name, team_abbrev, player_names

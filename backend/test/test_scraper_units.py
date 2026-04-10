@@ -131,6 +131,100 @@ class TestMatchSummaryFiltering:
             assert len(match.maps) == 0
 
 
+def _make_team_html(players):
+    """Build minimal team page HTML matching parse_team's expected DOM. Each player is (alias, is_sub)."""
+    def player_html(alias, is_sub):
+        sub_div = '<div>Sub</div>' if is_sub else ''
+        return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{sub_div}</div>'
+
+    roster = ''.join(player_html(a, s) for a, s in players)
+    # team-header: needs 2 direct child divs; parse_team uses getNthDiv(header, 1).div
+    # wf-card: needs 2 direct child divs; parse_team uses getNthDiv(roster_body, 1)
+    return f"""<html><body>
+        <div class="team-header">
+            <div></div>
+            <div><div><h1>TestTeam</h1><h2>TT</h2></div></div>
+        </div>
+        <div class="team-summary-container-1">
+            <div class="wf-card">
+                <div></div>
+                <div>{roster}</div>
+            </div>
+        </div>
+    </body></html>"""
+
+
+class TestParseTeamSubFiltering:
+    def test_sub_excluded(self):
+        html = _make_team_html([("StarterA", False), ("Flicker", True)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert "Flicker" not in players
+        assert "StarterA" in players
+
+    def test_inactive_excluded(self):
+        def player_html(alias, label=None):
+            label_div = f'<div>{label}</div>' if label else ''
+            return f'<div class="team-roster-item"><div class="team-roster-item-name-alias">{alias}</div>{label_div}</div>'
+        roster = player_html("StarterA") + player_html("inspire", "Inactive")
+        html = f"""<html><body>
+            <div class="team-header"><div></div><div><div><h1>NV</h1><h2>NV</h2></div></div></div>
+            <div class="team-summary-container-1"><div class="wf-card"><div></div><div>{roster}</div></div></div>
+        </body></html>"""
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert "inspire" not in players
+        assert "StarterA" in players
+
+    def test_all_starters_included(self):
+        html = _make_team_html([("A", False), ("B", False), ("C", False), ("D", False), ("E", False)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert len(players) == 5
+
+    def test_all_subs_returns_empty(self):
+        html = _make_team_html([("SubOnly", True)])
+        soup = BeautifulSoup(html, "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            _, _, players = Scraper.parse_team("https://www.vlr.gg/team/1/test")
+        assert players == []
+
+
+class TestParseEventTeams:
+    def _event_html(self, team_hrefs):
+        links = "".join(f'<a href="{h}">Team</a>' for h in team_hrefs)
+        return BeautifulSoup(f"<html><body>{links}</body></html>", "html.parser")
+
+    def test_returns_team_urls(self):
+        soup = self._event_html(["/team/1/team-a", "/team/2/team-b"])
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert "https://www.vlr.gg/team/1/team-a" in urls
+        assert "https://www.vlr.gg/team/2/team-b" in urls
+
+    def test_deduplicates(self):
+        soup = self._event_html(["/team/1/team-a", "/team/1/team-a"])
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert len(urls) == 1
+
+    def test_ignores_non_team_links(self):
+        soup = self._event_html(["/team/1/team-a"])
+        soup.body.append(BeautifulSoup('<a href="/event/2/other">x</a>', "html.parser"))
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert all("/team/" in u for u in urls)
+
+    def test_empty_page_returns_empty_list(self):
+        soup = BeautifulSoup("<html><body></body></html>", "html.parser")
+        with patch.object(Scraper, "scrape_url", return_value=soup):
+            urls = Scraper.parse_event_teams("https://www.vlr.gg/event/1/test")
+        assert urls == []
+
+
 class TestMatchPerformanceFiltering:
     def test_skips_all_and_not_available(self):
         soup = _game_divs_html("all", 99, body="not available")
