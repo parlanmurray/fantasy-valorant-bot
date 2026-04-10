@@ -55,3 +55,24 @@ def is_roster_locked(session) -> bool:
 	import fantasyVCT.database as db
 	season = session.scalars(select(db.Season).where(db.Season.is_active == True)).first()
 	return bool(season and season.roster_locked)
+
+
+def build_opponent_map(match_ids: set, player_team_id: int, session) -> dict:
+	"""Return {match_id: opponent_abbrev} for a set of match IDs.
+
+	Finds the opposing pro team for each match by querying results from
+	players on a different team than player_team_id.
+	"""
+	from sqlalchemy import select
+	import fantasyVCT.database as db
+	if not match_ids:
+		return {}
+	rows = session.execute(
+		select(db.Result.match_id, db.Team.abbrev)
+		.join(db.Player, db.Result.player_id == db.Player.id)
+		.join(db.Team, db.Player.team_id == db.Team.id)
+		.where(db.Result.match_id.in_(match_ids))
+		.where(db.Player.team_id != player_team_id)
+		.distinct()
+	).all()
+	return {match_id: abbrev for match_id, abbrev in rows}

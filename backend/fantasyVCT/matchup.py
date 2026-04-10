@@ -4,7 +4,7 @@ No Discord coupling; pure logic.
 """
 import fantasyVCT.database as db
 from fantasyVCT.scoring import PointCalculator
-from fantasyVCT.utils import POSITIONS
+from fantasyVCT.utils import POSITIONS, build_opponent_map
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -396,6 +396,67 @@ def week_top_base_scorers(week_id: int, fteams: list, session: Session, n: int =
 
 	scores.sort(key=lambda x: x["base"], reverse=True)
 	return scores[:n]
+
+
+def week_top_map_performances(week_id: int, session: Session, n: int = 5) -> list[dict]:
+	"""Return top-n single-map performances by base score for the week.
+
+	Only considers each player's top-2 maps (consistent with scoring rules).
+	Each entry includes player, pro_team, acs, kills, deaths, assists,
+	mk_pts (multikill+clutch, integer), base, and map_str ('Haven vs. FUT').
+	"""
+	results = session.scalars(
+		select(db.Result).where(db.Result.week_id == week_id)
+	).all()
+
+	player_results: dict[int, list] = defaultdict(list)
+	for r in results:
+		player_results[r.player_id].append(r)
+
+	entries = []
+	for player_id, maps in player_results.items():
+		top2 = sorted(maps, key=lambda r: PointCalculator.score(r), reverse=True)[:2]
+		for r in top2:
+			player = session.get(db.Player, player_id)
+			if not player:
+				continue
+			mk_pts = (
+				r.player_2k * 2 + r.player_3k * 4 + r.player_4k * 7 + r.player_5k * 10
+				+ r.player_clutch_v2 * 8 + r.player_clutch_v3 * 12
+				+ r.player_clutch_v4 * 16 + r.player_clutch_v5 * 20
+			)
+			entries.append({
+				"player":   player.name,
+				"pro_team": player.team.abbrev if player.team else "?",
+				"team_id":  player.team_id,
+				"match_id": r.match_id,
+				"map":      r.map,
+				"acs":      r.player_acs,
+				"kills":    r.player_kills,
+				"deaths":   r.player_deaths,
+				"assists":  r.player_assists,
+				"mk_pts":   mk_pts,
+				"base":     PointCalculator.score(r),
+			})
+
+	# Resolve opponent per match per pro team
+	match_ids_by_team: dict[int, set] = defaultdict(set)
+	for e in entries:
+		if e["team_id"]:
+			match_ids_by_team[e["team_id"]].add(e["match_id"])
+
+	opp_lookup: dict[tuple, str] = {}
+	for team_id, mids in match_ids_by_team.items():
+		opp_map = build_opponent_map(mids, team_id, session)
+		for mid, abbrev in opp_map.items():
+			opp_lookup[(team_id, mid)] = abbrev
+
+	for e in entries:
+		opp = opp_lookup.get((e["team_id"], e["match_id"]), "?")
+		e["map_str"] = f"{e['map']} vs. {opp}"
+
+	entries.sort(key=lambda x: x["base"], reverse=True)
+	return entries[:n]
 
 
 def derive_record(matchups: list[db.Matchup], fantasy_team_id: int) -> tuple[int, int, int]:

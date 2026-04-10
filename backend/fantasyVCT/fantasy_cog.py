@@ -329,20 +329,20 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 
 			names = [igl, duelist, initiator, controller, sentinel, flex]
 
-			# Validate no duplicates
+			# Validate no duplicates (case-insensitive)
 			seen = set()
 			for name in names:
-				if name in seen:
+				if name.lower() in seen:
 					return await ctx.send(f"Duplicate player: {name}. Each slot must be a different player.")
-				seen.add(name)
+				seen.add(name.lower())
 
-			# Resolve players and validate all on roster
-			fp_by_name = {fp.player.name: fp for fp in user.fantasyteam.fantasyplayers}
+			# Resolve players and validate all on roster (case-insensitive)
+			fp_by_name = {fp.player.name.lower(): fp for fp in user.fantasyteam.fantasyplayers}
 			resolved = []  # list of (position, FantasyPlayer) in slot order
 			for pos, name in enumerate(names):
-				if name not in fp_by_name:
+				if name.lower() not in fp_by_name:
 					return await ctx.send(f"{name} is not on your roster.")
-				resolved.append((pos, fp_by_name[name]))
+				resolved.append((pos, fp_by_name[name.lower()]))
 
 			# Validate team restriction for positions 0–4
 			seen_teams = {}
