@@ -209,6 +209,7 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				else:
 					matchup.away_score = 0.0
 
+			week.is_closed = True
 			season.roster_locked = False
 			session.commit()
 
@@ -294,15 +295,11 @@ class MatchupCog(commands.Cog, name="Matchup"):
 
 			# Determine week
 			if week is None:
-				# Find the most recent week with uploaded results
 				weeks = sorted(season.weeks, key=lambda w: w.week_number)
-				target_week = weeks[0] if weeks else None
-				for w in weeks:
-					results_exist = session.scalars(
-						select(db.Result).where(db.Result.week_id == w.id)
-					).first()
-					if results_exist:
-						target_week = w
+				# Show the first non-closed week (current/upcoming); fall back to last closed week
+				target_week = next((w for w in weeks if not w.is_closed), None)
+				if target_week is None:
+					target_week = weeks[-1] if weeks else None
 			else:
 				target_week = session.scalars(
 					select(db.Week).where(db.Week.season_id == season.id, db.Week.week_number == week)

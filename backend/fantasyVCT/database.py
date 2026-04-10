@@ -319,6 +319,7 @@ class Week(Base):
 	id: Mapped[int] = mapped_column(primary_key=True)
 	season_id: Mapped[int] = mapped_column(ForeignKey("seasons.id"), nullable=False)
 	week_number: Mapped[int] = mapped_column(nullable=False)
+	is_closed: Mapped[bool] = mapped_column(default=False, server_default="0")
 
 	season: Mapped[Season] = relationship(back_populates="weeks")
 	matchups: Mapped[List["Matchup"]] = relationship(back_populates="week")
