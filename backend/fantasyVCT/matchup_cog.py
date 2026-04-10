@@ -360,18 +360,11 @@ class MatchupCog(commands.Cog, name="Matchup"):
 				lines.append(f"  {'Role':<11} {'Player':<16} {'Base':>5}  {'Bonus':>5}")
 				lines.append(f"  {RULE}")
 				active = [s for s in slots if s["is_active"]]
-				subs   = [s for s in slots if not s["is_active"]]
 				for s in active:
 					if s["player_name"] is None:
 						lines.append(f"  {s['role']:<11} {'(empty)':<16}")
 					else:
 						lines.append(f"  {s['role']:<11} {s['player_name']:<16} {s['base']:>5.1f}  {s['bonus']:>5.1f}")
-				lines.append(f"  {RULE}")
-				for s in subs:
-					if s["player_name"] is None:
-						lines.append(f"  {s['role']:<11} {'(empty)':<16}")
-					else:
-						lines.append(f"  {s['role']:<11} {s['player_name']:<16} {'--':>5}  {'--':>5}")
 				return lines
 
 			buf_lines = [
