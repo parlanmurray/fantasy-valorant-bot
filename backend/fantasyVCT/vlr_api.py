@@ -58,12 +58,16 @@ class FetchCog(commands.Cog, name="Results"):
 				await ctx.invoke(self.bot.get_command('upload'), vlr_id)
 
 	@commands.hybrid_command()
-	async def upload(self, ctx, vlr_id: str):
+	async def upload(self, ctx, vlr_id: str, week: int = None):
 		"""Upload match results from vlr.gg into the database.
+
+		Defaults to the current active league week. Use the week parameter
+		to backfill results into a specific week.
 
 		Parameters:
 		-----------
 		vlr_id: Numeric match ID from the vlr.gg URL (e.g. 459518 from vlr.gg/459518/...).
+		week: League week number to assign results to (optional, defaults to current open week).
 		"""
 		# check that the input is valid
 		if not re.match("^[0-9]{5,6}$", vlr_id):
@@ -74,26 +78,30 @@ class FetchCog(commands.Cog, name="Results"):
 			if session.scalars(select(db.Result).filter_by(match_id=vlr_id)).first():
 				return await ctx.send("This match has already been uploaded.")
 
-			# parse link; also grab the raw soup for week extraction
-			match_url = f"https://vlr.gg/{vlr_id}"
-			match_soup = self.bot.scraper.scrape_url(match_url)
-			week_number = self.bot.scraper.parse_week_number(match_soup)
-
 			# resolve week_id from active season
 			week_id = None
-			if week_number is not None:
-				active_season = session.scalars(
-					select(db.Season).where(db.Season.is_active == True)
-				).first()
-				if active_season:
-					week = session.scalars(
+			active_season = session.scalars(
+				select(db.Season).where(db.Season.is_active == True)
+			).first()
+			if active_season:
+				if week is not None:
+					# explicit override — used for backfilling
+					target_week = session.scalars(
 						select(db.Week).where(
 							db.Week.season_id == active_season.id,
-							db.Week.week_number == week_number
+							db.Week.week_number == week,
 						)
 					).first()
-					if week:
-						week_id = week.id
+				else:
+					# default: first non-closed week (current active week)
+					weeks = sorted(active_season.weeks, key=lambda w: w.week_number)
+					target_week = next((w for w in weeks if not w.is_closed), None)
+
+				if target_week:
+					week_id = target_week.id
+					await ctx.send(f"Assigning results to league week {target_week.week_number}.")
+				else:
+					await ctx.send("Warning: no open week found — results uploaded without a week tag.")
 
 			results_scraped = self.bot.scraper.parse_match(vlr_id)
 
