@@ -186,13 +186,14 @@ class FantasyCog(commands.Cog, name="Fantasy"):
 						line = f"{line:<14}{team_abbrev} {fp.player.name}{status_tag}"
 						if week_id is not None and k < 6:
 							base_pts, role_pts, _ = player_week_totals(fp.player_id, k, week_id, session)
-						else:
-							base_pts, role_pts = 0.0, 0.0
-						if k < 6:
 							total += round(base_pts + role_pts, 1)
-						line = f"{line:<30}{base_pts}"
-						if k < 6:
+							line = f"{line:<30}{base_pts}"
 							line = f"{line:<36}{role_pts}"
+						elif week_id is not None:
+							base_pts, _, _ = player_week_totals(fp.player_id, k, week_id, session)
+							line = f"{line:<30}{base_pts}"
+						else:
+							line = f"{line:<30}"
 						break
 				buf2 += line + "\n"
 				if k == 5:
