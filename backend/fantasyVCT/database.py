@@ -129,6 +129,7 @@ class Player(Base):
 	id: Mapped[int] = mapped_column(primary_key=True)
 	name: Mapped[str] = mapped_column(String(50), nullable=False)
 	team_id = mapped_column(ForeignKey("teams.id"))
+	status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", server_default="active")
 	
 	# relationship fields
 	team: Mapped[Team] = relationship(back_populates="players")
